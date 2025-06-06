@@ -1,0 +1,17 @@
+
+
+/
+
+
+/play
+params: 
+algorithmsId
+length
+order
+
+
+/algorithms
+
+/algorithms/sort
+
+/algorithms/graph
