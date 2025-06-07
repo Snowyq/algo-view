@@ -2,15 +2,19 @@ import { createGlobalStyle } from "styled-components";
 
 const GlobalStyles = createGlobalStyle`
 :root {
-  /* Indigo */
-  --color-brand-50: #eef2ff;
-  --color-brand-100: #e0e7ff;
-  --color-brand-200: #c7d2fe;
-  --color-brand-500: #6366f1;
-  --color-brand-600: #4f46e5;
-  --color-brand-700: #4338ca;
-  --color-brand-800: #3730a3;
-  --color-brand-900: #312e81;
+
+  --color-brand-0: var(--color-cyan-0);
+  --color-brand-50: var(--color-cyan-50);
+  --color-brand-100: var(--color-cyan-100);
+  --color-brand-200: var(--color-cyan-200);
+  --color-brand-300: var(--color-cyan-300);
+  --color-brand-400: var(--color-cyan-400);
+  --color-brand-500: var(--color-cyan-500);
+  --color-brand-600: var(--color-cyan-600);
+  --color-brand-700: var(--color-cyan-700);
+  --color-brand-800: var(--color-cyan-800);
+  --color-brand-900: var(--color-cyan-900);
+  --color-brand-950: var(--color-cyan-950);
 
   /* Grey */
   --color-grey-0: #fff;
@@ -24,6 +28,20 @@ const GlobalStyles = createGlobalStyle`
   --color-grey-700: #374151;
   --color-grey-800: #1f2937;
   --color-grey-900: #111827;
+  --color-grey-950: #030712;
+
+  --color-cyan-0: #fff;
+  --color-cyan-50: #ecfeff;
+  --color-cyan-100: #cffafe;
+  --color-cyan-200: #a5f3fc;
+  --color-cyan-300: #67e8f9;
+  --color-cyan-400: #22d3ee;
+  --color-cyan-500: #06b6d4;
+  --color-cyan-600: #0891b2;
+  --color-cyan-700: #0e7490;
+  --color-cyan-800: #155e75;
+  --color-cyan-900: #164e63;
+  --color-cyan-950: #083344;
 
   --color-blue-100: #e0f2fe;
   --color-blue-700: #0369a1;
@@ -54,6 +72,10 @@ const GlobalStyles = createGlobalStyle`
   /* For dark mode */
   --image-grayscale: 0;
   --image-opacity: 100%;
+
+
+  --nav-height: 6.4rem;
+  
 }
 
 *,
@@ -64,7 +86,7 @@ const GlobalStyles = createGlobalStyle`
   margin: 0;
 
   /* Creating animations for dark mode */
-  transition: background-color 0.3s, border 0.3s;
+  /* transition: background-color 0.3s, border 0.3s; */
 }
 
 html {
@@ -72,7 +94,7 @@ html {
 }
 
 body {
-  font-family: "Poppins", sans-serif;
+  font-family: "Open Sans", sans-serif;
   color: var(--color-grey-700);
 
   transition: color 0.3s, background-color 0.3s;

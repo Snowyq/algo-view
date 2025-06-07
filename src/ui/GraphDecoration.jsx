@@ -1,0 +1,13 @@
+import styled from "styled-components";
+
+const StyledGraphDecoration = styled.div`
+	background-color: yellow;
+	width: 100%;
+	height: 100%;
+`;
+
+function Graph() {
+	return <StyledGraphDecoration>Graph</StyledGraphDecoration>;
+}
+
+export default Graph;
