@@ -4,7 +4,6 @@ import TopBar from "./TopBar";
 
 const Main = styled.main`
 	background-color: var(--color-grey-100);
-	padding: 4rem 4.8rem 6.4rem;
 `;
 
 const App = styled.div`
@@ -16,12 +15,7 @@ const App = styled.div`
 `;
 
 const Container = styled.div`
-	max-width: 120rem;
-	display: flex;
-	flex-direction: column;
-	gap: 3.2rem;
 	height: 100%;
-	margin: 0 auto;
 `;
 
 function AppLayout() {

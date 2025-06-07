@@ -4,6 +4,7 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { BrowserRouter, Outlet, Route, Routes } from "react-router-dom";
 import AppLayout from "./ui/AppLayout";
 import Index from "./pages/Index";
+import Play from "./pages/Play";
 
 const queryClient = new QueryClient({
 	defaultOptions: {
@@ -23,7 +24,7 @@ function App() {
 				<Routes>
 					<Route element={<AppLayout />}>
 						<Route index element={<Index />} />
-						<Route path="play/:type?/:id?" element={<p>play</p>} />
+						<Route path="play/:type?/:id?" element={<Play />} />
 						<Route path="algorithms">
 							<Route path="sort/:id" />
 							<Route path="graph/:id" />

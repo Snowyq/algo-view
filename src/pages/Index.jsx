@@ -5,6 +5,9 @@ import GraphBackground from "../ui/GraphBackground";
 const Layout = styled.div`
 	height: 100%;
 	width: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 `;
 
 const Container = styled.div`
@@ -12,13 +15,13 @@ const Container = styled.div`
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	width: 100%;
+	max-width: 120rem;
 `;
 
 function Index() {
 	return (
 		<Layout>
-			<GraphBackground />
+			{/* <GraphBackground /> */}
 			<Container>
 				<IndexHero />
 			</Container>
