@@ -22,8 +22,8 @@ const StyledDottedBackground = styled.div`
 	height: 100%;
 	width: 100%;
 	border-radius: ${({ borderRadius }) => borderRadius || "5rem"};
-	box-shadow: 1px 1px 25px 5px var(--color-grey-300);
-	border: 5px solid var(--color-grey-100);
+	/* box-shadow: 1px 1px 25px 5px var(--color-grey-300); */
+	/* border: 5px solid var(--color-grey-100); */
 `;
 
 function DottedBackground({
@@ -31,7 +31,7 @@ function DottedBackground({
 	color = "black",
 	size = "1px",
 	space = "2.5rem",
-	borderRadius = "5rem",
+	borderRadius = "0rem",
 	children,
 }) {
 	return (

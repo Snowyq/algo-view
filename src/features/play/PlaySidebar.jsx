@@ -4,7 +4,7 @@ const StyledPlaySidebar = styled.div`
 	background-color: var(--color-grey-100);
 	width: 100%;
 	height: 100%;
-	box-shadow: 1px 1px 15px 5px var(--color-grey-200);
+	box-shadow: 1px 1px 15px 5px var(--color-grey-300);
 	border: 5px solid var(--color-grey-200);
 	border-radius: 2.5rem;
 	padding: 2rem;
