@@ -9,14 +9,14 @@ const StyledIndexHero = styled.div`
 	width: 100%;
 	display: flex;
 	flex-direction: column;
-	gap: 2.4rem;
+	gap: 3.6rem;
 	box-shadow: 1px 1px 25px 5px var(--color-grey-200);
+	font-size: 2rem;
 
-	/* From https://css.glass */
-	background: rgba(255, 255, 255, 0.2);
+	/* background: rgba(255, 255, 255, 0.2);
 	backdrop-filter: blur(5px);
 	-webkit-backdrop-filter: blur(5px);
-	border: 1px solid rgba(255, 255, 255, 0.3);
+	border: 1px solid rgba(255, 255, 255, 0.3); */
 `;
 
 const H1 = styled.h1`
@@ -43,8 +43,10 @@ function IndexHero() {
 				consequuntur eligendi quisquam iusto. Ducimus, ea quis?
 			</p>
 			<ButtonsContainer>
-				<Button>Learn</Button>
-				<Button variation="secondary">Play</Button>
+				<Button size="xlarge">Learn</Button>
+				<Button variation="secondary" size="xlarge">
+					Play
+				</Button>
 			</ButtonsContainer>
 		</StyledIndexHero>
 	);
