@@ -51,12 +51,19 @@ const variations = {
 			background-color: var(--color-red-800);
 		}
 	`,
+	close: css`
+		color: var(--color-grey-600);
+		background-color: var(--color-red-100);
+		&:hover {
+			background-color: var(--color-red-700);
+		}
+	`,
 };
 
 const CircleButton = styled.button`
 	border: none;
 	border-radius: 50%;
-	box-shadow: var(--shadow-sm);
+	box-shadow: var(--shadow-lg);
 
 	${({ size = "medium" }) => sizes[size]}
 	${({ variation = "primary" }) => variations[variation]}

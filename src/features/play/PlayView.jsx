@@ -1,36 +1,23 @@
-import styled from "styled-components";
 import PlayWindow from "./PlayWindow";
+import { BubbleSort } from "../../algorithms/sort/bubbleSort";
+import { generateRandomArray } from "../../utils/randoms";
+import { useEffect, useMemo, useState } from "react";
+import PlaySortAlgorithm from "./PlaySortAlgorithm";
 
-const Block = styled.div`
-	grid-column: span 1;
-	grid-row: span ${({ val }) => val} / -1;
-	background-color: var(--color-grey-300);
-	border-radius: 0.3rem;
-`;
+function PlayView({ algorithm }) {
+	const [instanceKey, setInstanceKey] = useState(0);
+	const bubbleSort = new BubbleSort(generateRandomArray(50, 2, 20));
+	function reset() {
+		bubbleSort.resetSteps();
+		setInstanceKey(i => i + 1);
+	}
 
-const BlockArea = styled.div`
-	display: grid;
-	height: 100%;
-	width: 100%;
-	grid-template-rows: repeat(20, 1fr);
-	grid-template-columns: repeat(20, 1fr);
-	grid-gap: 0 1%;
-`;
-
-function PlayView() {
 	return (
 		<PlayWindow>
 			<PlayWindow.Header>BubbleSort</PlayWindow.Header>
 			<PlayWindow.Body>
-				<BlockArea>
-					{Array.from({ length: 20 }, (_, index) => (
-						<Block
-							index={index}
-							key={index}
-							val={Math.floor(Math.random() * 18) + 2}
-						/>
-					))}
-				</BlockArea>
+				<PlaySortAlgorithm key={instanceKey} algorithm={bubbleSort} />
+				<button onClick={reset}>wstecz</button>
 			</PlayWindow.Body>
 		</PlayWindow>
 	);

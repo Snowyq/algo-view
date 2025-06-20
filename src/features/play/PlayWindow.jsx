@@ -1,18 +1,7 @@
 import { createContext, useContext } from "react";
 import styled from "styled-components";
-import Button from "../../ui/Button";
-import ButtonIcon from "../../ui/ButtonIcon";
 import { MdDelete } from "react-icons/md";
 import CircleButton from "../../ui/CircleButton";
-
-// const PlayWindow = styled.div`
-// 	background-color: ${({ color }) => color || "var(--color-grey-50)"};
-// 	box-shadow: 1px 1px 15px 5px var(--color-grey-200);
-// 	border: 5px solid var(--color-grey-200);
-// 	border-radius: 2.5rem;
-// `;
-
-// export default PlayWindow;
 
 const StyledPlayWindow = styled.div`
 	position: relative;
@@ -30,8 +19,6 @@ const CloseButtonHolder = styled.div`
 	right: 0;
 	top: 0;
 	translate: 20% -20%;
-	border-radius: 50%;
-	box-shadow: 1px 1px 5px 2px var(--color-grey-200);
 `;
 
 const PlayWindowContext = createContext();
@@ -56,7 +43,7 @@ function Header({ children }) {
 }
 
 const StyledBody = styled.div`
-	height: 40%;
+	height: 80%;
 `;
 
 function Body({ children }) {
@@ -66,7 +53,7 @@ function Body({ children }) {
 function CloseButton() {
 	return (
 		<CloseButtonHolder>
-			<CircleButton variation="danger" size="small">
+			<CircleButton>
 				<MdDelete />
 			</CircleButton>
 		</CloseButtonHolder>

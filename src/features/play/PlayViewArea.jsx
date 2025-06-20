@@ -13,8 +13,8 @@ const StyledPlayViewArea = styled.div`
 const Grid = styled.div`
 	display: grid;
 	gap: 5rem;
-	grid-template-rows: 1fr 1fr;
-	grid-template-columns: 1fr 1fr;
+	/* grid-template-rows: 1fr 1fr;
+	grid-template-columns: 1fr 1fr; */
 	height: 100%;
 	width: 100%;
 `;
@@ -23,9 +23,6 @@ function PlayViewArea() {
 	return (
 		<StyledPlayViewArea>
 			<Grid>
-				<PlayView />
-				<PlayView />
-				<PlayView />
 				<PlayView />
 			</Grid>
 		</StyledPlayViewArea>

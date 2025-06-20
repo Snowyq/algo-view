@@ -1,13 +1,11 @@
-import { createContext } from "react";
 import PlayLayout from "../features/play/PlayLayout";
-
-const PlayContext = createContext();
+import PlayProvider from "../features/play/PlayProvider";
 
 function Play() {
 	return (
-		<PlayContext.Provider>
+		<PlayProvider>
 			<PlayLayout />
-		</PlayContext.Provider>
+		</PlayProvider>
 	);
 }
 
