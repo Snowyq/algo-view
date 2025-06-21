@@ -57,4 +57,27 @@ export class Algorithm {
 	getCache(group, key) {
 		return this.cache.groups[group]?.[key];
 	}
+
+	compare(a, b, operator) {
+		switch (operator) {
+			case ">":
+				return a > b;
+			case "<":
+				return a < b;
+			case ">=":
+				return a >= b;
+			case "<=":
+				return a <= b;
+			case "==":
+				return a == b;
+			case "===":
+				return a === b;
+			case "!=":
+				return a != b;
+			case "!==":
+				return a !== b;
+			default:
+				throw new Error(`wrong operator: ${operator}`);
+		}
+	}
 }

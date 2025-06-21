@@ -8,7 +8,7 @@ const StyledTopBar = styled.div`
 	justify-content: space-between;
 	padding: 0 2.4rem;
 	align-items: center;
-	box-shadow: 1px 1px 5px 1px var(--color-grey-200);
+	box-shadow: 0 0 0px 0.75rem var(--color-grey-300);
 
 	z-index: 1000;
 `;

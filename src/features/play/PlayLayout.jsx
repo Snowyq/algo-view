@@ -1,7 +1,7 @@
 import styled from "styled-components";
 
 // import DottedBackground from "../../ui/DottedBackground";
-import PlayViewArea from "./PlayViewArea";
+import PlayDisplayedAlgorithmsArea from "./PlayDisplayedAlgorithmsArea";
 import PlaySidebar from "./PlaySidebar";
 import PlayHeader from "./PlayHeader";
 
@@ -41,13 +41,13 @@ const Container = styled.div`
 	height: 100%;
 	width: 100%;
 	display: grid;
-	grid-template-columns: 1fr 45rem;
-	gap: 2.5rem;
+	grid-template-columns: 1fr 40rem;
+	gap: 5rem;
 `;
 
 const PlayMain = styled.div`
 	display: grid;
-	grid-template-rows: 1fr 100px;
+	grid-template-rows: 1fr;
 	gap: 2.5rem;
 `;
 
@@ -55,15 +55,14 @@ function PlayLayout() {
 	return (
 		<StyledPlayground>
 			<DottedBackground
-				bg="var(--color-grey-200)"
-				color="var(--color-grey-400)"
+				bg="var(--color-grey-100)"
+				color="var(--color-grey-500)"
 				size="3px"
 				space="3rem"
 			>
 				<Container>
 					<PlayMain>
-						<PlayViewArea />
-						<PlayHeader />
+						<PlayDisplayedAlgorithmsArea />
 					</PlayMain>
 					<PlaySidebar />
 				</Container>
