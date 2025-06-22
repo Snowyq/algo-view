@@ -6,6 +6,7 @@ const algorithmClasses = {
 		bubbleSort: BubbleSort,
 	},
 };
+
 function findAlgorithmClass(category, name) {
 	const algorithmClass = algorithmClasses[category][name];
 	if (algorithmClass) return algorithmClass;

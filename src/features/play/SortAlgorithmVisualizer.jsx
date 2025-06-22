@@ -74,34 +74,7 @@ const Background = styled.div`
 	height: 100%;
 `;
 
-function PlaySortAlgorithm({ algorithmId }) {
-	// algorithm.createSteps();
-
-	// const { steps, operations } = algorithm.use();
-	// const [displayState, setDisplayState] = useState(algorithm.getArray());
-	// const [activeStepIndex, setActiveStepIndex] = useState(0);
-	// const step = steps[activeStepIndex] || {};
-	// const stepType = step.type;
-	// const stepActiveItems = step?.activeItems || [];
-
-	// useEffect(() => {
-	// 	const interval = setInterval(() => {
-	// 		setActiveStepIndex(prev => {
-	// 			const next = prev + 1;
-	// 			if (next < steps.length) {
-	// 				const newState = algorithm.getStateByStepsIndex(next);
-	// 				setDisplayState(newState);
-	// 				return next;
-	// 			} else {
-	// 				clearInterval(interval);
-	// 				return prev;
-	// 			}
-	// 		});
-	// 	}, 150);
-
-	// 	return () => clearInterval(interval);
-	// }, [algorithm, steps.length]);
-
+function SortAlgorithmVisualizer({ algorithmId }) {
 	return (
 		<Container>
 			<Background>
@@ -121,4 +94,31 @@ function PlaySortAlgorithm({ algorithmId }) {
 	);
 }
 
-export default PlaySortAlgorithm;
+export default SortAlgorithmVisualizer;
+
+// algorithm.createSteps();
+
+// const { steps, operations } = algorithm.use();
+// const [displayState, setDisplayState] = useState(algorithm.getArray());
+// const [activeStepIndex, setActiveStepIndex] = useState(0);
+// const step = steps[activeStepIndex] || {};
+// const stepType = step.type;
+// const stepActiveItems = step?.activeItems || [];
+
+// useEffect(() => {
+// 	const interval = setInterval(() => {
+// 		setActiveStepIndex(prev => {
+// 			const next = prev + 1;
+// 			if (next < steps.length) {
+// 				const newState = algorithm.getStateByStepsIndex(next);
+// 				setDisplayState(newState);
+// 				return next;
+// 			} else {
+// 				clearInterval(interval);
+// 				return prev;
+// 			}
+// 		});
+// 	}, 150);
+
+// 	return () => clearInterval(interval);
+// }, [algorithm, steps.length]);

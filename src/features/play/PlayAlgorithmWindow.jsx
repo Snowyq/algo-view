@@ -1,7 +1,8 @@
 import PlayWindow from "./PlayWindow";
 import { BubbleSort } from "../../algorithms/sort/bubbleSort";
-import PlayAlgorithm from "./PlayAlgorithm";
+import AlgorithmVisualizer from "./AlgorithmVisualizer";
 import styled from "styled-components";
+import useAlgorithm from "../../hooks/useAlgorithm";
 
 const Container = styled.div`
 	display: flex;
@@ -26,7 +27,7 @@ function PlayAlgorithmWindow({ window }) {
 						<span>{algorithm.name}</span>
 					</PlayWindow.Header>
 					<PlayWindow.Body>
-						<PlayAlgorithm
+						<AlgorithmVisualizer
 							category={window.algorithm.category}
 							id={window.algorithm.id}
 						/>

@@ -4,16 +4,27 @@ export class SortAlgorithm extends Algorithm {
 	name;
 	complexity;
 	operations = [];
-	stepOptions = {
-		check: true,
-		"check-true": true,
-		"check-false": true,
-		swap: true,
-		select: true,
-		finish: true,
+	options = {
+		steps: {
+			check: true,
+			"check-true": true,
+			"check-false": true,
+			swap: true,
+			select: true,
+			finish: true,
+		},
 	};
 
-	init() {}
+	constructor() {
+		super();
+		this.init();
+	}
+
+	init() {
+		this.changeStepsOptions({
+			// check: false,
+		});
+	}
 
 	resetSteps() {
 		this.operations = [];
@@ -21,12 +32,8 @@ export class SortAlgorithm extends Algorithm {
 		this.createSteps();
 	}
 
-	setStepOptions(options) {
-		for (let key in options) {
-			if (Object.keys(this.stepOptions).includes(key)) {
-				this.stepOptions[key] = options[key];
-			}
-		}
+	changeStepsOptions(newOptions) {
+		this.changeOptions(newOptions, "steps");
 	}
 
 	getStepOption(key) {

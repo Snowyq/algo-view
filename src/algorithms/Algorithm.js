@@ -3,6 +3,8 @@ export class Algorithm {
 	input;
 	state;
 	operations = [];
+	options = {};
+	MAX_GROUP_CACHE_SIZE = 20;
 
 	cache = {
 		logs: {},
@@ -11,6 +13,24 @@ export class Algorithm {
 
 	constructor(input) {
 		this.input = input;
+	}
+
+	getOptions(group) {
+		return this.options[group];
+	}
+
+	changeOptions(newOptions, group = "") {
+		let target = this.options;
+
+		if (group && typeof this.options[group] === "object") {
+			target = this.options[group];
+		}
+
+		for (let key in newOptions) {
+			if (Object.keys(target).includes(key)) {
+				target[key] = newOptions[key];
+			}
+		}
 	}
 
 	getSteps() {
@@ -48,7 +68,7 @@ export class Algorithm {
 		}
 		this.cache.groups[group][key] = item;
 
-		if (this.cache.logs[group].length > 20) {
+		if (this.cache.logs[group].length > this.MAX_GROUP_CACHE_SIZE) {
 			const id = this.cache.logs[group].shift();
 			delete this.cache.groups[group][id];
 		}
