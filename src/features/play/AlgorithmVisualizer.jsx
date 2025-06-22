@@ -1,7 +1,10 @@
 import SortAlgorithmVisualizer from "./SortAlgorithmVisualizer";
 
-function AlgorithmVisualizer({ category, id }) {
-	if (category === "sort") return <SortAlgorithmVisualizer id={id} />;
+function AlgorithmVisualizer({ algorithm }) {
+	const { category, id } = algorithm;
+	if (!category || !id) return <></>;
+	if (category === "sort")
+		return <SortAlgorithmVisualizer algorithm={algorithm} />;
 	else return <></>;
 }
 

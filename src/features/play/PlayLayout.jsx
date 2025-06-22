@@ -56,7 +56,7 @@ function PlayLayout() {
 		<StyledPlayground>
 			<DottedBackground
 				bg="var(--color-grey-100)"
-				color="var(--color-grey-500)"
+				color="var(--color-grey-400)"
 				size="3px"
 				space="3rem"
 			>

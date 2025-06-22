@@ -4,8 +4,8 @@ export class BubbleSort extends SortAlgorithm {
 	name = "BubbleSort";
 	complexity = "O(n^2)";
 
-	constructor(input, direction) {
-		super(input, direction);
+	constructor(array) {
+		super(array);
 	}
 
 	sort(arr) {

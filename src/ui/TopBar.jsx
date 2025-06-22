@@ -3,7 +3,7 @@ import MainNav from "./MainNav";
 import Logo from "./Logo";
 
 const StyledTopBar = styled.div`
-	background-color: var(--color-grey-50);
+	background-color: var(--color-grey-200);
 	display: flex;
 	justify-content: space-between;
 	padding: 0 2.4rem;

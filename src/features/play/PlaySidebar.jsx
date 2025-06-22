@@ -1,4 +1,5 @@
 import styled from "styled-components";
+import PlayWindow from "./PlayWindow";
 
 const StyledPlaySidebar = styled.div`
 	background-color: var(--color-grey-100);
@@ -32,7 +33,7 @@ const InputContainer = styled.div`
 
 function PlaySidebar() {
 	return (
-		<StyledPlaySidebar>
+		<PlayWindow>
 			<AlgorithmSelection>
 				<h3>Algorithm Selection</h3>
 				<InputContainer>
@@ -55,7 +56,7 @@ function PlaySidebar() {
 					<select></select>
 				</InputContainer>
 			</AlgorithmSelection>
-		</StyledPlaySidebar>
+		</PlayWindow>
 	);
 }
 

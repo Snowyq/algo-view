@@ -15,8 +15,9 @@ export class SortAlgorithm extends Algorithm {
 		},
 	};
 
-	constructor() {
+	constructor(array) {
 		super();
+		this.array = array;
 		this.init();
 	}
 
@@ -24,6 +25,7 @@ export class SortAlgorithm extends Algorithm {
 		this.changeStepsOptions({
 			// check: false,
 		});
+		this.createSteps();
 	}
 
 	resetSteps() {
@@ -36,8 +38,8 @@ export class SortAlgorithm extends Algorithm {
 		this.changeOptions(newOptions, "steps");
 	}
 
-	getStepOption(key) {
-		return this.stepOptions[key];
+	getStepsOption(key) {
+		return this.getOptions("steps")[key];
 	}
 
 	use() {
@@ -50,9 +52,18 @@ export class SortAlgorithm extends Algorithm {
 	}
 
 	createStep(step) {
-		if (this.getStepOption(step.type)) {
+		if (this.getStepsOption(step.type)) {
 			this.steps.push(step);
 		}
+	}
+
+	getSteps() {
+		return this.steps.slice();
+	}
+
+	getStepByIndex(index) {
+		const steps = this.getSteps();
+		if (steps) return steps[index];
 	}
 
 	createOperation(type, elements) {

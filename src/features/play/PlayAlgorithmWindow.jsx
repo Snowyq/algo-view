@@ -3,6 +3,7 @@ import { BubbleSort } from "../../algorithms/sort/bubbleSort";
 import AlgorithmVisualizer from "./AlgorithmVisualizer";
 import styled from "styled-components";
 import useAlgorithm from "../../hooks/useAlgorithm";
+import { createContext } from "react";
 
 const Container = styled.div`
 	display: flex;
@@ -27,10 +28,7 @@ function PlayAlgorithmWindow({ window }) {
 						<span>{algorithm.name}</span>
 					</PlayWindow.Header>
 					<PlayWindow.Body>
-						<AlgorithmVisualizer
-							category={window.algorithm.category}
-							id={window.algorithm.id}
-						/>
+						<AlgorithmVisualizer algorithm={window.algorithm} />
 					</PlayWindow.Body>
 					<PlayWindow.Footer></PlayWindow.Footer>
 				</PlayWindow>

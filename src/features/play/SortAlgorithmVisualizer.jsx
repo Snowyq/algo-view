@@ -1,35 +1,37 @@
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import styled, { css } from "styled-components";
+import useAlgorithm from "../../hooks/useAlgorithm";
+import { PlayContext } from "./PlayContext";
 
 const variations = {
 	swap: css`
 		background-color: var(--color-blue-400);
-		box-shadow: 2px 2px 0px 2px var(--color-blue-700);
+		box-shadow: 3px 3px 0px 1px var(--color-blue-700);
 		color: var(--color-blue-800);
 	`,
 	select: css`
 		background-color: var(--color-grey-400);
-		box-shadow: 2px 2px 0px 2px var(--color-grey-700);
+		box-shadow: 3px 3px 0px 1px var(--color-grey-700);
 		color: var(--color-grey-800);
 	`,
 	check: css`
 		background-color: var(--color-yellow-400);
-		box-shadow: 2px 2px 0px 2px var(--color-yellow-700);
+		box-shadow: 3px 3px 0px 1px var(--color-yellow-700);
 		color: var(--color-yellow-800);
 	`,
 	finish: css`
 		background-color: var(--color-cyan-400);
-		box-shadow: 2px 2px 0px 2px var(--color-cyan-700);
+		box-shadow: 3px 3px 0px 1px var(--color-cyan-700);
 		color: var(--color-cyan-800);
 	`,
 	"check-false": css`
 		background-color: var(--color-red-400);
-		box-shadow: 2px 2px 0px 2px var(--color-red-700);
+		box-shadow: 3px 3px 0px 1px var(--color-red-700);
 		color: var(--color-red-800);
 	`,
 	"check-true": css`
 		background-color: var(--color-green-400);
-		box-shadow: 2px 2px 0px 2px var(--color-green-700);
+		box-shadow: 3px 3px 0px 1px var(--color-green-700);
 		color: var(--color-green-800);
 	`,
 };
@@ -43,7 +45,8 @@ const Block = styled.div`
 	justify-content: center;
 	align-items: end;
 	padding: 0.5rem 0;
-	box-shadow: 2px 2px 0px 2px var(--color-grey-400);
+	font-weight: 600;
+	box-shadow: 3px 3px 0px 1px var(--color-grey-400);
 	${({ type }) => variations[type]};
 `;
 
@@ -74,20 +77,34 @@ const Background = styled.div`
 	height: 100%;
 `;
 
-function SortAlgorithmVisualizer({ algorithmId }) {
+function SortAlgorithmVisualizer({ algorithm }) {
+	const { algorithmInput } = useContext(PlayContext);
+	const { category, id } = algorithm;
+	const [currentStepIndex, setCurrentStepIndex] = useState(0);
+	const { Algorithm } = useAlgorithm(category, id, algorithmInput);
+
+	const displayedState = Algorithm.getStateByStepsIndex(currentStepIndex);
+	const currentStep = Algorithm.getStepByIndex(currentStepIndex);
+
 	return (
 		<Container>
 			<Background>
 				<BlockArea>
-					{/* {displayState.map((val, index) => {
-				const isActive = stepActiveItems.includes(index);
-				const type = isActive ? stepType : "default";
-				return (
-					<Block type={type} index={index} key={index} val={val}>
-						<p>{val}</p>
-					</Block>
-				);
-			})} */}
+					{displayedState.map((val, index) => {
+						const isActive =
+							currentStep.activeItems.includes(index);
+						const type = isActive ? currentStep.type : "default";
+						return (
+							<Block
+								type={type}
+								index={index}
+								key={index}
+								val={val}
+							>
+								<p>{val}</p>
+							</Block>
+						);
+					})}
 				</BlockArea>
 			</Background>
 		</Container>

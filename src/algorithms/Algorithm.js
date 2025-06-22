@@ -1,6 +1,5 @@
 export class Algorithm {
 	steps = [];
-	input;
 	state;
 	operations = [];
 	options = {};
@@ -10,10 +9,6 @@ export class Algorithm {
 		logs: {},
 		groups: {},
 	};
-
-	constructor(input) {
-		this.input = input;
-	}
 
 	getOptions(group) {
 		return this.options[group];
