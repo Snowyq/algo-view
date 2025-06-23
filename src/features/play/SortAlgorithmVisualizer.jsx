@@ -2,6 +2,9 @@ import { useContext, useEffect, useState } from "react";
 import styled, { css } from "styled-components";
 import useAlgorithm from "../../hooks/useAlgorithm";
 import { PlayContext } from "./PlayContext";
+import { useRect } from "../../hooks/useRect";
+import { FaPlay } from "react-icons/fa6";
+import ButtonIcon from "../../ui/ButtonIcon";
 
 const variations = {
 	swap: css`
@@ -44,7 +47,6 @@ const Block = styled.div`
 	display: flex;
 	justify-content: center;
 	align-items: end;
-	padding: 0.5rem 0;
 	font-weight: 600;
 	box-shadow: 3px 3px 0px 1px var(--color-grey-400);
 	${({ type }) => variations[type]};
@@ -52,61 +54,110 @@ const Block = styled.div`
 
 const BlockArea = styled.div`
 	display: grid;
-	height: 100%;
 	width: 100%;
-	padding: 5rem;
-
-	grid-template-rows: repeat(20, 1fr);
-	grid-template-columns: repeat(50, 1fr);
-	grid-gap: 0 1rem;
+	height: 100%;
+	grid-template-rows: ${({ $blockWidth, $maxValue }) =>
+		`repeat(${$maxValue}, ${$blockWidth})`};
+	grid-template-columns: ${({ $blockWidth, $arrayLength }) =>
+		`repeat(${$arrayLength}, ${$blockWidth})`};
+	grid-gap: 0 ${({ $gapWidth }) => `${$gapWidth}`};
 `;
 
 const Container = styled.div`
 	height: 100%;
+	width: 100%;
 	display: flex;
 	flex-direction: column;
-	align-content: center;
+	align-items: center;
 	justify-content: center;
+	gap: 5rem;
 `;
 
 const Background = styled.div`
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	height: fit-content;
+	height: 100%;
+	max-height: 500px;
 	background-color: var(--color-grey-50);
 	box-shadow: 0.5rem 0.5rem 0px 2px var(--color-grey-300);
-	padding: 0 2rem;
+	/* padding: 0 2rem; */
 	border-radius: 15px;
+	padding: 2rem;
+	gap: 1rem;
+`;
+
+const Scale = styled.div`
+	background-color: var(--color-grey-500);
+	width: 5px;
 	height: 100%;
+`;
+
+const Controls = styled.div`
+	height: 100%;
+	max-height: 5rem;
+	/* background-color: yellow; */
+	border-radius: 15px;
+	width: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 `;
 
 function SortAlgorithmVisualizer({ algorithm }) {
 	const { algorithmInput } = useContext(PlayContext);
-	const { category, id } = algorithm;
+	const { Algorithm } = useAlgorithm(
+		algorithm.category,
+		algorithm.id,
+		algorithmInput
+	);
 	const [currentStepIndex, setCurrentStepIndex] = useState(0);
-	const { Algorithm } = useAlgorithm(category, id, algorithmInput);
 
 	const displayedState = Algorithm.getStateByStepsIndex(currentStepIndex);
 	const currentStep = Algorithm.getStepByIndex(currentStepIndex);
+	const arrayLength = Algorithm.getArrayLength();
+	const { min: arrayMin, max: arrayMax } = Algorithm.getArrayMinMax();
+
+	const blockWidth = (100 / arrayLength) * 0.7;
+	const gapWidth = (100 / (arrayLength - 1)) * 0.3;
+
+	console.log(blockWidth, gapWidth);
+	console.log(blockWidth * arrayLength + gapWidth * (arrayLength - 1));
 
 	return (
 		<Container>
 			<Background>
-				<BlockArea>
+				{/* <Scale /> */}
+				<BlockArea
+					$gapWidth={gapWidth + "%"}
+					$arrayLength={arrayLength}
+					$blockWidth={blockWidth + "%"}
+				>
 					{displayedState.map((val, index) => {
 						const isActive =
 							currentStep.activeItems.includes(index);
 						const type = isActive ? currentStep.type : "default";
 						return (
 							<Block
+								$blockWidth={"3px"}
+								$minValue={arrayMin}
+								$maxValue={arrayMax}
 								type={type}
 								index={index}
 								key={index}
 								val={val}
 							>
-								<p>{val}</p>
+								{/* <p>{val}</p> */}
 							</Block>
 						);
 					})}
 				</BlockArea>
 			</Background>
+			<Controls>
+				<FaPlay />
+			</Controls>
 		</Container>
 	);
 }

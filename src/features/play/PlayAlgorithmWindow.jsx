@@ -1,9 +1,6 @@
 import PlayWindow from "./PlayWindow";
-import { BubbleSort } from "../../algorithms/sort/bubbleSort";
 import AlgorithmVisualizer from "./AlgorithmVisualizer";
 import styled from "styled-components";
-import useAlgorithm from "../../hooks/useAlgorithm";
-import { createContext } from "react";
 
 const Container = styled.div`
 	display: flex;
@@ -13,8 +10,8 @@ const Container = styled.div`
 	align-items: center;
 `;
 const WindowOutlet = styled.div`
-	height: 80%;
 	width: 100%;
+	height: 100%;
 `;
 
 function PlayAlgorithmWindow({ window }) {
@@ -30,7 +27,6 @@ function PlayAlgorithmWindow({ window }) {
 					<PlayWindow.Body>
 						<AlgorithmVisualizer algorithm={window.algorithm} />
 					</PlayWindow.Body>
-					<PlayWindow.Footer></PlayWindow.Footer>
 				</PlayWindow>
 			</WindowOutlet>
 		</Container>

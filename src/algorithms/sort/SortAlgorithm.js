@@ -104,6 +104,29 @@ export class SortAlgorithm extends Algorithm {
 			type: "finish",
 			activeItems: Array.from({ length: arr.length }, (_, i) => i),
 		});
+		this.resultArray = this.getOperationIdByStepIndex(
+			this.steps.length - 1
+		);
+		this.arraymax = this.resultArray[0];
+		this.arrayMax = this.resultArray[-1];
+	}
+
+	getResult() {
+		return this.resultArray.slice();
+	}
+
+	getArrayMinMax() {
+		if (this.arrayMin && this.arrayMax) {
+			return {
+				min: this.arrayMin,
+				max: this.arrayMax,
+			};
+		} else {
+			return {
+				min: Math.min(this.array),
+				max: Math.max(this.array),
+			};
+		}
 	}
 
 	getOperationIdByStepIndex(stepIndex) {
@@ -152,6 +175,14 @@ export class SortAlgorithm extends Algorithm {
 	getStateByStepsIndex(stepIndex) {
 		const operationId = this.getOperationIdByStepIndex(stepIndex);
 		return this.getStateByOperationId(operationId);
+	}
+
+	getStepsLength() {
+		return this.steps.length;
+	}
+
+	getArrayLength() {
+		return this.array.length;
 	}
 
 	sort() {}
