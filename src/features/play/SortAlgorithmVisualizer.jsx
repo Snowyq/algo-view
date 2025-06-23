@@ -5,6 +5,7 @@ import { PlayContext } from "./PlayContext";
 import { useRect } from "../../hooks/useRect";
 import { FaPlay } from "react-icons/fa6";
 import ButtonIcon from "../../ui/ButtonIcon";
+import AlgorithmControls from "./AlgorithmControls";
 
 const variations = {
 	swap: css`
@@ -114,17 +115,19 @@ function SortAlgorithmVisualizer({ algorithm }) {
 		algorithmInput
 	);
 	const [currentStepIndex, setCurrentStepIndex] = useState(0);
-
 	const displayedState = Algorithm.getStateByStepsIndex(currentStepIndex);
 	const currentStep = Algorithm.getStepByIndex(currentStepIndex);
 	const arrayLength = Algorithm.getArrayLength();
 	const { min: arrayMin, max: arrayMax } = Algorithm.getArrayMinMax();
+	const progress = (currentStepIndex / arrayLength) * 100;
 
 	const blockWidth = (100 / arrayLength) * 0.7;
 	const gapWidth = (100 / (arrayLength - 1)) * 0.3;
 
-	console.log(blockWidth, gapWidth);
-	console.log(blockWidth * arrayLength + gapWidth * (arrayLength - 1));
+	function updateProgress(newProgress) {
+		const newStepIndex = (100 / newProgress) * arrayLength;
+		setCurrentStepIndex(newStepIndex);
+	}
 
 	return (
 		<Container>
@@ -155,9 +158,10 @@ function SortAlgorithmVisualizer({ algorithm }) {
 					})}
 				</BlockArea>
 			</Background>
-			<Controls>
-				<FaPlay />
-			</Controls>
+			<AlgorithmControls
+				progress={progress}
+				updateProgress={updateProgress}
+			/>
 		</Container>
 	);
 }
