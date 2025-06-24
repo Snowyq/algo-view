@@ -19,8 +19,8 @@ export function useDraggable({
 	const { rect: targetParentRect } = useRect(targetParentRef);
 	const { rect: targetRect } = useRect(targetRef);
 
-	const [position, setPosition] = useState({ x: 0, y: 0 });
-	const posRef = useRef({ x: 0, y: 0 });
+	// const [position, setPosition] = useState({ x: 0, y: 0 });
+	// const posRef = useRef({ x: 0, y: 0 });
 	const draggingRef = useRef(false);
 
 	const targetRectRef = useRef(targetRect);
@@ -37,27 +37,21 @@ export function useDraggable({
 	const MouseMoveHandler = Event => {
 		console.log("move");
 		if (!draggingRef.current) return;
-		const dx = Event.clientX - posRef.current.x;
-		const dy = Event.clientY - posRef.current.y;
 
-		setPosition(prev => {
-			const updatedPosition = {
-				x: prev.x + dx,
-				y: prev.y + dy,
-			};
+		const mousePosition = {
+			x: Event.clientX,
+			y: Event.clientY,
+		};
 
-			if (onDrag) {
-				onDrag(
-					updatedPosition,
-					targetRectRef.current,
-					targetParentRectRef.current
-				);
-			}
+		if (onDrag) {
+			onDrag(
+				mousePosition,
+				targetRectRef.current,
+				targetParentRectRef.current
+			);
+		}
 
-			return updatedPosition;
-		});
-
-		posRef.current = { x: Event.clientX, y: Event.clientY };
+		// posRef.current = { x: Event.clientX, y: Event.clientY };
 
 		// if (onMouseMove) onMouseMove(Event);
 	};
@@ -94,7 +88,6 @@ export function useDraggable({
 	return {
 		ref: targetRef,
 		parentRef: targetParentRef,
-		position,
 		parentRect: targetParentRect,
 		rect: targetRect,
 	};

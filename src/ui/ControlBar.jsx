@@ -1,6 +1,6 @@
 import styled from "styled-components";
 import { useDraggable } from "../hooks/useDraggable";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useRect } from "../hooks/useRect";
 import { minmax } from "../utils/minmax";
 
@@ -26,7 +26,7 @@ const Dot = styled.div`
 	height: var(--dot-size);
 	border-radius: 50%;
 	position: absolute;
-	left: ${({ progress }) => `calc(${progress})`};
+	left: ${({ progress }) => `${progress}`};
 	top: 50%;
 	translate: -50% -50%;
 	border: 5px solid var(--color-grey-50);
@@ -37,19 +37,22 @@ function ControlBar({ progress, isDraggable, updateProgress }) {
 	const { parentRef, ref, position } = useDraggable({
 		onDrag,
 	});
-
+	let animationFrameId = null;
 	function onDrag(position, targetRect, targetParentRect) {
-		const relX = position.x - targetParentRect.x;
-		const rawProgress = (relX / targetParentRect.width) * 100;
-		const newProgress = minmax(rawProgress, 0, 100);
+		if (animationFrameId) cancelAnimationFrame(animationFrameId);
 
-		updateProgress(newProgress);
+		animationFrameId = requestAnimationFrame(() => {
+			const relX = position.x - targetParentRect.x;
+			const rawProgress = (relX / targetParentRect.width) * 100;
+			const newProgress = minmax(rawProgress, 0, 100);
+			updateProgress(newProgress);
+		});
 	}
 
 	return (
 		<StyledControlBar>
 			<Bar ref={parentRef}>
-				<Dot progress={"100%"} ref={ref} position={position} />
+				<Dot progress={progress + "%"} ref={ref} position={position} />
 			</Bar>
 		</StyledControlBar>
 	);

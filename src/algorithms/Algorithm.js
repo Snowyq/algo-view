@@ -1,3 +1,5 @@
+import { insertSorted, removeSorted } from "../utils/arrays";
+
 export class Algorithm {
 	steps = [];
 	state;
@@ -7,7 +9,8 @@ export class Algorithm {
 
 	cache = {
 		logs: {},
-		groups: {},
+		stored: {},
+		info: {},
 	};
 
 	getOptions(group) {
@@ -53,27 +56,42 @@ export class Algorithm {
 	addCache(group, key, item) {
 		if (!this.cache.logs[group]) {
 			this.cache.logs[group] = [];
-		}
-		if (!this.cache.logs[group].includes(key)) {
-			this.cache.logs[group].push(key);
+			this.cache.info[group] = [];
+			this.cache.stored[group] = {};
 		}
 
-		if (!this.cache.groups[group]) {
-			this.cache.groups[group] = {};
+		if (!this.cache.logs[group].includes(key)) {
+			this.cache.logs[group].push(key);
+			insertSorted(this.cache.info[group], key);
 		}
-		this.cache.groups[group][key] = item;
+
+		this.cache.stored[group][key] = item;
 
 		if (this.cache.logs[group].length > this.MAX_GROUP_CACHE_SIZE) {
 			const id = this.cache.logs[group].shift();
-			delete this.cache.groups[group][id];
+			delete this.cache.stored[group][id];
+			removeSorted(this.cache.info[group], id);
 		}
 	}
 
 	getCache(group, key) {
-		return this.cache.groups[group]?.[key];
+		if (!this.hasCache(group)) return [];
+		return this.cache.stored[group]?.[key];
+	}
+
+	hasCache(group) {
+		if (this.cache.logs[group]) {
+			return true;
+		} else return false;
+	}
+
+	getCacheInfo(group) {
+		if (!this.hasCache(group)) return [];
+		return this.cache.info[group].slice();
 	}
 
 	compare(a, b, operator) {
+		console.log(a, b, operator);
 		switch (operator) {
 			case ">":
 				return a > b;

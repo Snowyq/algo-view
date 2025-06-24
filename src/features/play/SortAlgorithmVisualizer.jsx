@@ -114,18 +114,21 @@ function SortAlgorithmVisualizer({ algorithm }) {
 		algorithm.id,
 		algorithmInput
 	);
-	const [currentStepIndex, setCurrentStepIndex] = useState(0);
+	const stepsLength = Algorithm.getStepsLength();
+	const [currentStepIndex, setCurrentStepIndex] = useState(stepsLength - 1);
 	const displayedState = Algorithm.getStateByStepsIndex(currentStepIndex);
 	const currentStep = Algorithm.getStepByIndex(currentStepIndex);
 	const arrayLength = Algorithm.getArrayLength();
 	const { min: arrayMin, max: arrayMax } = Algorithm.getArrayMinMax();
-	const progress = (currentStepIndex / arrayLength) * 100;
+	const progress = (currentStepIndex / (stepsLength - 1)) * 100;
 
 	const blockWidth = (100 / arrayLength) * 0.7;
 	const gapWidth = (100 / (arrayLength - 1)) * 0.3;
 
 	function updateProgress(newProgress) {
-		const newStepIndex = (100 / newProgress) * arrayLength;
+		const newStepIndex = Math.round(
+			(newProgress / 100) * (stepsLength - 1)
+		);
 		setCurrentStepIndex(newStepIndex);
 	}
 
