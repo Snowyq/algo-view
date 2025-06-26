@@ -195,10 +195,6 @@ export class SortAlgorithm extends Algorithm {
 		return this.getStateByOperationId(operationId);
 	}
 
-	getStepsLength() {
-		return this.steps.length;
-	}
-
 	getArrayLength() {
 		return this.array.length;
 	}

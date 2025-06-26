@@ -35,6 +35,10 @@ export class Algorithm {
 		return this.steps.slice();
 	}
 
+	getStepsLength() {
+		return this.steps.length;
+	}
+
 	getOperations() {
 		return this.operations.slice();
 	}
