@@ -84,10 +84,8 @@ export class SortAlgorithm extends Algorithm {
 	check(index1, operator, index2, arr) {
 		const activeItems = [index1, index2];
 		this.createStep({ type: "check", activeItems, operator });
-		console.log("check");
 		// Create step for result of comparison
 		const isTrue = this.compare(arr[index1], arr[index2], operator);
-		console.log(isTrue);
 		if (isTrue) this.createStep({ type: "check-true", activeItems });
 		else this.createStep({ type: "check-false", activeItems });
 
@@ -107,9 +105,15 @@ export class SortAlgorithm extends Algorithm {
 			type: "finish",
 			activeItems: Array.from({ length: arr.length }, (_, i) => i),
 		});
-		this.resultArray = this.getStateByStepsIndex(this.steps.length - 1);
-		this.arrayMix = this.resultArray[0];
-		this.arrayMax = this.resultArray[-1];
+		this.createPersistentCache(
+			"state",
+			this.getArray(),
+			this.operations.slice(),
+
+			{
+				totalCacheSize: 100,
+			}
+		);
 	}
 
 	getResult() {
@@ -141,29 +145,12 @@ export class SortAlgorithm extends Algorithm {
 		}
 	}
 
-	makeOperation(operation, state) {
-		if (operation.type === "swap") {
-			const [index1, index2] = operation.elements;
-			[state[index1], state[index2]] = [state[index2], state[index1]];
-		}
-	}
-
-	getCachedState(key) {
-		const cachedOperations = this.getCacheInfo("state");
-		if (!cachedOperations) return;
-		console.log(cachedOperations);
-		const closestOperations = findClosest(cachedOperations, key);
-		console.log(closestOperations);
-	}
-
 	getStateByOperationId(operationId) {
 		let state = this.getArray();
+		let stateId = 0;
 		if (isNaN(operationId)) return state;
-		this.getCachedState(operationId);
 		const operations = this.getOperations();
-		if (this.cache?.groups?.state) {
-			console.log(this.cache.groups.state);
-		}
+
 		// Restore state by prev operationId and calculate state from that
 		// const cacheValue = this.getCache("state", this);
 		// if (!isNaN(cacheValue)) {
@@ -175,19 +162,45 @@ export class SortAlgorithm extends Algorithm {
 		// 	return state;
 		// }
 
-		// Calculate state from scratch
-		let counter = 0;
-		const cacheThreshold = operationId - this.MAX_GROUP_CACHE_SIZE;
-		while (counter <= operationId) {
-			const operation = operations[counter];
-			this.makeOperation(operation, state);
-			if (cacheThreshold) {
-				this.addCache("state", operationId, state);
+		const closestState = this.getClosestCache("state", operationId);
+		if (closestState) {
+			state = closestState.item;
+			stateId = closestState.key;
+		}
+
+		console.log(state);
+		if (stateId === operationId) return state;
+
+		let counter = stateId;
+		if (stateId > operationId) {
+			console.log("-", stateId, operationId);
+			while (counter >= operationId) {
+				console.log(counter);
+				const operation = operations[counter];
+				console.log(operation);
+				this.makeOperation(operation, state);
+				counter--;
 			}
-			counter++;
+		} else if (stateId < operationId) {
+			console.log("+", stateId, operationId);
+			while (counter <= operationId) {
+				console.log(counter);
+				const operation = operations[counter];
+				console.log(operation);
+
+				this.makeOperation(operation, state);
+				counter++;
+			}
 		}
 
 		return state;
+	}
+
+	makeOperation(operation, state) {
+		if (operation.type === "swap") {
+			const [index1, index2] = operation.elements;
+			[state[index1], state[index2]] = [state[index2], state[index1]];
+		}
 	}
 
 	getStateByStepsIndex(stepIndex) {
