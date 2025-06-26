@@ -1,7 +1,9 @@
 import { useLayoutEffect, useRef, useState } from "react";
 
-export function useRect(ref = null) {
-	let targetRef = useRef(ref);
+export function useRect(ref) {
+	const initRef = useRef(null);
+	const targetRef = ref || initRef;
+
 	const [rect, setRect] = useState({
 		width: 0,
 		height: 0,
@@ -12,13 +14,12 @@ export function useRect(ref = null) {
 		x: 0,
 		y: 0,
 	});
-	console.log(ref);
-	console.log("hook");
 
 	useLayoutEffect(() => {
 		if (!targetRef.current) return;
 
 		const updateRect = () => {
+			if (!targetRef.current || !targetRef) return;
 			const rect = targetRef.current.getBoundingClientRect();
 			setRect(rect);
 		};
@@ -27,7 +28,7 @@ export function useRect(ref = null) {
 
 		window.addEventListener("resize", updateRect);
 		return () => window.removeEventListener("resize", updateRect);
-	}, []);
+	}, [targetRef]);
 
 	return { rect, ref: targetRef };
 }
