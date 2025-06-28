@@ -5,10 +5,10 @@ import {
 	insertSorted,
 	removeSorted,
 } from "../utils/arrays";
+import { isObject } from "../utils/objects";
 
 export class Algorithm {
 	steps = [];
-	state;
 	operations = [];
 	options = {};
 	MAX_GROUP_CACHE_SIZE = 20;
@@ -23,26 +23,141 @@ export class Algorithm {
 		groups: [],
 	};
 
-	getOptions(group) {
-		return this.options[group];
-	}
-
-	changeOptions(newOptions, group = "") {
-		let target = this.options;
-
-		if (group && typeof this.options[group] === "object") {
-			target = this.options[group];
+	withOptions(group = "") {
+		let opened = this.options[group];
+		const stack = [];
+		if (!opened) {
+			return {
+				getAll: () => this.options,
+				getGroups: () => Object.keys(this.options),
+				select: group => {
+					return this.withOptions(group);
+				},
+			};
 		}
 
-		for (let key in newOptions) {
-			if (Object.keys(target).includes(key)) {
-				target[key] = newOptions[key];
-			}
-		}
+		const api = {
+			get: option => {
+				if (!option) return opened;
+				return opened[option];
+			},
+			select: group => {
+				if (group in opened) {
+					stack.push(opened);
+					opened = opened[group];
+				}
+				return api;
+			},
+			has: option => {
+				if (option in opened) return True;
+				else return False;
+			},
+			back: () => {
+				if (stack.length) {
+					opened = stack.pop();
+				}
+				return api;
+			},
+			isEnabled: option => !!api.get(option),
+			set: (option, value) => {
+				if (option in opened) {
+					opened[option] = value;
+				}
+				return api;
+			},
+			setOptions: options => {
+				for (let option in options) {
+					api.set(option, options[option]);
+				}
+				return api;
+			},
+			close: () => this,
+		};
+
+		return api;
 	}
 
 	getSteps() {
 		return this.steps.slice();
+	}
+
+	withSteps() {
+		const steps = this.steps.slice();
+
+		const api = {
+			get: () => {
+				return steps.filter(step => api.isTypeEnabled(step.type));
+			},
+
+			isTypeEnabled: type => {
+				return !!this.withOptions("steps").select("types").get(type);
+			},
+
+			getTypes: () => this.withOptions("steps").get("types"),
+
+			hasType: type => {
+				return this.withOptions("steps").select("types").has(type);
+			},
+
+			setTypeStatus: (type, status) => {
+				if (api.hasType(type)) {
+					this.withOptions("steps").select("types").set(type, status);
+				}
+				return api;
+			},
+
+			add: step => {
+				if (api.isTypeEnabled(step.type)) {
+					api.getRoot().push(step);
+				}
+			},
+
+			create: step => {},
+
+			getRoot: () => this.steps,
+
+			getStepByIndex: index => steps[index],
+
+			close: () => this,
+		};
+
+		return api;
+	}
+
+	withCache(group) {
+		let opened = this.cache[group];
+		if (!opened) {
+			return {
+				select: group => {
+					if (this.cache.groups.includes(group)) {
+						return this.withCache(group);
+					}
+				},
+				hasGroup: group => {
+					return this.cache.groups.includes(group);
+				},
+				getGroups: () => this.cache.groups,
+			};
+		}
+
+		const tools = {
+			getGroup: () => {
+				return opened;
+			},
+		};
+
+		const api = {
+			get: key => {},
+
+			close: () => this,
+		};
+
+		return api;
+	}
+
+	withOperations() {
+		const api = {};
+		return api;
 	}
 
 	getStepsLength() {
@@ -53,19 +168,19 @@ export class Algorithm {
 		return this.operations.slice();
 	}
 
-	updateOperations(func) {
-		if (typeof func !== "function") {
-			throw new TypeError("setSteps expects a function");
-		}
-		this.operations = func(this.operations.slice());
-	}
+	// updateOperations(func) {
+	// 	if (typeof func !== "function") {
+	// 		throw new TypeError("setSteps expects a function");
+	// 	}
+	// 	this.operations = func(this.operations.slice());
+	// }
 
-	updateSteps(func) {
-		if (typeof func !== "function") {
-			throw new TypeError("setSteps expects a function");
-		}
-		this.steps = func(this.steps.slice());
-	}
+	// updateSteps(func) {
+	// 	if (typeof func !== "function") {
+	// 		throw new TypeError("setSteps expects a function");
+	// 	}
+	// 	this.steps = func(this.steps.slice());
+	// }
 
 	getFromAnyCache(group, key) {
 		const { stored, persistent } = this.getCacheGroup(group);

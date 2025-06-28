@@ -1,4 +1,3 @@
-import { findClosest } from "../../utils/arrays";
 import { Algorithm } from "../Algorithm";
 
 export class SortAlgorithm extends Algorithm {
@@ -8,12 +7,14 @@ export class SortAlgorithm extends Algorithm {
 	operations = [];
 	options = {
 		steps: {
-			check: true,
-			"check-true": true,
-			"check-false": true,
-			swap: true,
-			select: true,
-			finish: true,
+			types: {
+				check: true,
+				"check-true": true,
+				"check-false": true,
+				swap: true,
+				select: true,
+				finish: true,
+			},
 		},
 	};
 
@@ -24,26 +25,13 @@ export class SortAlgorithm extends Algorithm {
 	}
 
 	init() {
-		this.changeStepsOptions({
-			// check: false,
-		});
 		this.createSteps();
-		console.log(this.steps.length);
-		console.log(this.operations.length);
 	}
 
-	resetSteps() {
+	reset() {
 		this.operations = [];
 		this.steps = [];
 		this.createSteps();
-	}
-
-	changeStepsOptions(newOptions) {
-		this.changeOptions(newOptions, "steps");
-	}
-
-	getStepsOption(key) {
-		return this.getOptions("steps")[key];
 	}
 
 	use() {
@@ -56,7 +44,7 @@ export class SortAlgorithm extends Algorithm {
 	}
 
 	createStep(step) {
-		if (this.getStepsOption(step.type)) {
+		if (this.withOptions("steps").get("types")[step.type]) {
 			this.steps.push(step);
 		}
 	}

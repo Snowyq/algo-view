@@ -121,9 +121,10 @@ function SortAlgorithmVisualizer({ algorithm }) {
 	const arrayLength = Algorithm.getArrayLength();
 	const { min: arrayMin, max: arrayMax } = Algorithm.getArrayMinMax();
 	const progress = (currentStepIndex / (stepsLength - 1)) * 100;
-
 	const blockWidth = (100 / arrayLength) * 0.7;
 	const gapWidth = (100 / (arrayLength - 1)) * 0.3;
+
+	console.log(Algorithm.withSteps().get());
 
 	function updateProgress(newProgress) {
 		const newStepIndex = Math.round(
