@@ -165,6 +165,12 @@ function SortAlgorithmVisualizer({ algorithm }) {
 				progress={progress}
 				updateProgress={updateProgress}
 			/>
+			<button onClick={() => setCurrentStepIndex(i => i - 1)}>
+				wstecz
+			</button>
+			<button onClick={() => setCurrentStepIndex(i => i + 1)}>
+				dalej
+			</button>
 		</Container>
 	);
 }

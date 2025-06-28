@@ -28,6 +28,8 @@ export class SortAlgorithm extends Algorithm {
 			// check: false,
 		});
 		this.createSteps();
+		console.log(this.steps.length);
+		console.log(this.operations.length);
 	}
 
 	resetSteps() {
@@ -109,9 +111,8 @@ export class SortAlgorithm extends Algorithm {
 			"state",
 			this.getArray(),
 			this.operations.slice(),
-
 			{
-				totalCacheSize: 100,
+				totalCacheSize: 1000,
 			}
 		);
 	}
@@ -161,38 +162,45 @@ export class SortAlgorithm extends Algorithm {
 		// 	this.makeOperation(operation, state);
 		// 	return state;
 		// }
-
+		// console.log("initial:", state);
 		const closestState = this.getClosestCache("state", operationId);
 		if (closestState) {
-			state = closestState.item;
+			state = closestState.item.slice();
 			stateId = closestState.key;
+			// console.log("=================================");
+			// console.log("cached", operationId, "->", stateId, state);
+			// console.log("=================================");
 		}
-
-		console.log(state);
 		if (stateId === operationId) return state;
 
-		let counter = stateId;
 		if (stateId > operationId) {
-			console.log("-", stateId, operationId);
-			while (counter >= operationId) {
-				console.log(counter);
-				const operation = operations[counter];
-				console.log(operation);
-				this.makeOperation(operation, state);
+			let counter = stateId;
+			while (counter > operationId) {
 				counter--;
+				const operation = operations[counter];
+				// console.log("-----------------------------");
+				// console.log(operationId, counter, operation);
+				// console.log("before", state);
+				this.makeOperation(operation, state);
+				// console.log("after", state);
+				// console.log("-----------------------------");
 			}
 		} else if (stateId < operationId) {
-			console.log("+", stateId, operationId);
-			while (counter <= operationId) {
-				console.log(counter);
-				const operation = operations[counter];
-				console.log(operation);
-
-				this.makeOperation(operation, state);
+			let counter = stateId;
+			while (counter < operationId) {
 				counter++;
+				const operation = operations[counter];
+				// console.log("-----------------------------");
+				// console.log(operationId, counter, operation);
+				// console.log("before", state);
+				this.makeOperation(operation, state);
+				// console.log("after", state);
+				// console.log("-----------------------------");
 			}
 		}
-
+		// console.log("\\\\\\\\\\\\\\\\\\");
+		// console.log("end", state);
+		// console.log("\\\\\\\\\\\\\\\\\\");
 		return state;
 	}
 

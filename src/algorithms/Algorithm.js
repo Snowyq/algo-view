@@ -16,10 +16,10 @@ export class Algorithm {
 	MAX_PERSISTENT_CACHE_SIZE = 1000;
 
 	cache = {
-		logs: {},
-		stored: {},
-		info: {},
-		persistent: {},
+		logs: [], //
+		stored: {}, // dynamic cache
+		info: [],
+		persistent: {}, // static cache
 		groups: [],
 	};
 
@@ -174,8 +174,7 @@ export class Algorithm {
 		operations.forEach((operation, index, arr) => {
 			this.makeOperation(operation, state);
 			if (shouldCache(index, arr)) {
-				console.log("caching");
-				this.addPersistentCache(group, index, state);
+				this.addPersistentCache(group, index, state.slice());
 				insertSorted(info, index);
 			}
 		});
@@ -194,8 +193,7 @@ export class Algorithm {
 	}
 
 	getClosestCacheKey(group, key) {
-		const { info, persistent } = this.getCacheGroup(group);
-		console.log(persistent);
+		const { info } = this.getCacheGroup(group);
 		return findClosest(info, key);
 	}
 
