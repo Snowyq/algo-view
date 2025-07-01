@@ -1,17 +1,15 @@
-import { FaSleigh } from "react-icons/fa";
-import {
-	binarySearch,
-	findClosest,
-	insertSorted,
-	removeSorted,
-} from "../utils/arrays";
+import { findClosest, insertSorted, removeSorted } from "../utils/arrays";
+
 import { isObject } from "../utils/objects";
+import { OptionsManager } from "./OptionsManager";
 
 export class Algorithm {
+	optionsManager;
 	steps = [];
 	operations = [];
 	options = {};
 	MAX_GROUP_CACHE_SIZE = 20;
+	DEFAULT_DYNAMIC_CACHE_SIZE = 20;
 	DEFAULT_PERSISTENT_CACHE_SIZE = 100;
 	MAX_PERSISTENT_CACHE_SIZE = 1000;
 
@@ -23,58 +21,8 @@ export class Algorithm {
 		groups: [],
 	};
 
-	withOptions(group = "") {
-		let opened = this.options[group];
-		const stack = [];
-		if (!opened) {
-			return {
-				getAll: () => this.options,
-				getGroups: () => Object.keys(this.options),
-				select: group => {
-					return this.withOptions(group);
-				},
-			};
-		}
-
-		const api = {
-			get: option => {
-				if (!option) return opened;
-				return opened[option];
-			},
-			select: group => {
-				if (group in opened) {
-					stack.push(opened);
-					opened = opened[group];
-				}
-				return api;
-			},
-			has: option => {
-				if (option in opened) return True;
-				else return False;
-			},
-			back: () => {
-				if (stack.length) {
-					opened = stack.pop();
-				}
-				return api;
-			},
-			isEnabled: option => !!api.get(option),
-			set: (option, value) => {
-				if (option in opened) {
-					opened[option] = value;
-				}
-				return api;
-			},
-			setOptions: options => {
-				for (let option in options) {
-					api.set(option, options[option]);
-				}
-				return api;
-			},
-			close: () => this,
-		};
-
-		return api;
+	constructor() {
+		this.optionsManager = new OptionsManager(this.options);
 	}
 
 	getSteps() {
@@ -127,27 +75,90 @@ export class Algorithm {
 	withCache(group) {
 		let opened = this.cache[group];
 		if (!opened) {
-			return {
+			const api = {
 				select: group => {
 					if (this.cache.groups.includes(group)) {
 						return this.withCache(group);
 					}
 				},
+
 				hasGroup: group => {
 					return this.cache.groups.includes(group);
 				},
+
 				getGroups: () => this.cache.groups,
+
+				initGroup: group => {
+					if (api.hasGroup(group)) return;
+					this.cache[group] = {
+						index: [],
+						dynamic: {
+							values: {},
+							keys: [],
+						},
+						persistent: {
+							values: {},
+						},
+						config: {
+							enableDynamic: true,
+							persistentSize: this.DEFAULT_PERSISTENT_CACHE_SIZE,
+							dynamicSize: this.DEFAULT_DYNAMIC_CACHE_SIZE,
+						},
+					};
+					return this.withCache(group);
+				},
 			};
+			return api;
 		}
 
 		const tools = {
 			getGroup: () => {
 				return opened;
 			},
+
+			getPersistentValues: () => opened.persistent.values,
+
+			getDynamicValues: () => opened.dynamic.values,
+
+			getDynamicKeys: () => opened.dynamic.keys,
+
+			getStoredInfo: () => opened.index,
+
+			withConfig: () => {
+				return this.withOptions().open(opened.config);
+			},
+
+			addDynamic: (key, item) => {
+				const keys = tools.getDynamicKeys();
+				keys.push(key);
+				tools.getDynamicValues()[key] = item;
+				if (keys.length > tools.withConfig().get("dynamicSize")) {
+					const oldKey = keys.shift();
+					delete tools.getDynamicValues()[oldKey];
+					removeSorted(tools.getStoredInfo(), oldKey);
+				}
+			},
 		};
 
 		const api = {
-			get: key => {},
+			get: key => {
+				const dynamic = tools.getDynamicValues();
+				const persistent = tools.getPersistentValues();
+				if (key in dynamic) return dynamic[key];
+				if (key in persistent) return persistent[key];
+			},
+
+			has: key => {
+				if (key in tools.getDynamicValues()) return true;
+				if (key in tools.getPersistentValues()) return true;
+				return false;
+			},
+
+			add: (key, item) => {
+				if (api.has(key)) return;
+			},
+
+			withConfig: tools.withConfig,
 
 			close: () => this,
 		};
@@ -342,5 +353,74 @@ export class Algorithm {
 			default:
 				throw new Error(`wrong operator: ${operator}`);
 		}
+	}
+
+	withOptions(group = "") {
+		let opened = this.options[group];
+		const stack = [];
+		if (!opened) {
+			return {
+				getAll: () => this.options,
+
+				getGroups: () => Object.keys(this.options),
+
+				select: group => {
+					return this.withOptions(group);
+				},
+
+				open: target => {
+					if (isObject(target)) {
+						opened = target;
+					}
+				},
+			};
+		}
+
+		const api = {
+			get: option => {
+				if (!option) return opened;
+				return opened[option];
+			},
+
+			select: group => {
+				if (group in opened) {
+					stack.push(opened);
+					opened = opened[group];
+				}
+				return api;
+			},
+
+			has: option => {
+				if (option in opened) return true;
+				else return false;
+			},
+
+			back: () => {
+				if (stack.length) {
+					opened = stack.pop();
+				}
+				return api;
+			},
+
+			isEnabled: option => !!api.get(option),
+
+			set: (option, value) => {
+				if (option in opened) {
+					opened[option] = value;
+				}
+				return api;
+			},
+
+			setOptions: options => {
+				for (let option in options) {
+					api.set(option, options[option]);
+				}
+				return api;
+			},
+
+			close: () => this,
+		};
+
+		return api;
 	}
 }

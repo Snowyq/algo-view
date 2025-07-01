@@ -16,7 +16,7 @@ function PlayProvider({ children }) {
 	const [algorithmCategory, setAlgoritmCategory] = useState("sort");
 	const [activeWindows, setActiveWindows] = useState([testActiveWindow]);
 	const [algorithmInput, setAlgorithmInput] = useState(
-		generateRandomArray(50, 2, 30)
+		generateRandomArray(200, 2, 30)
 		// [10, 25, 13, 11, 5, 7, 10, 22, 19, 4]
 		// [
 		// 	19, 28, 12, 27, 20, 11, 30, 15, 9, 4, 23, 2, 29, 25, 14, 12, 8, 3,

@@ -72,6 +72,7 @@ const Container = styled.div`
 	align-items: center;
 	justify-content: center;
 	gap: 5rem;
+	padding: 0 5rem;
 `;
 
 const Background = styled.div`
@@ -86,7 +87,7 @@ const Background = styled.div`
 	box-shadow: 0.5rem 0.5rem 0px 2px var(--color-grey-300);
 	/* padding: 0 2rem; */
 	border-radius: 15px;
-	padding: 2rem;
+	padding: 7.5rem 7.5rem;
 	gap: 1rem;
 `;
 
