@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { BubbleSort } from "../algorithms/sort/bubbleSort";
+import { SelectionSort } from "../algorithms/sort/SelectionSort";
 
 const algorithmClasses = {
 	sort: {
 		bubbleSort: BubbleSort,
+		selectionSort: SelectionSort,
 	},
 };
 

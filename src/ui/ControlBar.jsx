@@ -1,7 +1,5 @@
 import styled from "styled-components";
 import { useDraggable } from "../hooks/useDraggable";
-import { useRef, useState } from "react";
-import { useRect } from "../hooks/useRect";
 import { minmax } from "../utils/minmax";
 
 const StyledControlBar = styled.div`
@@ -34,9 +32,6 @@ const Dot = styled.div`
 `;
 
 function ControlBar({ progress, isDraggable, updateProgress }) {
-	const { parentRef, ref, position } = useDraggable({
-		onDrag,
-	});
 	let animationFrameId = null;
 	function onDrag(position, targetRect, targetParentRect) {
 		if (animationFrameId) cancelAnimationFrame(animationFrameId);
@@ -48,6 +43,8 @@ function ControlBar({ progress, isDraggable, updateProgress }) {
 			updateProgress(newProgress);
 		});
 	}
+
+	const { parentRef, ref, position } = useDraggable({ onDrag });
 
 	return (
 		<StyledControlBar>
