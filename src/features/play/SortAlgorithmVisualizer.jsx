@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import styled, { css } from "styled-components";
 import useAlgorithm from "../../hooks/useAlgorithm";
 import { PlayContext } from "./PlayContext";
@@ -110,29 +110,38 @@ const Controls = styled.div`
 
 function SortAlgorithmVisualizer({ algorithm }) {
 	const { algorithmInput } = useContext(PlayContext);
+
 	const { Algorithm } = useAlgorithm(
 		algorithm.category,
 		algorithm.id,
 		algorithmInput
 	);
 	const stepsLength = Algorithm.getStepsLength();
+
 	const [currentStepIndex, setCurrentStepIndex] = useState(stepsLength - 1);
+
 	const displayedState = Algorithm.getStateByStepsIndex(currentStepIndex);
 	const currentStep = Algorithm.getStepByIndex(currentStepIndex);
 	const arrayLength = Algorithm.getArrayLength();
 	const { min: arrayMin, max: arrayMax } = Algorithm.getArrayMinMax();
+
 	const progress = (currentStepIndex / (stepsLength - 1)) * 100;
-	const blockWidth = (100 / arrayLength) * 0.7;
-	const gapWidth = (100 / (arrayLength - 1)) * 0.3;
 
-	console.log(Algorithm.withSteps().get());
+	const blockWidth = useMemo(() => (100 / arrayLength) * 0.7, [arrayLength]);
+	const gapWidth = useMemo(
+		() => (100 / (arrayLength - 1)) * 0.3,
+		[arrayLength]
+	);
 
-	function updateProgress(newProgress) {
-		const newStepIndex = Math.round(
-			(newProgress / 100) * (stepsLength - 1)
-		);
-		setCurrentStepIndex(newStepIndex);
-	}
+	const updateProgress = useCallback(
+		newProgress => {
+			const newStepIndex = Math.round(
+				(newProgress / 100) * (stepsLength - 1)
+			);
+			setCurrentStepIndex(newStepIndex);
+		},
+		[stepsLength]
+	);
 
 	return (
 		<Container>
@@ -146,7 +155,13 @@ function SortAlgorithmVisualizer({ algorithm }) {
 					{displayedState.map((val, index) => {
 						const isActive =
 							currentStep.activeItems.includes(index);
-						const type = isActive ? currentStep.type : "default";
+						const isSelected = currentStep.selected.filter(
+							el => el.index === index
+						).length;
+						console.log(isSelected);
+						let type = isSelected ? "select" : "default";
+						type = isActive ? currentStep.type : type;
+						console.log(type);
 						return (
 							<Block
 								$blockWidth={"3px"}
@@ -156,9 +171,7 @@ function SortAlgorithmVisualizer({ algorithm }) {
 								index={index}
 								key={index}
 								val={val}
-							>
-								{/* <p>{val}</p> */}
-							</Block>
+							></Block>
 						);
 					})}
 				</BlockArea>

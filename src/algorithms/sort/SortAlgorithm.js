@@ -1,10 +1,16 @@
 import { Algorithm } from "../Algorithm";
+import { CacheManager } from "../CacheManager";
+import { OptionsManager } from "../OptionsManager";
 
 export class SortAlgorithm extends Algorithm {
+	optionsManager;
+	cacheManager;
 	name;
 	complexity;
 	MAX_GROUP_CACHE_SIZE = 20;
 	operations = [];
+	selected = [];
+
 	options = {
 		steps: {
 			types: {
@@ -21,6 +27,8 @@ export class SortAlgorithm extends Algorithm {
 	constructor(array) {
 		super();
 		this.array = array;
+		this.optionsManager = new OptionsManager(this.options);
+		this.cacheManager = new CacheManager(this.cache);
 		this.init();
 	}
 
@@ -44,8 +52,14 @@ export class SortAlgorithm extends Algorithm {
 	}
 
 	createStep(step) {
-		if (this.withOptions("steps").get("types")[step.type]) {
-			this.steps.push(step);
+		if (this.options.steps.types[step.type]) {
+			this.steps.push({ ...step, selected: this.selected });
+		}
+		if (!("operationId" in step)) {
+			step.prevOperationId =
+				this.operations.length === 0
+					? undefined
+					: this.operations.length - 1;
 		}
 	}
 
@@ -83,26 +97,47 @@ export class SortAlgorithm extends Algorithm {
 		return isTrue;
 	}
 
-	select(index) {
+	select(index, mode = "temp", id) {
+		if (mode === "perm") {
+			this.selected = this.selected.filter(el => el.id !== id);
+			this.selected.push({ id, index });
+		}
 		this.createStep({ type: "select", activeItems: [index] });
+	}
+
+	selectMany(selects) {
+		selects.forEach(sel => {
+			if (sel.mode === "perm") {
+				this.selected = this.selected.filter(el => el.id !== sel.id);
+				this.selected.push({ id: sel.id, index: sel.index });
+			}
+		});
+		this.createStep({
+			type: "select",
+			activeItems: [selects.map(sel => sel.index)],
+		});
 	}
 
 	createSteps() {
 		const dir = this.direction;
 		const arr = this.getArray();
+		this.createStep({
+			type: "initial",
+			activeItems: [],
+		});
 		this.sort(arr, dir);
 		this.createStep({
 			type: "finish",
 			activeItems: Array.from({ length: arr.length }, (_, i) => i),
 		});
-		this.createPersistentCache(
-			"state",
-			this.getArray(),
-			this.operations.slice(),
-			{
-				totalCacheSize: 1000,
-			}
-		);
+		this.cacheManager
+			.initGroup("state")
+			.createPersistentCache(
+				"state",
+				this.getArray(),
+				this.getOperations(),
+				this.makeOperation
+			);
 	}
 
 	getResult() {
@@ -126,6 +161,10 @@ export class SortAlgorithm extends Algorithm {
 	getOperationIdByStepIndex(stepIndex) {
 		const steps = this.getSteps();
 		// From given state find closest prev state with assigned operationId
+		if (steps[stepIndex].prevOperationId) {
+			return steps[stepIndex].prevOperationId;
+		}
+
 		for (let i = stepIndex; i > 0; i--) {
 			const step = steps[i];
 			if (!isNaN(step.operationId)) {
@@ -151,7 +190,8 @@ export class SortAlgorithm extends Algorithm {
 		// 	return state;
 		// }
 		// console.log("initial:", state);
-		const closestState = this.getClosestCache("state", operationId);
+		// const closestState = this.getClosestCache("state", operationId);
+		const closestState = this.cacheManager.getClosest("state", operationId);
 		if (closestState) {
 			state = closestState.item.slice();
 			stateId = closestState.key;
@@ -162,8 +202,8 @@ export class SortAlgorithm extends Algorithm {
 		if (stateId === operationId) return state;
 
 		if (stateId > operationId) {
-			let counter = stateId;
-			while (counter > operationId) {
+			let counter = stateId + 1;
+			while (counter - 1 > operationId) {
 				counter--;
 				const operation = operations[counter];
 				// console.log("-----------------------------");
