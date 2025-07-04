@@ -1,5 +1,8 @@
 import styled from "styled-components";
 import PlayWindow from "./PlayWindow";
+import { useContext } from "react";
+import { PlayContext } from "./PlayContext";
+import { getAlgorithmRegistriesByCategory } from "../../algorithms/algorithmsRegistry";
 
 const StyledPlaySidebar = styled.div`
 	background-color: var(--color-grey-100);
@@ -32,6 +35,13 @@ const InputContainer = styled.div`
 `;
 
 function PlaySidebar() {
+	const { activeAlgorithmsCategory } = useContext(PlayContext);
+	const algorithms = getAlgorithmRegistriesByCategory(
+		activeAlgorithmsCategory
+	);
+
+	console.log(algorithms);
+
 	return (
 		<PlayWindow>
 			<AlgorithmSelection>
@@ -39,6 +49,9 @@ function PlaySidebar() {
 				<InputContainer>
 					<label>Select category</label>
 					<select></select>
+					{algorithms.map(registry => {
+						return <p>{registry.meta.name}</p>;
+					})}
 				</InputContainer>
 				<InputContainer>
 					<label>Select algorithms</label>

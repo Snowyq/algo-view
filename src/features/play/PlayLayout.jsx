@@ -4,6 +4,7 @@ import styled from "styled-components";
 import PlayDisplayedAlgorithmsArea from "./PlayDisplayedAlgorithmsArea";
 import PlaySidebar from "./PlaySidebar";
 import PlayHeader from "./PlayHeader";
+import PlayControls from "./PlayControls";
 
 const StyledPlayground = styled.div`
 	height: 100%;
@@ -47,8 +48,8 @@ const Container = styled.div`
 
 const PlayMain = styled.div`
 	display: grid;
-	grid-template-rows: 1fr;
-	gap: 2.5rem;
+	grid-template-rows: 1fr 10rem;
+	gap: 5rem;
 `;
 
 function PlayLayout() {
@@ -63,6 +64,7 @@ function PlayLayout() {
 				<Container>
 					<PlayMain>
 						<PlayDisplayedAlgorithmsArea />
+						<PlayControls />
 					</PlayMain>
 					<PlaySidebar />
 				</Container>

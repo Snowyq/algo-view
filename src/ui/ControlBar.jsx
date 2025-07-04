@@ -37,6 +37,7 @@ function ControlBar({ progress, isDraggable, updateProgress }) {
 		if (animationFrameId) cancelAnimationFrame(animationFrameId);
 
 		animationFrameId = requestAnimationFrame(() => {
+			if (!updateProgress) return;
 			const relX = position.x - targetParentRect.x;
 			const rawProgress = (relX / targetParentRect.width) * 100;
 			const newProgress = minmax(rawProgress, 0, 100);

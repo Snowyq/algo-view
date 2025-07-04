@@ -28,4 +28,16 @@ export class BubbleSort extends SortAlgorithm {
 			}
 		}
 	}
+
+	instructions() {
+		const code = {
+			i0: `for (let i = 1; i < arr.length; i++) {`,
+			i1: `  for (let j = 0; j < arr.length - i; j++) {`,
+			i2: `    if (arr[j] > arr[j + 1]) {`,
+			i3: `      [arr[j], arr[j + 1]] = [arr[j + 1], arr[j]];`,
+			ie2: `    }`,
+			ie1: `  }`,
+			ie0: `}`,
+		};
+	}
 }

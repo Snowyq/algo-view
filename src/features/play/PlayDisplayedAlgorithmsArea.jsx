@@ -2,6 +2,7 @@ import styled from "styled-components";
 import PlayAlgorithmWindow from "./PlayAlgorithmWindow";
 import { useContext } from "react";
 import { PlayContext } from "./PlayContext";
+import { getAlgorithmRegistry } from "../../algorithms/algorithmsRegistry";
 
 const StyledPlayViewArea = styled.div`
 	height: 100%;
@@ -22,18 +23,23 @@ const Grid = styled.div`
 `;
 
 function PlayDisplayedAlgorithmsArea() {
-	const { activeWindows } = useContext(PlayContext);
-	const algorithmWindows = activeWindows.filter(
-		window => window.role === "algorithm"
-	);
+	const { activeAlgorithms, activeAlgorithmsCategory } =
+		useContext(PlayContext);
+
 	return (
 		<StyledPlayViewArea>
-			<Grid num={algorithmWindows.length}>
-				{activeWindows.map((window, index) => {
+			<Grid num={activeAlgorithms.length}>
+				{activeAlgorithms.map((id, index) => {
+					const registry = getAlgorithmRegistry(
+						activeAlgorithmsCategory,
+						id
+					);
+					console.log(id, registry);
+
 					return (
 						<PlayAlgorithmWindow
-							key={`${index}-${window.algorithm.id}`}
-							window={window}
+							key={`${index}-${id}`}
+							registry={registry}
 						/>
 					);
 				})}

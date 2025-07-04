@@ -1,6 +1,9 @@
 import PlayWindow from "./PlayWindow";
 import AlgorithmVisualizer from "./AlgorithmVisualizer";
 import styled from "styled-components";
+import { getAlgorithmRegistry } from "../../algorithms/algorithmsRegistry";
+import { useContext } from "react";
+import { PlayContext } from "./PlayContext";
 
 const Container = styled.div`
 	display: flex;
@@ -9,26 +12,32 @@ const Container = styled.div`
 	justify-content: center;
 	align-items: center;
 `;
-const WindowOutlet = styled.div`
-	width: 100%;
-	height: 100%;
+
+const VisualizerContainer = styled(Container)`
+	padding: 3rem;
 `;
 
-function PlayAlgorithmWindow({ window }) {
-	const { algorithm } = window;
-
+function PlayAlgorithmWindow({ registry }) {
+	const { activeAlgorithmsCategory, algorithmInput } =
+		useContext(PlayContext);
 	return (
 		<Container>
-			<WindowOutlet>
-				<PlayWindow>
-					<PlayWindow.Header>
-						<span>{algorithm.name}</span>
-					</PlayWindow.Header>
-					<PlayWindow.Body>
-						<AlgorithmVisualizer algorithm={window.algorithm} />
-					</PlayWindow.Body>
-				</PlayWindow>
-			</WindowOutlet>
+			<PlayWindow>
+				<PlayWindow.Header>
+					<span>{registry.meta.name}</span>
+				</PlayWindow.Header>
+				<PlayWindow.Body>
+					<PlayWindow.Background>
+						<VisualizerContainer>
+							<AlgorithmVisualizer
+								category={activeAlgorithmsCategory}
+								registry={registry}
+								input={algorithmInput}
+							/>
+						</VisualizerContainer>
+					</PlayWindow.Background>
+				</PlayWindow.Body>
+			</PlayWindow>
 		</Container>
 	);
 }

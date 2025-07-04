@@ -108,14 +108,18 @@ const Controls = styled.div`
 	justify-content: center;
 `;
 
-function SortAlgorithmVisualizer({ algorithm }) {
+function SortAlgorithmVisualizer({ registry, input }) {
 	const { algorithmInput } = useContext(PlayContext);
 
-	const { Algorithm } = useAlgorithm(
-		algorithm.category,
-		algorithm.id,
-		algorithmInput
-	);
+	// const { Algorithm } = useAlgorithm(
+	// 	algorithm.category,
+	// 	algorithm.id,
+	// 	algorithmInput
+	// );
+
+	const AlgorithmClass = registry.Class;
+	const Algorithm = new AlgorithmClass(algorithmInput);
+
 	const stepsLength = Algorithm.getStepsLength();
 
 	const [currentStepIndex, setCurrentStepIndex] = useState(stepsLength - 1);
@@ -144,39 +148,33 @@ function SortAlgorithmVisualizer({ algorithm }) {
 	);
 
 	return (
-		<Container>
-			<Background>
-				{/* <Scale /> */}
-				<BlockArea
-					$gapWidth={gapWidth + "%"}
-					$arrayLength={arrayLength}
-					$blockWidth={blockWidth + "%"}
-				>
-					{displayedState.map((val, index) => {
-						const isActive =
-							currentStep.activeItems.includes(index);
-						const isSelected = currentStep.selected.filter(
-							el => el.index === index
-						).length;
-						console.log(isSelected);
-						let type = isSelected ? "select" : "default";
-						type = isActive ? currentStep.type : type;
-						console.log(type);
-						return (
-							<Block
-								$blockWidth={"3px"}
-								$minValue={arrayMin}
-								$maxValue={arrayMax}
-								type={type}
-								index={index}
-								key={index}
-								val={val}
-							></Block>
-						);
-					})}
-				</BlockArea>
-			</Background>
-			<AlgorithmControls
+		<>
+			<BlockArea
+				$gapWidth={gapWidth + "%"}
+				$arrayLength={arrayLength}
+				$blockWidth={blockWidth + "%"}
+			>
+				{displayedState.map((val, index) => {
+					const isActive = currentStep.activeItems.includes(index);
+					const isSelected = currentStep.selected.filter(
+						el => el.index === index
+					).length;
+					let type = isSelected ? "select" : "default";
+					type = isActive ? currentStep.type : type;
+					return (
+						<Block
+							$blockWidth={"3px"}
+							$minValue={arrayMin}
+							$maxValue={arrayMax}
+							type={type}
+							index={index}
+							key={index}
+							val={val}
+						></Block>
+					);
+				})}
+			</BlockArea>
+			{/* <AlgorithmControls
 				progress={progress}
 				updateProgress={updateProgress}
 			/>
@@ -185,8 +183,8 @@ function SortAlgorithmVisualizer({ algorithm }) {
 			</button>
 			<button onClick={() => setCurrentStepIndex(i => i + 1)}>
 				dalej
-			</button>
-		</Container>
+			</button> */}
+		</>
 	);
 }
 

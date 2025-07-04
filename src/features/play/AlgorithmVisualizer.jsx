@@ -1,10 +1,10 @@
+import { useContext } from "react";
 import SortAlgorithmVisualizer from "./SortAlgorithmVisualizer";
+import { PlayContext } from "./PlayContext";
 
-function AlgorithmVisualizer({ algorithm }) {
-	const { category, id } = algorithm;
-	if (!category || !id) return <></>;
+function AlgorithmVisualizer({ registry, input, category }) {
 	if (category === "sort")
-		return <SortAlgorithmVisualizer algorithm={algorithm} />;
+		return <SortAlgorithmVisualizer registry={registry} input={input} />;
 	else return <></>;
 }
 
