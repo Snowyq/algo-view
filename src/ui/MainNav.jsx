@@ -52,7 +52,7 @@ const StyledNavLink = styled(NavLink)`
 	&:link,
 	&:visited {
 		position: relative;
-		padding: 0.4rem 1.2rem;
+		padding: 0.2rem 0.8rem;
 		border: 0.3rem solid transparent;
 		border-radius: 0.5rem;
 	}
@@ -78,7 +78,8 @@ const StyledNavLink = styled(NavLink)`
 const Nav = styled.nav`
 	display: flex;
 	gap: 2.4rem;
-	font-size: 1.8rem;
+	font-size: 1.6rem;
+	font-size: 16px;
 	justify-content: center;
 	align-items: center;
 `;

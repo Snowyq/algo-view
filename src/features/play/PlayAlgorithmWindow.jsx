@@ -1,7 +1,6 @@
 import PlayWindow from "./PlayWindow";
 import AlgorithmVisualizer from "./AlgorithmVisualizer";
 import styled from "styled-components";
-import { getAlgorithmRegistry } from "../../algorithms/algorithmsRegistry";
 import { useContext } from "react";
 import { PlayContext } from "./PlayContext";
 
@@ -14,7 +13,10 @@ const Container = styled.div`
 `;
 
 const VisualizerContainer = styled(Container)`
-	padding: 3rem;
+	padding: 5rem;
+	@media screen and (min-width: 1000px) {
+		padding: 15rem;
+	}
 `;
 
 function PlayAlgorithmWindow({ registry }) {

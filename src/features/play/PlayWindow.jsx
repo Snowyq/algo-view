@@ -8,7 +8,7 @@ const StyledPlayWindow = styled.div`
 	height: 100%;
 	width: 100%;
 	background-color: ${({ color }) => color || "var(--color-grey-200)"};
-	box-shadow: 1rem 1rem 0px 3px var(--color-grey-300);
+	box-shadow: 0.25rem 0.25rem 0px 3px var(--color-grey-300);
 
 	/* border: 0.75rem solid var(--color-grey-300); */
 	border-radius: 2.5rem;
@@ -80,7 +80,7 @@ const StyledBackground = styled.div`
 	/* height: fit-content; */
 	height: 100%;
 	background-color: var(--color-grey-50);
-	box-shadow: 0.5rem 0.5rem 0px 2px var(--color-grey-300);
+	box-shadow: 0.2rem 0.2rem 0px 2px var(--color-grey-300);
 	/* padding: 0 2rem; */
 	border-radius: 15px;
 	/* padding: 5rem 5rem; */

@@ -115,7 +115,7 @@ const GlobalStyles = createGlobalStyle`
   --image-opacity: 100%;
 
 
-  --nav-height: 6.4rem;
+  --nav-height: 5rem;
   
 }
 
