@@ -2,7 +2,7 @@ import { css, styled } from "styled-components";
 import { NavLink } from "react-router-dom";
 
 const types = {
-	base: css`
+	default: css`
 		&:hover {
 			color: var(--color-grey-800);
 		}
@@ -31,13 +31,15 @@ const types = {
 	cta: css`
 		&:link,
 		&:visited {
-			background-color: var(--color-grey-600);
+			background-color: var(--color-grey-700);
 			color: var(--color-brand-50);
+			box-shadow: 0.15rem 0.15rem 0 2px var(--color-grey-500);
 			font-weight: bold;
 		}
 
 		&:hover {
-			background-color: var(--color-grey-700);
+			background-color: var(--color-grey-500);
+			box-shadow: 0.15rem 0.15rem 0 2px var(--color-grey-700);
 		}
 		&:active,
 		&.active:link,
@@ -49,6 +51,10 @@ const types = {
 };
 
 const StyledNavLink = styled(NavLink)`
+	/* transition:
+		background-color 0.2s,
+		box-shadow 0.2s; */
+
 	&:link,
 	&:visited {
 		position: relative;
@@ -72,7 +78,7 @@ const StyledNavLink = styled(NavLink)`
 		} */
 	}
 
-	${props => types[props.styleType] || types["base"]}
+	${props => types[props.styleType] || types["default"]}
 `;
 
 const Nav = styled.nav`

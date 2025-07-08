@@ -1,6 +1,6 @@
 import styled from "styled-components";
 import { useDraggable } from "../hooks/useDraggable";
-import { minmax } from "../utils/minmax";
+import { valueBetween } from "../utils/valueBetween";
 
 const StyledControlBar = styled.div`
 	--dot-size: 2rem;
@@ -40,7 +40,7 @@ function ControlBar({ progress, isDraggable, updateProgress }) {
 			if (!updateProgress) return;
 			const relX = position.x - targetParentRect.x;
 			const rawProgress = (relX / targetParentRect.width) * 100;
-			const newProgress = minmax(rawProgress, 0, 100);
+			const newProgress = valueBetween(rawProgress, 0, 100);
 			updateProgress(newProgress);
 		});
 	}

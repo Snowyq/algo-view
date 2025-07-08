@@ -6,6 +6,7 @@ import { useRect } from "../../hooks/useRect";
 import { FaPlay } from "react-icons/fa6";
 import ButtonIcon from "../../ui/ButtonIcon";
 import AlgorithmControls from "./AlgorithmControls";
+import { valueBetween } from "../../utils/valueBetween";
 
 const variations = {
 	swap: css`
@@ -50,6 +51,13 @@ const Block = styled.div`
 	align-items: end;
 	font-weight: 600;
 	box-shadow: 3px 3px 0px 1px var(--color-grey-400);
+	width: auto;
+	transition: scale 0.3s;
+
+	&:hover {
+		scale: 1.2;
+	}
+
 	${({ type }) => variations[type]};
 `;
 
@@ -64,66 +72,32 @@ const BlockArea = styled.div`
 	grid-gap: 0 ${({ $gapWidth }) => `${$gapWidth}`};
 `;
 
-const Container = styled.div`
-	height: 100%;
-	width: 100%;
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	gap: 5rem;
-	padding: 0 5rem;
-`;
+const calculateBlockGapWidths = (blocksNum, blockProportion = 0.7) => {
+	const fixedBlockProportion = valueBetween(blockProportion, 0, 1);
+	const gapProportion = 1 - fixedBlockProportion;
+	const blockWidth = (100 / blocksNum) * fixedBlockProportion;
+	const gapWidth = (100 / (blocksNum - 1)) * gapProportion;
 
-const Background = styled.div`
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 100%;
-	height: fit-content;
-	height: 100%;
-	max-height: 500px;
-	background-color: var(--color-grey-50);
-	box-shadow: 0.5rem 0.5rem 0px 2px var(--color-grey-300);
-	/* padding: 0 2rem; */
-	border-radius: 15px;
-	padding: 7.5rem 7.5rem;
-	gap: 1rem;
-`;
+	return { gapWidth, blockWidth };
+};
 
-const Scale = styled.div`
-	background-color: var(--color-grey-500);
-	width: 5px;
-	height: 100%;
-`;
+const isDisplayBlockValueVisible = (areaWidth, blockWidth, threshold) => {
+	return (areaWidth * blockWidth) / 100 > threshold;
+};
 
-const Controls = styled.div`
-	height: 100%;
-	max-height: 5rem;
-	/* background-color: yellow; */
-	border-radius: 15px;
-	width: 100%;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-`;
+const DEFAULT_BLOCK_VALUE_DISPLAY_THRESHOLD = 30; // px
 
-function SortAlgorithmVisualizer({ registry, input }) {
-	const { algorithmInput } = useContext(PlayContext);
-
-	// const { Algorithm } = useAlgorithm(
-	// 	algorithm.category,
-	// 	algorithm.id,
-	// 	algorithmInput
-	// );
+function SortAlgorithmVisualizer({
+	registry,
+	input,
+	blockValueDisplayThreshold = DEFAULT_BLOCK_VALUE_DISPLAY_THRESHOLD,
+}) {
+	const { ref: blockAreaRef, rect: blockAreaRect } = useRect();
 
 	const AlgorithmClass = registry.Class;
-	const Algorithm = new AlgorithmClass(algorithmInput);
-
+	const Algorithm = new AlgorithmClass(input);
 	const stepsLength = Algorithm.getStepsLength();
-
 	const [currentStepIndex, setCurrentStepIndex] = useState(stepsLength - 1);
-
 	const displayedState = Algorithm.getStateByStepsIndex(currentStepIndex);
 	const currentStep = Algorithm.getStepByIndex(currentStepIndex);
 	const arrayLength = Algorithm.getArrayLength();
@@ -131,10 +105,19 @@ function SortAlgorithmVisualizer({ registry, input }) {
 
 	const progress = (currentStepIndex / (stepsLength - 1)) * 100;
 
-	const blockWidth = useMemo(() => (100 / arrayLength) * 0.7, [arrayLength]);
-	const gapWidth = useMemo(
-		() => (100 / (arrayLength - 1)) * 0.3,
+	const { blockWidth, gapWidth } = useMemo(
+		() => calculateBlockGapWidths(arrayLength, 0.7),
 		[arrayLength]
+	);
+
+	const showBlockValues = useMemo(
+		() =>
+			isDisplayBlockValueVisible(
+				blockAreaRect.width,
+				blockWidth,
+				blockValueDisplayThreshold
+			),
+		[blockAreaRect, blockWidth, blockValueDisplayThreshold]
 	);
 
 	const updateProgress = useCallback(
@@ -150,6 +133,7 @@ function SortAlgorithmVisualizer({ registry, input }) {
 	return (
 		<>
 			<BlockArea
+				ref={blockAreaRef}
 				$gapWidth={gapWidth + "%"}
 				$arrayLength={arrayLength}
 				$blockWidth={blockWidth + "%"}
@@ -170,49 +154,18 @@ function SortAlgorithmVisualizer({ registry, input }) {
 							index={index}
 							key={index}
 							val={val}
-						></Block>
+							$showBlockValues={showBlockValues}
+							$blockValueDisplayThreshold={
+								blockValueDisplayThreshold
+							}
+						>
+							{showBlockValues ? val : ""}
+						</Block>
 					);
 				})}
 			</BlockArea>
-			{/* <AlgorithmControls
-				progress={progress}
-				updateProgress={updateProgress}
-			/>
-			<button onClick={() => setCurrentStepIndex(i => i - 1)}>
-				wstecz
-			</button>
-			<button onClick={() => setCurrentStepIndex(i => i + 1)}>
-				dalej
-			</button> */}
 		</>
 	);
 }
 
 export default SortAlgorithmVisualizer;
-
-// algorithm.createSteps();
-
-// const { steps, operations } = algorithm.use();
-// const [displayState, setDisplayState] = useState(algorithm.getArray());
-// const [activeStepIndex, setActiveStepIndex] = useState(0);
-// const step = steps[activeStepIndex] || {};
-// const stepType = step.type;
-// const stepActiveItems = step?.activeItems || [];
-
-// useEffect(() => {
-// 	const interval = setInterval(() => {
-// 		setActiveStepIndex(prev => {
-// 			const next = prev + 1;
-// 			if (next < steps.length) {
-// 				const newState = algorithm.getStateByStepsIndex(next);
-// 				setDisplayState(newState);
-// 				return next;
-// 			} else {
-// 				clearInterval(interval);
-// 				return prev;
-// 			}
-// 		});
-// 	}, 150);
-
-// 	return () => clearInterval(interval);
-// }, [algorithm, steps.length]);

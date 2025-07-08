@@ -1,13 +1,12 @@
 import { styled } from "styled-components";
 import MainNav from "./MainNav";
 import Logo from "./Logo";
+import algorithms from "../algorithms/algorithmsData";
 
 const StyledTopBar = styled.div`
 	background-color: var(--color-grey-200);
 	display: flex;
-	justify-content: space-between;
 	padding: 0 2.4rem;
-	align-items: center;
 	box-shadow: 0 0 0px 0.5rem var(--color-grey-300);
 
 	z-index: 1000;
@@ -15,13 +14,16 @@ const StyledTopBar = styled.div`
 
 const Container = styled.div`
 	display: flex;
+	justify-content: space-between;
+	width: 100%;
+	align-items: center;
 `;
 
 function TopBar() {
 	return (
 		<StyledTopBar>
-			<Logo />
 			<Container>
+				<Logo />
 				<MainNav />
 			</Container>
 		</StyledTopBar>
