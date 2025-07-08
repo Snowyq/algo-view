@@ -3,18 +3,8 @@ import { PlayContext } from "./PlayContext";
 import { generateRandomArray } from "../../utils/randoms";
 import {
 	getAlgorithmRegistriesByCategory,
-	getAlgorithmRegistry,
 	getCategoriesInRegistry,
 } from "../../algorithms/algorithmsRegistry";
-
-const testActiveWindow = {
-	role: "algorithm",
-	algorithm: {
-		id: "selectionSort",
-		category: "sort",
-		name: "BubbleSort",
-	},
-};
 
 const testArr1 = [
 	19, 28, 12, 27, 20, 11, 30, 15, 9, 4, 23, 2, 29, 25, 14, 12, 8, 3, 18, 10,
@@ -25,20 +15,21 @@ const testArr1 = [
 
 const testArr2 = [10, 25, 13, 11, 5, 7, 10, 22, 19, 4];
 
-const testArrDynamic = generateRandomArray(1000, 2, 30);
+const testArrDynamic = generateRandomArray(100, 0, 30);
 
 function PlayProvider({ children }) {
 	const [activeAlgorithmsCategory, setActiveAlgorithmsCategory] =
 		useState("sort");
-	// const [activeAlgorithms, setActiveAlgorithms] = useState([
-	// 	testActiveWindow,
-	// ]);
-	const [activeAlgorithms, setActiveAlgorithms] = useState(["bubbleSort"]);
+	const [activeAlgorithms, setActiveAlgorithms] = useState([
+		"selectionSort",
+		"bubbleSort",
+	]);
 
 	// const [algorithmInput, setAlgorithmInput] = useState(testArr1);
 	const [algorithmInput, setAlgorithmInput] = useState(testArr2);
 	// const [algorithmInput, setAlgorithmInput] = useState(testArrDynamic);
-	const [currStep, setCurrStep] = useState(0);
+	const [globalStep, setGlobalStep] = useState(0);
+	const [globalStepsLength, setGlobalStepsLength] = useState(0);
 
 	const changeInput = newInput => {
 		setAlgorithmInput(newInput);
@@ -49,8 +40,20 @@ function PlayProvider({ children }) {
 		setActiveAlgorithmsCategory(newCategory);
 	};
 
-	const changeCurrStep = newStep => {
-		setCurrStep(newStep);
+	const changeGlobalStep = newStep => {
+		setGlobalStep(newStep);
+	};
+
+	const increaseGlobalStep = val =>
+		setGlobalStep(prev => {
+			return Math.min(prev + val, globalStepsLength - 1);
+		});
+	const decreaseGlobalStep = val =>
+		setGlobalStep(prev => {
+			return Math.max(prev - val, 0);
+		});
+	const changeGlobalStepsLength = length => {
+		setGlobalStepsLength(prev => (prev < length ? length : prev));
 	};
 
 	const openAlgorithm = algorithmId => {
@@ -71,8 +74,8 @@ function PlayProvider({ children }) {
 	return (
 		<PlayContext.Provider
 			value={{
-				currStep,
-				changeCurrStep,
+				globalStep,
+				changeGlobalStep,
 				openAlgorithm,
 				closeAlgorithm,
 				algorithmCategory: activeAlgorithmsCategory,
@@ -82,6 +85,9 @@ function PlayProvider({ children }) {
 				activeWindows: activeAlgorithms,
 				activeAlgorithms,
 				algorithmInput,
+				decreaseGlobalStep,
+				increaseGlobalStep,
+				changeGlobalStepsLength,
 			}}
 		>
 			{children}

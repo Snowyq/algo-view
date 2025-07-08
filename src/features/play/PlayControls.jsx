@@ -2,6 +2,8 @@ import styled from "styled-components";
 import ControlBar from "../../ui/ControlBar";
 import PlayWindow from "./PlayWindow";
 import AlgorithmControls from "./AlgorithmControls";
+import { useContext } from "react";
+import { PlayContext } from "./PlayContext";
 
 const Background = styled.div`
 	/* background-color: yellow; */
@@ -11,7 +13,6 @@ const Background = styled.div`
 
 const Container = styled.div`
 	display: flex;
-	flex-direction: column;
 	height: 100%;
 	justify-content: center;
 	align-items: center;
@@ -19,12 +20,22 @@ const Container = styled.div`
 `;
 
 function PlayControls() {
+	const { decreaseGlobalStep, globalStep, increaseGlobalStep } =
+		useContext(PlayContext);
+
 	return (
 		<PlayWindow>
 			<PlayWindow.Body>
 				<Background>
 					<Container>
-						<AlgorithmControls />
+						<button onClick={() => decreaseGlobalStep(1)}>
+							wstecz
+						</button>
+						{globalStep}
+						<button onClick={() => increaseGlobalStep(1)}>
+							dalej
+						</button>
+						{/* <AlgorithmControls /> */}
 					</Container>
 				</Background>
 			</PlayWindow.Body>

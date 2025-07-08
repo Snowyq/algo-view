@@ -91,6 +91,18 @@ const GlobalStyles = createGlobalStyle`
 --color-green-800:  #166534;
 --color-green-900:  #14532d;
 --color-green-950:  #052e16;
+--color-pink-0:    #fff;
+--color-pink-50:   #fdf2f8;
+--color-pink-100:  #fce7f3;
+--color-pink-200:  #fbcfe8;
+--color-pink-300:  #f9a8d4;
+--color-pink-400:  #f472b6;
+--color-pink-500:  #ec4899;
+--color-pink-600:  #db2777;
+--color-pink-700:  #be185d;
+--color-pink-800:  #9d174d;
+--color-pink-900:  #831843;
+--color-pink-950:  #500724;
 
 
 

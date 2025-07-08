@@ -145,17 +145,11 @@ export class SortAlgorithm extends Algorithm {
 	}
 
 	getArrayMinMax() {
-		if (this.arrayMin && this.arrayMax) {
-			return {
-				min: this.arrayMin,
-				max: this.arrayMax,
-			};
-		} else {
-			return {
-				min: Math.min(this.array),
-				max: Math.max(this.array),
-			};
-		}
+		const arr = this.getArray();
+		return {
+			min: Math.min(...arr),
+			max: Math.max(...arr),
+		};
 	}
 
 	getOperationIdByStepIndex(stepIndex) {

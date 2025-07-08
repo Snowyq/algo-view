@@ -1,4 +1,5 @@
 import { BubbleSort } from "./sort/BubbleSort";
+import { SelectionSort } from "./sort/SelectionSort";
 
 export const registry = {
 	sort: {
@@ -17,6 +18,26 @@ export const registry = {
 				i3: `      [arr[j], arr[j + 1]] = [arr[j + 1], arr[j]];`,
 				ie2: `    }`,
 				ie1: `  }`,
+				ie0: `}`,
+			},
+		},
+		selectionSort: {
+			id: "selectionSort",
+			Class: SelectionSort,
+			meta: {
+				name: "Selection sort",
+				description: "...",
+				timeComplexity: "O(n^2)",
+			},
+			instructions: {
+				i0: `for (let i = 0; i < n; i++) {`,
+				i1: `  let minIdx = i;`,
+				i2: `  for (let j = i + 1; j < n; j++) {`,
+				i3: `    if (arr[j] < arr[minIdx]) {`,
+				i4: `      minIdx = j;`,
+				ie3: `    }`,
+				ie2: `  }`,
+				i5: `  [arr[i], arr[minIdx]] = [arr[minIdx], arr[i]];`,
 				ie0: `}`,
 			},
 		},

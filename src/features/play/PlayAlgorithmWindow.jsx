@@ -13,15 +13,27 @@ const Container = styled.div`
 `;
 
 const VisualizerContainer = styled(Container)`
+	width: 100%;
 	padding: 5rem;
 	@media screen and (min-width: 1000px) {
+		width: 100%;
 		padding: 15rem;
 	}
+	max-width: 100%;
 `;
 
 function PlayAlgorithmWindow({ registry }) {
-	const { activeAlgorithmsCategory, algorithmInput } =
-		useContext(PlayContext);
+	const {
+		activeAlgorithmsCategory,
+		algorithmInput,
+		globalStep,
+		changeGlobalStepsLength,
+	} = useContext(PlayContext);
+
+	const handlePassedStepsLength = stepsLength => {
+		changeGlobalStepsLength(stepsLength);
+	};
+
 	return (
 		<Container>
 			<PlayWindow>
@@ -35,6 +47,8 @@ function PlayAlgorithmWindow({ registry }) {
 								category={activeAlgorithmsCategory}
 								registry={registry}
 								input={algorithmInput}
+								stepIndex={globalStep}
+								passStepsLength={handlePassedStepsLength}
 							/>
 						</VisualizerContainer>
 					</PlayWindow.Background>

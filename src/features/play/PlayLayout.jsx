@@ -54,6 +54,7 @@ const Container = styled.div`
 
 const PlayMain = styled.div`
 	display: grid;
+	width: 100%;
 	grid-template-rows: 1fr 10rem;
 	gap: 5rem;
 `;
@@ -74,7 +75,6 @@ function PlayLayout() {
 				</PlayMain>
 				<PlaySidebar />
 			</Container>
-			{/* </DottedBackground> */}
 		</StyledPlayground>
 	);
 }

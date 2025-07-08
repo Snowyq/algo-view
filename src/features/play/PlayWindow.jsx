@@ -84,7 +84,6 @@ const StyledBackground = styled.div`
 	/* padding: 0 2rem; */
 	border-radius: 15px;
 	/* padding: 5rem 5rem; */
-	gap: 1rem;
 `;
 
 const PlayWindowContext = createContext();
@@ -106,14 +105,6 @@ function WindowOutput({ children }) {
 		.filter(el => elements.includes(el))
 		.join("-");
 	return <Grid type={key || ""}>{children}</Grid>;
-}
-
-function Element({ type, children }) {
-	return (
-		<ElementContainer type={type}>
-			<ElementOutlet type={type}>{children}</ElementOutlet>
-		</ElementContainer>
-	);
 }
 
 function Header({ children }) {

@@ -33,7 +33,7 @@ const types = {
 		&:visited {
 			background-color: var(--color-grey-700);
 			color: var(--color-brand-50);
-			box-shadow: 0.15rem 0.15rem 0 2px var(--color-grey-500);
+			box-shadow: 0.15rem 0.15rem 0 2px var(--color-grey-700);
 			font-weight: bold;
 		}
 
