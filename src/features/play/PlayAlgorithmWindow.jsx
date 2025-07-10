@@ -1,5 +1,5 @@
 import PlayWindow from "./PlayWindow";
-import AlgorithmVisualizer from "./AlgorithmVisualizer";
+import PlayVisualizer from "./PlayVisualizer";
 import styled from "styled-components";
 import { useContext } from "react";
 import { PlayContext } from "./PlayContext";
@@ -14,11 +14,6 @@ const Container = styled.div`
 
 const VisualizerContainer = styled(Container)`
 	width: 100%;
-	padding: 5rem;
-	@media screen and (min-width: 1000px) {
-		width: 100%;
-		padding: 15rem;
-	}
 	max-width: 100%;
 `;
 
@@ -30,10 +25,6 @@ function PlayAlgorithmWindow({ registry }) {
 		changeGlobalStepsLength,
 	} = useContext(PlayContext);
 
-	const handlePassedStepsLength = stepsLength => {
-		changeGlobalStepsLength(stepsLength);
-	};
-
 	return (
 		<Container>
 			<PlayWindow>
@@ -41,17 +32,9 @@ function PlayAlgorithmWindow({ registry }) {
 					<span>{registry.meta.name}</span>
 				</PlayWindow.Header>
 				<PlayWindow.Body>
-					<PlayWindow.Background>
-						<VisualizerContainer>
-							<AlgorithmVisualizer
-								category={activeAlgorithmsCategory}
-								registry={registry}
-								input={algorithmInput}
-								stepIndex={globalStep}
-								passStepsLength={handlePassedStepsLength}
-							/>
-						</VisualizerContainer>
-					</PlayWindow.Background>
+					<VisualizerContainer>
+						<PlayVisualizer registry={registry} />
+					</VisualizerContainer>
 				</PlayWindow.Body>
 			</PlayWindow>
 		</Container>

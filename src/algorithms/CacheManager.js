@@ -170,12 +170,12 @@ export class CacheManager {
 				this.addPersistent(group, index, state.slice());
 			}
 		});
-		console.log(
-			"stored:",
-			this.cache.state.index.length,
-			"mutations:",
-			mutations.length
-		);
+		// console.log(
+		// 	"stored:",
+		// 	this.cache.state.index.length,
+		// 	"mutations:",
+		// 	mutations.length
+		// );
 		return this;
 	}
 }

@@ -18,11 +18,11 @@ const StyledPlayWindow = styled.div`
 const gridTypes = {
 	"Header-Body-Footer": css`
 		grid-template-columns: 1fr;
-		grid-template-rows: 6rem 1fr 3rem;
+		grid-template-rows: 3rem 1fr 1rem;
 	`,
 	"Header-Body": css`
 		grid-template-columns: 1fr;
-		grid-template-rows: 6rem 1fr;
+		grid-template-rows: 2rem 1fr;
 	`,
 	"Body-Footer": css``,
 	Body: css``,
@@ -45,7 +45,7 @@ const CloseButtonHolder = styled.div`
 `;
 
 const StyledHeader = styled.div`
-	font-size: 3.5rem;
+	font-size: 2rem;
 	font-weight: 600;
 	display: flex;
 	border-radius: 15px;
@@ -81,8 +81,8 @@ const StyledBackground = styled.div`
 	height: 100%;
 	background-color: var(--color-grey-50);
 	box-shadow: 0.2rem 0.2rem 0px 2px var(--color-grey-300);
-	/* padding: 0 2rem; */
 	border-radius: 15px;
+	/* padding: 0 2rem; */
 	/* padding: 5rem 5rem; */
 `;
 

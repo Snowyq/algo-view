@@ -10,18 +10,41 @@ export class SelectionSort extends SortAlgorithm {
 		for (let i = 0; i < n; i++) {
 			let minIdx = i;
 			this.selectMany([
-				{ index: i, mode: "perm", id: "i" },
-				{ index: i, mode: "perm", id: "minIdx" },
+				{
+					index: i,
+
+					options: { mode: "perm", id: "i", instructionId: ["i1"] },
+				},
+				{
+					index: i,
+
+					options: {
+						mode: "perm",
+						id: "minIdx",
+						instructionId: ["i1"],
+					},
+				},
 			]);
 			for (let j = i + 1; j < n; j++) {
-				if (this.check(j, "<", minIdx, arr)) {
+				if (
+					this.check(j, "<", minIdx, arr, { instructionId: ["i3"] })
+				) {
 					minIdx = j;
-					this.select(minIdx, "perm", "minIdx");
+					this.select(minIdx, {
+						mode: "perm",
+						id: "minIdx",
+						instructionId: ["i4"],
+					});
 				}
 			}
 			if (minIdx !== arr.length - 1)
-				this.select(minIdx, "perm", "minIdx");
-			if (i !== minIdx) this.swap(i, minIdx, arr);
+				this.select(minIdx, {
+					mode: "perm",
+					id: "minIdx",
+					instructionId: ["i4"],
+				});
+			if (i !== minIdx)
+				this.swap(i, minIdx, arr, { instructionId: ["i5"] });
 		}
 	}
 

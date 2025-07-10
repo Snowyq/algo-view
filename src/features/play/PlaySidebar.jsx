@@ -40,8 +40,6 @@ function PlaySidebar() {
 		activeAlgorithmsCategory
 	);
 
-	console.log(algorithms);
-
 	return (
 		<PlayWindow>
 			<AlgorithmSelection>

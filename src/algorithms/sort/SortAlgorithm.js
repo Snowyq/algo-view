@@ -14,6 +14,7 @@ export class SortAlgorithm extends Algorithm {
 	options = {
 		steps: {
 			types: {
+				initial: true,
 				check: true,
 				"check-true": true,
 				"check-false": true,
@@ -77,32 +78,54 @@ export class SortAlgorithm extends Algorithm {
 		return this.operations.length - 1;
 	}
 
-	swap(index1, index2, arr) {
+	swap(index1, index2, arr, options) {
 		const activeItems = [index1, index2];
+		const instructionId = options.instructionId;
 		const actionType = "swap";
 		const operationId = this.createOperation(actionType, activeItems);
 		[arr[index1], arr[index2]] = [arr[index2], arr[index1]];
-		this.createStep({ type: actionType, activeItems, operationId });
+		this.createStep({
+			type: actionType,
+			activeItems,
+			operationId,
+			instructionId,
+		});
 	}
 
-	check(index1, operator, index2, arr) {
+	check(index1, operator, index2, arr, options) {
 		const activeItems = [index1, index2];
-		this.createStep({ type: "check", activeItems, operator });
+		const instructionId = options.instructionId;
+		this.createStep({
+			type: "check",
+			activeItems,
+			operator,
+			instructionId,
+		});
 		// Create step for result of comparison
 		const isTrue = this.compare(arr[index1], arr[index2], operator);
-		if (isTrue) this.createStep({ type: "check-true", activeItems });
-		else this.createStep({ type: "check-false", activeItems });
+		if (isTrue)
+			this.createStep({ type: "check-true", activeItems, instructionId });
+		else
+			this.createStep({
+				type: "check-false",
+				activeItems,
+				instructionId,
+			});
 
 		// return Result of comparison for use in if statement
 		return isTrue;
 	}
 
-	select(index, mode = "temp", id) {
-		if (mode === "perm") {
-			this.selected = this.selected.filter(el => el.id !== id);
-			this.selected.push({ id, index });
+	select(index, options) {
+		if (options.mode === "perm") {
+			this.selected = this.selected.filter(el => el.id !== options.id);
+			this.selected.push({ id: options.id, index });
 		}
-		this.createStep({ type: "select", activeItems: [index] });
+		this.createStep({
+			type: "select",
+			activeItems: [index],
+			instructionId: options.instructionId,
+		});
 	}
 
 	selectMany(selects) {
@@ -114,7 +137,12 @@ export class SortAlgorithm extends Algorithm {
 		});
 		this.createStep({
 			type: "select",
-			activeItems: [selects.map(sel => sel.index)],
+			activeItems: selects.map(sel => sel.index),
+			instructionId: [
+				...new Set(
+					selects.map(sel => sel.options.instructionId).flat()
+				),
+			],
 		});
 	}
 
@@ -138,6 +166,7 @@ export class SortAlgorithm extends Algorithm {
 				this.getOperations(),
 				this.makeOperation
 			);
+		console.log(this.steps);
 	}
 
 	getResult() {
