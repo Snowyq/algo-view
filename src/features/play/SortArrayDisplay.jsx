@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import styled, { css } from "styled-components";
 import { useRect } from "../../hooks/useRect";
 import { valueBetween } from "../../utils/valueBetween";
-import useSortAlgorithm from "../../hooks/useAlgorithm";
 
 const variations = {
 	swap: css`
@@ -113,6 +112,7 @@ const Block = styled.div`
 		translate: -50% 0;
 		bottom: -2rem;
 		opacity: 0;
+		display: none;
 	}
 
 	&:hover {
@@ -151,6 +151,7 @@ const Block = styled.div`
 
 		&::before {
 			opacity: 1;
+			display: block;
 		}
 	}
 
@@ -220,6 +221,7 @@ function SortArrayDisplay({
 						el => el.index === index
 					).length;
 					let type = isSelected ? "select" : "default";
+					console.log(step.selected);
 					type = isActive ? step.type : type;
 					const blockHeight =
 						val === 0

@@ -5,6 +5,7 @@ const types = {
 	default: css`
 		&:hover {
 			color: var(--color-grey-800);
+			background-color: var(--color-grey-100);
 		}
 
 		&:active,
@@ -12,6 +13,7 @@ const types = {
 		&.active:visited {
 			color: var(--color-grey-800);
 			background-color: var(--color-grey-100);
+			box-shadow: inset 0.1rem 0.1rem 0 1px var(--color-grey-700);
 		}
 
 		& svg {
@@ -39,13 +41,13 @@ const types = {
 
 		&:hover {
 			background-color: var(--color-grey-500);
-			box-shadow: 0.15rem 0.15rem 0 2px var(--color-grey-700);
+			box-shadow: 0.15rem 0.15rem 0 2px var(--color-grey-600);
 		}
 		&:active,
 		&.active:link,
 		&.active:visited {
-			/* background-color: var(--color-brand-300);
-			border-color: var(--color-brand-500); */
+			background-color: var(--color-grey-500);
+			box-shadow: inset 0.15rem 0.15rem 0 2px var(--color-grey-600);
 		}
 	`,
 };

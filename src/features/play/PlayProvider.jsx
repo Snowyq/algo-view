@@ -23,6 +23,10 @@ function PlayProvider({ children }) {
 	const [activeAlgorithms, setActiveAlgorithms] = useState([
 		"selectionSort",
 		"bubbleSort",
+		"bubbleSort",
+		"selectionSort",
+		"bubbleSort",
+		"selectionSort",
 	]);
 
 	// const [algorithmInput, setAlgorithmInput] = useState(testArr1);

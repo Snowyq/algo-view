@@ -130,9 +130,11 @@ export class SortAlgorithm extends Algorithm {
 
 	selectMany(selects) {
 		selects.forEach(sel => {
-			if (sel.mode === "perm") {
-				this.selected = this.selected.filter(el => el.id !== sel.id);
-				this.selected.push({ id: sel.id, index: sel.index });
+			if (sel.options.mode === "perm") {
+				this.selected = this.selected.filter(
+					el => el.id !== sel.options.id
+				);
+				this.selected.push({ id: sel.options.id, index: sel.index });
 			}
 		});
 		this.createStep({
@@ -166,7 +168,6 @@ export class SortAlgorithm extends Algorithm {
 				this.getOperations(),
 				this.makeOperation
 			);
-		console.log(this.steps);
 	}
 
 	getResult() {
@@ -203,17 +204,6 @@ export class SortAlgorithm extends Algorithm {
 		const operations = this.getOperations();
 
 		// Restore state by prev operationId and calculate state from that
-		// const cacheValue = this.getCache("state", this);
-		// if (!isNaN(cacheValue)) {
-		// 	console.log("usedCached");
-		// 	state = cacheValue;
-		// 	const operation = operations[operationId];
-		// 	this.addCache("state", operationId, state);
-		// 	this.makeOperation(operation, state);
-		// 	return state;
-		// }
-		// console.log("initial:", state);
-		// const closestState = this.getClosestCache("state", operationId);
 		const closestState = this.cacheManager.getClosest("state", operationId);
 		if (closestState) {
 			state = closestState.item.slice();

@@ -15,22 +15,16 @@ const Container = styled.div`
 const VisualizerContainer = styled(Container)`
 	width: 100%;
 	max-width: 100%;
+	padding: 1rem;
 `;
 
 function PlayAlgorithmWindow({ registry }) {
-	const {
-		activeAlgorithmsCategory,
-		algorithmInput,
-		globalStep,
-		changeGlobalStepsLength,
-	} = useContext(PlayContext);
-
 	return (
 		<Container>
 			<PlayWindow>
-				<PlayWindow.Header>
+				{/* <PlayWindow.Header>
 					<span>{registry.meta.name}</span>
-				</PlayWindow.Header>
+				</PlayWindow.Header> */}
 				<PlayWindow.Body>
 					<VisualizerContainer>
 						<PlayVisualizer registry={registry} />

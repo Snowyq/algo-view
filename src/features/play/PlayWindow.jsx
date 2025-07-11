@@ -12,7 +12,6 @@ const StyledPlayWindow = styled.div`
 
 	/* border: 0.75rem solid var(--color-grey-300); */
 	border-radius: 2.5rem;
-	padding: 2rem;
 `;
 
 const gridTypes = {

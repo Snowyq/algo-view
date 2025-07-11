@@ -1,14 +1,22 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+
 export default function useSortAlgorithm(Class, input) {
-	const Algorithm = new Class(input);
-	const getStepsLength = () => Algorithm.getStepsLength();
-	const getState = stepIndex => Algorithm.getStateByStepsIndex(stepIndex);
-	const getStep = stepIndex => Algorithm.getStepByIndex(stepIndex);
-	const getMaxValue = () => Algorithm.getArrayMinMax().max;
-	const getMinValue = () => Algorithm.getArrayMinMax().min;
-	const getArrayLength = () => Algorithm.getArrayLength();
+	const algorithmInstance = useMemo(() => {
+		const instance = new Class(input);
+		return instance;
+	}, [Class, input]);
+
+	const init = input => algorithmInstance?.init(input);
+	const getStepsLength = () => algorithmInstance?.getStepsLength();
+	const getState = stepIndex =>
+		algorithmInstance?.getStateByStepsIndex(stepIndex);
+	const getStep = stepIndex => algorithmInstance?.getStepByIndex(stepIndex);
+	const getMaxValue = () => algorithmInstance?.getArrayMinMax().max;
+	const getMinValue = () => algorithmInstance?.getArrayMinMax().min;
+	const getArrayLength = () => algorithmInstance?.getArrayLength();
 
 	return {
-		Algorithm,
+		Algorithm: algorithmInstance,
 		getStepsLength,
 		getState,
 		getStep,
