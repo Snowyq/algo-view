@@ -8,22 +8,20 @@ const StyledPlayWindow = styled.div`
 	height: 100%;
 	width: 100%;
 	background-color: ${({ color }) => color || "var(--color-grey-200)"};
-	box-shadow: 1rem 1rem 0px 3px var(--color-grey-300);
+	box-shadow: 0.25rem 0.25rem 0px 3px var(--color-grey-300);
 
 	/* border: 0.75rem solid var(--color-grey-300); */
 	border-radius: 2.5rem;
-	/* padding: 4rem 4rem 1rem 4rem; */
-	padding-bottom: 2rem;
 `;
 
 const gridTypes = {
 	"Header-Body-Footer": css`
 		grid-template-columns: 1fr;
-		grid-template-rows: 6rem 1fr 3rem;
+		grid-template-rows: 3rem 1fr 1rem;
 	`,
 	"Header-Body": css`
 		grid-template-columns: 1fr;
-		grid-template-rows: 6rem 1fr;
+		grid-template-rows: 2rem 1fr;
 	`,
 	"Body-Footer": css``,
 	Body: css``,
@@ -33,7 +31,7 @@ const Grid = styled.div`
 	height: 100%;
 	width: 100%;
 	display: grid;
-	gap: 2rem;
+	gap: 1rem;
 
 	${({ type }) => gridTypes[type] || ""}
 `;
@@ -46,7 +44,7 @@ const CloseButtonHolder = styled.div`
 `;
 
 const StyledHeader = styled.div`
-	font-size: 3.5rem;
+	font-size: 2rem;
 	font-weight: 600;
 	display: flex;
 	border-radius: 15px;
@@ -55,21 +53,36 @@ const StyledHeader = styled.div`
 `;
 
 const StyledBody = styled.div`
-	padding: 0 2.5rem 0 2rem;
+	/* padding: 2rem 3.5rem 2rem 3rem; */
 	width: 100%;
 	height: 100%;
 `;
 
 const HeaderTitle = styled.div`
 	border-radius: 15px;
-	background-color: var(--color-grey-50);
-	border: 5px solid var(--color-grey-300);
-	box-shadow: 0.5rem 0.5rem 0px 2px var(--color-grey-300);
+	/* background-color: var(--color-grey-50); */
+	/* border: 5px solid var(--color-grey-300); */
+	/* box-shadow: 0.5rem 0.5rem 0px 2px var(--color-grey-300); */
 	display: flex;
-	translate: -1rem -1rem;
-	padding: 1rem 4rem;
+	/* translate: -2rem -2rem; */
+	/* padding: 1rem 4rem; */
+
 	justify-content: center;
 	align-items: center;
+`;
+
+const StyledBackground = styled.div`
+	/* display: flex;
+	align-items: center;
+	justify-content: center; */
+	width: 100%;
+	/* height: fit-content; */
+	height: 100%;
+	background-color: var(--color-grey-50);
+	box-shadow: 0.2rem 0.2rem 0px 2px var(--color-grey-300);
+	border-radius: 15px;
+	/* padding: 0 2rem; */
+	/* padding: 5rem 5rem; */
 `;
 
 const PlayWindowContext = createContext();
@@ -86,24 +99,17 @@ function PlayWindow({ children, closeButton = true }) {
 
 function WindowOutput({ children }) {
 	const elements = Children.map(children, child => child?.type?.name);
+	if (!elements) return <></>;
 	const key = ["Header", "Body", "Footer"]
 		.filter(el => elements.includes(el))
 		.join("-");
 	return <Grid type={key || ""}>{children}</Grid>;
 }
 
-function Element({ type, children }) {
-	return (
-		<ElementContainer type={type}>
-			<ElementOutlet type={type}>{children}</ElementOutlet>
-		</ElementContainer>
-	);
-}
-
-function Header({ children, title = "bubbleSort!" }) {
+function Header({ children }) {
 	return (
 		<StyledHeader>
-			<HeaderTitle>{title}</HeaderTitle>
+			<HeaderTitle> {children}</HeaderTitle>
 		</StyledHeader>
 	);
 }
@@ -114,6 +120,10 @@ function Body({ children }) {
 
 function Footer({ children }) {
 	return <></>;
+}
+
+function Background({ children }) {
+	return <StyledBackground>{children}</StyledBackground>;
 }
 
 function ToolsLayer({ closeButton }) {
@@ -130,6 +140,7 @@ function CloseButton() {
 	);
 }
 
+PlayWindow.Background = Background;
 PlayWindow.Header = Header;
 PlayWindow.Body = Body;
 PlayWindow.Footer = Footer;

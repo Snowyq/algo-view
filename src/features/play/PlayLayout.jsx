@@ -4,11 +4,13 @@ import styled from "styled-components";
 import PlayDisplayedAlgorithmsArea from "./PlayDisplayedAlgorithmsArea";
 import PlaySidebar from "./PlaySidebar";
 import PlayHeader from "./PlayHeader";
+import PlayControls from "./PlayControls";
 
 const StyledPlayground = styled.div`
 	height: 100%;
 	width: 100%;
 	position: relative;
+	/* padding: 1rem 2rem 1rem 1.5rem; */
 `;
 
 const DottedBackground = styled.div`
@@ -32,6 +34,10 @@ const DottedBackground = styled.div`
 
 	height: 100%;
 	width: 100%;
+	position: absolute;
+	left: 0;
+	top: 0;
+	/* background-color: yellow; */
 	/* box-shadow: 1px 1px 25px 5px var(--color-grey-300); */
 	/* border: 5px solid var(--color-grey-100); */
 `;
@@ -41,14 +47,16 @@ const Container = styled.div`
 	height: 100%;
 	width: 100%;
 	display: grid;
-	grid-template-columns: 1fr 40rem;
+	grid-template-columns: 1fr 30rem;
 	gap: 5rem;
+	margin: 0 auto;
 `;
 
 const PlayMain = styled.div`
 	display: grid;
-	grid-template-rows: 1fr;
-	gap: 2.5rem;
+	width: 100%;
+	grid-template-rows: 1fr 10rem;
+	gap: 5rem;
 `;
 
 function PlayLayout() {
@@ -57,16 +65,16 @@ function PlayLayout() {
 			<DottedBackground
 				bg="var(--color-grey-100)"
 				color="var(--color-grey-400)"
-				size="3px"
-				space="3rem"
-			>
-				<Container>
-					<PlayMain>
-						<PlayDisplayedAlgorithmsArea />
-					</PlayMain>
-					<PlaySidebar />
-				</Container>
-			</DottedBackground>
+				size="2px"
+				space="1.5rem"
+			/>
+			<Container>
+				<PlayMain>
+					<PlayDisplayedAlgorithmsArea />
+					<PlayControls />
+				</PlayMain>
+				<PlaySidebar />
+			</Container>
 		</StyledPlayground>
 	);
 }

@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 
 export function useRect(ref) {
 	const initRef = useRef(null);
@@ -15,20 +15,24 @@ export function useRect(ref) {
 		y: 0,
 	});
 
-	useLayoutEffect(() => {
-		if (!targetRef.current) return;
+	const updateRect = useCallback(() => {
+		const node = targetRef.current;
+		if (!node) return;
+		const newRect = node.getBoundingClientRect();
+		setRect(newRect);
+	}, [targetRef]);
 
-		const updateRect = () => {
-			if (!targetRef.current || !targetRef) return;
-			const rect = targetRef.current.getBoundingClientRect();
-			setRect(rect);
-		};
+	useLayoutEffect(() => {
+		const node = targetRef.current;
+		if (!node) return;
 
 		updateRect();
 
-		window.addEventListener("resize", updateRect);
-		return () => window.removeEventListener("resize", updateRect);
-	}, [targetRef]);
+		const resizeObserver = new ResizeObserver(updateRect);
+		resizeObserver.observe(node);
 
-	return { rect, ref: targetRef };
+		return () => resizeObserver.disconnect();
+	}, [targetRef, updateRect]);
+
+	return { rect, ref: targetRef, update: updateRect };
 }

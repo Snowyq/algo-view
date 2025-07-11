@@ -2,9 +2,10 @@ import { css, styled } from "styled-components";
 import { NavLink } from "react-router-dom";
 
 const types = {
-	base: css`
+	default: css`
 		&:hover {
 			color: var(--color-grey-800);
+			background-color: var(--color-grey-100);
 		}
 
 		&:active,
@@ -12,6 +13,7 @@ const types = {
 		&.active:visited {
 			color: var(--color-grey-800);
 			background-color: var(--color-grey-100);
+			box-shadow: inset 0.1rem 0.1rem 0 1px var(--color-grey-700);
 		}
 
 		& svg {
@@ -31,28 +33,34 @@ const types = {
 	cta: css`
 		&:link,
 		&:visited {
-			background-color: var(--color-grey-600);
+			background-color: var(--color-grey-700);
 			color: var(--color-brand-50);
+			box-shadow: 0.15rem 0.15rem 0 2px var(--color-grey-700);
 			font-weight: bold;
 		}
 
 		&:hover {
-			background-color: var(--color-grey-700);
+			background-color: var(--color-grey-500);
+			box-shadow: 0.15rem 0.15rem 0 2px var(--color-grey-600);
 		}
 		&:active,
 		&.active:link,
 		&.active:visited {
-			/* background-color: var(--color-brand-300);
-			border-color: var(--color-brand-500); */
+			background-color: var(--color-grey-500);
+			box-shadow: inset 0.15rem 0.15rem 0 2px var(--color-grey-600);
 		}
 	`,
 };
 
 const StyledNavLink = styled(NavLink)`
+	/* transition:
+		background-color 0.2s,
+		box-shadow 0.2s; */
+
 	&:link,
 	&:visited {
 		position: relative;
-		padding: 0.4rem 1.2rem;
+		padding: 0.2rem 0.8rem;
 		border: 0.3rem solid transparent;
 		border-radius: 0.5rem;
 	}
@@ -72,13 +80,14 @@ const StyledNavLink = styled(NavLink)`
 		} */
 	}
 
-	${props => types[props.styleType] || types["base"]}
+	${props => types[props.styleType] || types["default"]}
 `;
 
 const Nav = styled.nav`
 	display: flex;
 	gap: 2.4rem;
-	font-size: 1.8rem;
+	font-size: 1.6rem;
+	font-size: 16px;
 	justify-content: center;
 	align-items: center;
 `;

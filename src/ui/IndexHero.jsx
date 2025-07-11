@@ -4,14 +4,15 @@ import Button from "./Button";
 const StyledIndexHero = styled.div`
 	position: relative;
 	background-color: var(--color-grey-50);
-	padding: 15rem 5rem;
+	padding: 10rem 5rem;
 	border-radius: 6.4rem;
 	width: 100%;
+	max-width: 1000px;
 	display: flex;
 	flex-direction: column;
 	gap: 3.6rem;
 	box-shadow: 1px 1px 25px 5px var(--color-grey-200);
-	font-size: 2rem;
+	font-size: 1.6rem;
 
 	/* background: rgba(255, 255, 255, 0.2);
 	backdrop-filter: blur(5px);
