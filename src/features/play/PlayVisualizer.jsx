@@ -1,15 +1,15 @@
 import { useContext } from "react";
-import SortArrayDisplay from "./SortArrayDisplay";
-import { PlayContext } from "./PlayContext";
+import { PlayContext, StepContext } from "./PlayContext";
 import SortAlgorithmVisualizer from "./SortAlgorithmVisualizer";
 
 function PlayVisualizer({ registry, Background }) {
 	const {
-		activeAlgorithmsCategory: category,
+		category,
 		algorithmInput: input,
-		globalStep: stepIndex,
 		changeGlobalStepsLength,
 	} = useContext(PlayContext);
+
+	const { globalStep: stepIndex } = useContext(StepContext);
 
 	const handlePassedStepsLength = stepsLength => {
 		changeGlobalStepsLength(stepsLength);

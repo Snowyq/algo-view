@@ -1,9 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import SortArrayDisplay from "./SortArrayDisplay";
-import useSortAlgorithm from "../../hooks/useAlgorithm";
+import useAlgorithm from "../../hooks/useAlgorithm";
 import styled from "styled-components";
 import ButtonIcon from "../../ui/ButtonIcon";
 import PlayAlgorithmInstructions from "./PlayAlgorithmInstructions";
+import SortArrayCanvas from "./SortArrayCanvas";
+import { useRect } from "../../hooks/useRect";
+import { useWebWorker } from "../../hooks/useWebWorker";
+import useSortCanvas from "../../hooks/useSortCanvas";
+import Loader from "../../ui/Loader";
 
 const Container = styled.div`
 	display: flex;
@@ -33,15 +38,22 @@ const AlgorithmContainer = styled.div`
 const InstructionsContainer = styled.div`
 	/* width: 100%; */
 	display: flex;
-	/* position: absolute; */
+	position: absolute;
 	font-weight: 700;
-	/* right: 2rem;
+	right: 2rem;
 	padding: 0 1rem;
 	top: 2rem;
-	bottom: 2rem; */
+	bottom: 2rem;
 	z-index: 100;
-	backdrop-filter: blur(2px);
+	backdrop-filter: blur(4px);
 	flex-direction: column;
+`;
+
+const Sizer = styled.div`
+	width: 100%;
+	height: 100%;
+	position: relative;
+	overflow: hidden;
 `;
 
 const Options = styled.div`
@@ -60,27 +72,15 @@ function SortAlgorithmVisualizer({
 	stepIndex,
 	passStepsLength,
 }) {
+	const { ref, rect } = useRect();
 	const [localStepIndex, setCurrStepIndex] = useState(stepIndex);
-	const { getState, getStep, getArrayLength, getMaxValue, getStepsLength } =
-		useSortAlgorithm(registry.Class, input);
+	const { getStepsLength } = useAlgorithm(registry.Class, input);
 
-	const step = getStep(localStepIndex);
-	const arrayLength = getArrayLength();
+	// pass stepsLength to parentComponent
 	const stepsLength = getStepsLength();
-	const state = getState(localStepIndex);
-	const maxValue = getMaxValue();
-
 	useEffect(() => {
 		passStepsLength(stepsLength);
 	}, [stepsLength, passStepsLength]);
-
-	useEffect(() => {
-		setCurrStepIndex(() => {
-			if (stepIndex >= stepsLength - 1) return stepsLength - 1;
-			else if (stepIndex <= 0) return 0;
-			else return stepIndex;
-		});
-	}, [stepIndex, stepsLength]);
 
 	return (
 		<Container>
@@ -91,22 +91,22 @@ function SortAlgorithmVisualizer({
 			</Options> */}
 			<Body>
 				<AlgorithmContainer>
-					<SortArrayDisplay
-						registry={registry}
-						arrayLength={arrayLength}
-						step={step}
-						state={state}
-						maxValue={maxValue}
-						blockValueDisplayThreshold={30}
-					/>
+					<Sizer ref={ref}>
+						<SortArrayCanvas
+							id={registry.id}
+							stepIndex={stepIndex}
+							input={input}
+							parentRect={rect}
+						/>
+					</Sizer>
 				</AlgorithmContainer>
-				<InstructionsContainer>
+				{/* <InstructionsContainer>
 					<p>Instructions</p>
 					<PlayAlgorithmInstructions
 						instructions={registry.instructions}
 						step={step}
 					/>
-				</InstructionsContainer>
+				</InstructionsContainer> */}
 			</Body>
 		</Container>
 	);

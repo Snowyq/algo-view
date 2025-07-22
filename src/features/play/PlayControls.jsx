@@ -3,7 +3,7 @@ import ControlBar from "../../ui/ControlBar";
 import PlayWindow from "./PlayWindow";
 import AlgorithmControls from "./AlgorithmControls";
 import { useContext } from "react";
-import { PlayContext } from "./PlayContext";
+import { PlayContext, StepContext } from "./PlayContext";
 
 const Background = styled.div`
 	/* background-color: yellow; */
@@ -21,7 +21,7 @@ const Container = styled.div`
 
 function PlayControls() {
 	const { decreaseGlobalStep, globalStep, increaseGlobalStep } =
-		useContext(PlayContext);
+		useContext(StepContext);
 
 	return (
 		<PlayWindow>

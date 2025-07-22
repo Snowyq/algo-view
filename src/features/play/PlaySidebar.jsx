@@ -1,22 +1,8 @@
 import styled from "styled-components";
 import PlayWindow from "./PlayWindow";
-import { useContext } from "react";
+import React, { useContext, useMemo } from "react";
 import { PlayContext } from "./PlayContext";
 import { getAlgorithmRegistriesByCategory } from "../../algorithms/algorithmsRegistry";
-
-const StyledPlaySidebar = styled.div`
-	background-color: var(--color-grey-100);
-	width: 100%;
-	height: 100%;
-	box-shadow: 1px 1px 15px 5px var(--color-grey-300);
-	border: 5px solid var(--color-grey-200);
-	border-radius: 2.5rem;
-	padding: 2rem;
-	gap: 2rem;
-	display: flex;
-	flex-direction: column;
-	overflow-y: auto;
-`;
 
 const AlgorithmSelection = styled.div`
 	background-color: var(--color-grey-50);
@@ -34,11 +20,12 @@ const InputContainer = styled.div`
 	flex-direction: column;
 `;
 
-function PlaySidebar() {
-	const { activeAlgorithmsCategory } = useContext(PlayContext);
-	const algorithms = getAlgorithmRegistriesByCategory(
-		activeAlgorithmsCategory
-	);
+function PlaySidebarComponent() {
+	const { category } = useContext(PlayContext);
+
+	const algorithmsRegistries = useMemo(() => {
+		return getAlgorithmRegistriesByCategory(category);
+	}, [category]);
 
 	return (
 		<PlayWindow>
@@ -47,7 +34,7 @@ function PlaySidebar() {
 				<InputContainer>
 					<label>Select category</label>
 					<select></select>
-					{algorithms.map(registry => {
+					{algorithmsRegistries.map(registry => {
 						return <p>{registry.meta.name}</p>;
 					})}
 				</InputContainer>
@@ -70,5 +57,7 @@ function PlaySidebar() {
 		</PlayWindow>
 	);
 }
+
+const PlaySidebar = React.memo(PlaySidebarComponent);
 
 export default PlaySidebar;

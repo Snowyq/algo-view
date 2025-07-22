@@ -61,4 +61,22 @@ export class SelectionSort extends SortAlgorithm {
 		}
 		return arr;
 	}
+
+	static getInstructions() {
+		const instructions = {
+			i0: { line: `for (let i = 0; i < n; i++) {`, indent: 0 },
+			i1: { line: `let minIdx = i;`, indent: 1 },
+			i2: { line: `for (let j = i + 1; j < n; j++) {`, indent: 1 },
+			i3: { line: `if (arr[j] < arr[minIdx]) {`, indent: 2 },
+			i4: { line: `minIdx = j;`, indent: 3 },
+			ie3: { line: `}`, indent: 2 },
+			ie2: { line: `}`, indent: 1 },
+			i5: {
+				line: `[arr[i], arr[minIdx]] = [arr[minIdx], arr[i]];`,
+				indent: 1,
+			},
+			ie0: { line: `}`, indent: 0 },
+		};
+		return instructions;
+	}
 }

@@ -43,13 +43,25 @@ export class SortAlgorithm extends Algorithm {
 		this.createSteps();
 	}
 
+	changeInput(array) {
+		this.array = array;
+		this.reset();
+	}
+
 	use() {
 		return {
 			steps: this.getSteps(),
 			operations: this.getOperations(),
+			array: this.getArray(),
+			minValue: this.getArrayMinMax().min,
+			maxValue: this.getArrayMinMax().max,
 			name: this.name,
 			complexity: this.complexity,
 		};
+	}
+
+	data() {
+		return this.use();
 	}
 
 	createStep(step) {
@@ -174,12 +186,17 @@ export class SortAlgorithm extends Algorithm {
 		return this.resultArray.slice();
 	}
 
-	getArrayMinMax() {
+	#calcArrayMinMax() {
 		const arr = this.getArray();
-		return {
-			min: Math.min(...arr),
-			max: Math.max(...arr),
-		};
+		this.minValue = Math.min(...arr);
+		this.maxValue = Math.max(...arr);
+	}
+
+	getArrayMinMax() {
+		if (isNaN(this.minValue) || isNaN(this.maxValue)) {
+			this.#calcArrayMinMax();
+		}
+		return { min: this.minValue, max: this.maxValue };
 	}
 
 	getOperationIdByStepIndex(stepIndex) {
@@ -208,9 +225,6 @@ export class SortAlgorithm extends Algorithm {
 		if (closestState) {
 			state = closestState.item.slice();
 			stateId = closestState.key;
-			// console.log("=================================");
-			// console.log("cached", operationId, "->", stateId, state);
-			// console.log("=================================");
 		}
 		if (stateId === operationId) return state;
 
@@ -219,29 +233,16 @@ export class SortAlgorithm extends Algorithm {
 			while (counter - 1 > operationId) {
 				counter--;
 				const operation = operations[counter];
-				// console.log("-----------------------------");
-				// console.log(operationId, counter, operation);
-				// console.log("before", state);
 				this.makeOperation(operation, state);
-				// console.log("after", state);
-				// console.log("-----------------------------");
 			}
 		} else if (stateId < operationId) {
 			let counter = stateId;
 			while (counter < operationId) {
 				counter++;
 				const operation = operations[counter];
-				// console.log("-----------------------------");
-				// console.log(operationId, counter, operation);
-				// console.log("before", state);
 				this.makeOperation(operation, state);
-				// console.log("after", state);
-				// console.log("-----------------------------");
 			}
 		}
-		// console.log("\\\\\\\\\\\\\\\\\\");
-		// console.log("end", state);
-		// console.log("\\\\\\\\\\\\\\\\\\");
 		return state;
 	}
 
@@ -261,9 +262,9 @@ export class SortAlgorithm extends Algorithm {
 		return this.array.length;
 	}
 
-	sort() {}
-
 	getArray() {
 		return this.array.slice();
 	}
+
+	sort() {}
 }
