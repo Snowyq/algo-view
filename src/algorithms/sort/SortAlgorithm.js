@@ -1,3 +1,4 @@
+import { clamp } from "../../utils/values";
 import { Algorithm } from "../Algorithm";
 import { CacheManager } from "../CacheManager";
 import { OptionsManager } from "../OptionsManager";
@@ -82,7 +83,9 @@ export class SortAlgorithm extends Algorithm {
 
 	getStepByIndex(index) {
 		const steps = this.getSteps();
-		if (steps) return steps[index];
+		const stepIndex = clamp(index, 0, steps.length - 1);
+		const step = steps[stepIndex];
+		return step;
 	}
 
 	createOperation(type, elements) {
@@ -163,6 +166,7 @@ export class SortAlgorithm extends Algorithm {
 	createSteps() {
 		const dir = this.direction;
 		const arr = this.getArray();
+
 		this.createStep({
 			type: "initial",
 			activeItems: [],
@@ -199,9 +203,11 @@ export class SortAlgorithm extends Algorithm {
 		return { min: this.minValue, max: this.maxValue };
 	}
 
-	getOperationIdByStepIndex(stepIndex) {
+	getOperationIdByStepIndex(index) {
 		const steps = this.getSteps();
+		const stepIndex = clamp(index, 0, steps.length - 1);
 		// From given state find closest prev state with assigned operationId
+
 		if (steps[stepIndex].prevOperationId) {
 			return steps[stepIndex].prevOperationId;
 		}
@@ -255,7 +261,8 @@ export class SortAlgorithm extends Algorithm {
 
 	getStateByStepsIndex(stepIndex) {
 		const operationId = this.getOperationIdByStepIndex(stepIndex);
-		return this.getStateByOperationId(operationId);
+		const state = this.getStateByOperationId(operationId);
+		return state;
 	}
 
 	getArrayLength() {

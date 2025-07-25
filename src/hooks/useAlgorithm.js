@@ -6,7 +6,6 @@ export default function useAlgorithm(Class, input) {
 		return instance;
 	}, [Class, input]);
 
-	const init = input => algorithmInstance?.init(input);
 	const getStepsLength = () => algorithmInstance?.getStepsLength();
 
 	const getState = stepIndex =>

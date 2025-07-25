@@ -8,7 +8,7 @@ const StyledPlayWindow = styled.div`
 	height: 100%;
 	width: 100%;
 	background-color: ${({ color }) => color || "var(--color-grey-200)"};
-	box-shadow: 0.25rem 0.25rem 0px 3px var(--color-grey-300);
+	box-shadow: 0.3rem 0.3rem 0px 3px var(--color-grey-300);
 
 	/* border: 0.75rem solid var(--color-grey-300); */
 	border-radius: 2.5rem;
@@ -31,7 +31,7 @@ const Grid = styled.div`
 	height: 100%;
 	width: 100%;
 	display: grid;
-	gap: 1rem;
+	gap: 0.5rem;
 
 	${({ type }) => gridTypes[type] || ""}
 `;
@@ -46,6 +46,8 @@ const CloseButtonHolder = styled.div`
 const StyledHeader = styled.div`
 	font-size: 2rem;
 	font-weight: 600;
+	margin-left: 2rem;
+	padding-top: 1rem;
 	display: flex;
 	border-radius: 15px;
 	justify-content: space-between;

@@ -1,59 +1,74 @@
 import styled from "styled-components";
 import PlayWindow from "./PlayWindow";
-import React, { useContext, useMemo } from "react";
+import React, { useContext } from "react";
 import { PlayContext } from "./PlayContext";
-import { getAlgorithmRegistriesByCategory } from "../../algorithms/algorithmsRegistry";
+import CustomSelect from "../../ui/CustomSelect";
+import MultiSelect from "../../ui/MultiSelect";
 
-const AlgorithmSelection = styled.div`
-	background-color: var(--color-grey-50);
-	border: 5px solid var(--color-grey-200);
-	border-radius: 2rem;
+const Category = styled.div`
+	display: flex;
+	flex-direction: column;
 	gap: 1rem;
-	display: flex;
-	flex-direction: column;
-	padding: 1rem;
+	padding: 2rem;
 `;
-
-const InputContainer = styled.div`
-	padding: 0.5rem;
-	display: flex;
-	flex-direction: column;
-`;
+const Algorithms = styled.div``;
 
 function PlaySidebarComponent() {
-	const { category } = useContext(PlayContext);
+	const {
+		activeCategory,
+		activeAlgorithms,
+		changeActiveAlgorithms,
+		openAlgorithm,
+		closeAlgorithm,
+		changeActiveCategory,
+		categories,
+		algorithms,
+	} = useContext(PlayContext);
 
-	const algorithmsRegistries = useMemo(() => {
-		return getAlgorithmRegistriesByCategory(category);
-	}, [category]);
+	const categoriesOptions = categories.map(cat => {
+		return { value: cat.id, label: cat.name };
+	});
+
+	const algorithmsOptions = algorithms.map(algo => {
+		return { value: algo.id, label: algo.meta.name };
+	});
+
+	const handleCategoryChange = option => {
+		changeActiveCategory(option.value);
+	};
+
+	const handleAlgorithmSelect = option => {
+		openAlgorithm(option.value);
+	};
+
+	const handleAlgorithmDeselect = option => {
+		closeAlgorithm(option.value);
+	};
+
+	const handleAlgorithmsChange = options => {
+		const ids = options.map(option => option.value);
+		changeActiveAlgorithms(ids);
+	};
 
 	return (
 		<PlayWindow>
-			<AlgorithmSelection>
-				<h3>Algorithm Selection</h3>
-				<InputContainer>
-					<label>Select category</label>
-					<select></select>
-					{algorithmsRegistries.map(registry => {
-						return <p>{registry.meta.name}</p>;
-					})}
-				</InputContainer>
-				<InputContainer>
-					<label>Select algorithms</label>
-					<select></select>
-				</InputContainer>
-			</AlgorithmSelection>
-			<AlgorithmSelection>
-				<h3>Algorithm Selection</h3>
-				<InputContainer>
-					<label>Select category</label>
-					<select></select>
-				</InputContainer>
-				<InputContainer>
-					<label>Select algorithms</label>
-					<select></select>
-				</InputContainer>
-			</AlgorithmSelection>
+			<Category>
+				<p>Select Category</p>
+				<CustomSelect
+					selected={activeCategory}
+					options={categoriesOptions}
+					onChange={handleCategoryChange}
+				/>
+			</Category>
+			<Algorithms>
+				<MultiSelect
+					defaultOptions={activeAlgorithms.map(algo => algo.id)}
+					options={algorithmsOptions}
+					onChange={handleAlgorithmsChange}
+					onSelect={handleAlgorithmSelect}
+					onDeselect={handleAlgorithmDeselect}
+				/>
+			</Algorithms>
 		</PlayWindow>
 	);
 }

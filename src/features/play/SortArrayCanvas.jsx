@@ -1,5 +1,4 @@
 import React, { useRef, useEffect } from "react";
-import { useRect } from "../../hooks/useRect";
 import useSortCanvas from "../../hooks/useSortCanvas";
 import useRateLimit from "../../hooks/useRateLimit";
 
@@ -7,7 +6,7 @@ function SortArrayCanvas({
 	input,
 	id,
 	stepIndex,
-	blockProportion = 1,
+	blockProportion = 0.8,
 	parentRect,
 }) {
 	const ref = useRef();
@@ -22,10 +21,8 @@ function SortArrayCanvas({
 		changeSettings({ blockProportion });
 	}, [blockProportion, changeSettings]);
 
-	const rateLimitedChangeSize = useRateLimit(
-		() => changeSize(parentRect),
-		100
-	);
+	const resize = () => changeSize(parentRect);
+	const rateLimitedChangeSize = useRateLimit(resize, 100);
 
 	useEffect(() => {
 		if (parentRect?.width && parentRect?.height) {

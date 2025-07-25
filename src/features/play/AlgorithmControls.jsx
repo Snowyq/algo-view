@@ -61,7 +61,6 @@ function AlgorithmControls({
 }) {
 	return (
 		<StyledAlgorithmControls>
-			<ControlBar progress={progress} updateProgress={updateProgress} />
 			<Container>
 				<Group type="main">
 					<ControlButton Icon={<FaBackward />}>

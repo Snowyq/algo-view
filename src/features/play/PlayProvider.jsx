@@ -1,10 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { PlayContext, StepContext } from "./PlayContext";
 import { generateRandomArray } from "../../utils/randoms";
-import {
-	getAlgorithmRegistriesByCategory,
-	getCategoriesInRegistry,
-} from "../../algorithms/algorithmsRegistry";
+import registryApi from "../../algorithms/algorithmsRegistryApi";
 
 const DEFAULT_INPUT = [
 	19, 28, 12, 27, 20, 11, 30, 15, 9, 4, 23, 2, 29, 25, 14, 12, 8, 3, 18, 10,
@@ -15,100 +12,89 @@ const DEFAULT_INPUT = [
 // const DEFAULT_INPUT = [10, 25, 13, 11, 5, 7, 10, 22, 19, 4];
 // const DEFAULT_INPUT = generateRandomArray(300, 0, 30);
 
-const DEFAULT_ALGOS = ["bubbleSort", "selectionSort"];
+const DEFAULT_ALGOS = ["bubbleSort"];
 
 function PlayProvider({ children }) {
-	const [category, setCategory] = useState("sort");
-	const [algorithms, setAlgorithms] = useState(DEFAULT_ALGOS);
+	const [activeCategory, setActiveCategory] = useState("sort");
+	const [activeAlgorithms, setActiveAlgorithms] = useState(DEFAULT_ALGOS);
 	const [algorithmInput, setAlgorithmInput] = useState(DEFAULT_INPUT);
-	const [globalStep, setGlobalStep] = useState(1000);
-	const [globalStepsLength, setGlobalStepsLength] = useState(0);
+	const categories = registryApi.getCategories();
+	const categoriesLogs = registryApi.getCategoriesLogs();
+	const algorithms = registryApi.getRegistriesByCategory(activeCategory);
 
 	const changeInput = useCallback(newInput => {
 		setAlgorithmInput(newInput);
 	}, []);
 
-	const changeCategory = useCallback(newCategory => {
-		if (!getCategoriesInRegistry().includes(newCategory)) return;
-		setCategory(newCategory);
-	}, []);
-
-	const changeGlobalStep = useCallback(newStep => {
-		setGlobalStep(newStep);
-	}, []);
-
-	const increaseGlobalStep = useCallback(
-		val => {
-			setGlobalStep(prev => Math.min(prev + val, globalStepsLength - 1));
+	const changeActiveCategory = useCallback(
+		newCategory => {
+			if (!categoriesLogs.includes(newCategory)) return;
+			setActiveAlgorithms([]);
+			setActiveCategory(newCategory);
 		},
-		[globalStepsLength]
+		[categoriesLogs]
 	);
-
-	const decreaseGlobalStep = useCallback(val => {
-		setGlobalStep(prev => Math.max(prev - val, 0));
-	}, []);
-
-	const changeGlobalStepsLength = useCallback(length => {
-		setGlobalStepsLength(prev => (prev < length ? length : prev));
-	}, []);
 
 	const openAlgorithm = useCallback(
 		algorithmId => {
-			const algorithmsInActiveCategory =
-				getAlgorithmRegistriesByCategory(category);
-			if (!algorithmsInActiveCategory.includes(algorithmId)) return;
-			setAlgorithms(algos => [...algos, algorithmId]);
+			const algorithmRegistry = registryApi.getAlgorithmRegistry(
+				activeCategory,
+				algorithmId
+			);
+			if (!algorithmRegistry) return;
+			setActiveAlgorithms(algos => [...algos, algorithmId]);
 		},
-		[category]
+		[activeCategory]
 	);
 
 	const closeAlgorithm = useCallback(algorithmId => {
-		setAlgorithms(algos => {
+		setActiveAlgorithms(algos => {
 			if (!algos.includes(algorithmId)) return algos;
 			return algos.filter(algoId => algoId !== algorithmId);
 		});
 	}, []);
 
-	// === Memoized Context Values ===
-	const stepContextValue = useMemo(
-		() => ({
-			globalStep,
-			changeGlobalStep,
-			decreaseGlobalStep,
-			increaseGlobalStep,
-		}),
-		[globalStep, changeGlobalStep, decreaseGlobalStep, increaseGlobalStep]
+	const changeActiveAlgorithms = useCallback(
+		algorithmsIds => {
+			const registries = algorithmsIds
+				.map(id => registryApi.getAlgorithmRegistry(activeCategory, id))
+				.filter(Boolean);
+			setActiveAlgorithms(registries);
+		},
+		[activeCategory]
 	);
 
 	const playContextValue = useMemo(
 		() => ({
 			openAlgorithm,
 			closeAlgorithm,
-			category,
-			changeCategory,
+			changeActiveAlgorithms,
+			activeCategory,
+			changeActiveCategory,
 			changeInput,
-			algorithms,
+			activeAlgorithms,
 			algorithmInput,
-			changeGlobalStepsLength,
+			categories,
+			algorithms,
 		}),
 		[
 			openAlgorithm,
 			closeAlgorithm,
-			category,
-			changeCategory,
+			changeActiveAlgorithms,
+			activeCategory,
+			changeActiveCategory,
 			changeInput,
-			algorithms,
+			activeAlgorithms,
 			algorithmInput,
-			changeGlobalStepsLength,
+			categories,
+			algorithms,
 		]
 	);
 
 	return (
-		<StepContext.Provider value={stepContextValue}>
-			<PlayContext.Provider value={playContextValue}>
-				{children}
-			</PlayContext.Provider>
-		</StepContext.Provider>
+		<PlayContext.Provider value={playContextValue}>
+			{children}
+		</PlayContext.Provider>
 	);
 }
 
