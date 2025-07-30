@@ -2,7 +2,7 @@ import styled, { css } from "styled-components";
 import PlayAlgorithmWindow from "./PlayAlgorithmWindow";
 import { useContext } from "react";
 import { PlayContext } from "./PlayContext";
-import { getAlgorithmRegistry } from "../../algorithms/algorithmsRegistry";
+import registryApi from "../../algorithms/algorithmsRegistryApi";
 
 const StyledPlayViewArea = styled.div`
 	height: 100%;
@@ -32,7 +32,14 @@ const categories = {
 			grid-template-rows: 1fr 1fr 1fr;
 			grid-template-columns: 1fr 1fr;
 		`,
+		9: css`
+			grid-template-rows: 1fr 1fr 1fr;
+			grid-template-columns: 1fr 1fr 1fr;
+		`,
 	},
+	default: css`
+		grid-template-rows: 0;
+	`,
 };
 
 const Grid = styled.div`
@@ -43,22 +50,19 @@ const Grid = styled.div`
 	height: 100%;
 	width: 100%;
 
-	${({ category, num }) => categories[category][num]}
+	${({ category, num }) =>
+		categories?.[category]?.[num] || categories["default"]}
 `;
 
 function PlayDisplayedAlgorithmsArea() {
-	const { activeAlgorithms, activeAlgorithmsCategory } =
-		useContext(PlayContext);
+	const { activeAlgorithms, activeCategory } = useContext(PlayContext);
 
 	return (
 		<StyledPlayViewArea>
-			<Grid
-				num={activeAlgorithms.length}
-				category={activeAlgorithmsCategory}
-			>
+			<Grid num={activeAlgorithms.length} category={activeCategory}>
 				{activeAlgorithms.map((id, index) => {
-					const registry = getAlgorithmRegistry(
-						activeAlgorithmsCategory,
+					const registry = registryApi.getAlgorithmRegistry(
+						activeCategory,
 						id
 					);
 					return (

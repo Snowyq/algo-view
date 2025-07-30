@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import styled, { css } from "styled-components";
 
 const Instructions = styled.div`
@@ -62,12 +63,12 @@ const instructionVariations = {
 		--dot-color: var(--color-green-500);
 	`,
 };
-const Instruction = styled.p`
+const Instruction = styled.div`
 	position: relative;
 	${({ $stepType }) => instructionVariations[$stepType]}
 	white-space: pre-wrap;
 	text-wrap: nowrap;
-	font-weight: 400;
+	font-weight: 600;
 	line-height: 1;
 	color: var(--color-grey-500);
 	border-radius: 15px;
@@ -110,7 +111,6 @@ const LineNum = styled.span`
 `;
 
 function isActiveInstruction(stepInstructionId, registryInstructionId) {
-	console.log(stepInstructionId, registryInstructionId);
 	return (
 		stepInstructionId &&
 		registryInstructionId &&
@@ -123,7 +123,9 @@ function isActiveInstruction(stepInstructionId, registryInstructionId) {
 }
 
 function createIndent(indentLength) {
-	return Array.from({ length: indentLength }).map(() => <span> </span>);
+	return Array.from({ length: indentLength }).map((_, index) => (
+		<span key={index}> </span>
+	));
 }
 
 function generateInstructions(instructions, step, indentLevel, baseLevel) {
@@ -135,6 +137,7 @@ function generateInstructions(instructions, step, indentLevel, baseLevel) {
 
 		return (
 			<Instruction
+				key={index}
 				$isActive={isActive}
 				status={status}
 				type={type}
@@ -156,11 +159,11 @@ function PlayAlgorithmInstructions({
 	indentLevel = 4,
 	baseLevel = 0,
 }) {
-	return (
-		<Instructions>
-			{generateInstructions(instructions, step, indentLevel, baseLevel)}
-		</Instructions>
-	);
+	const renderedInstructions = useMemo(() => {
+		return generateInstructions(instructions, step, indentLevel, baseLevel);
+	}, [instructions, step, indentLevel, baseLevel]);
+
+	return <Instructions>{renderedInstructions}</Instructions>;
 }
 
 export default PlayAlgorithmInstructions;

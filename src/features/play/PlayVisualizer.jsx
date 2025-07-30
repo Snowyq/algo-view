@@ -1,21 +1,18 @@
 import { useContext } from "react";
-import SortArrayDisplay from "./SortArrayDisplay";
-import { PlayContext } from "./PlayContext";
+import { PlayContext, StepContext } from "./PlayContext";
 import SortAlgorithmVisualizer from "./SortAlgorithmVisualizer";
 
 function PlayVisualizer({ registry, Background }) {
-	const {
-		activeAlgorithmsCategory: category,
-		algorithmInput: input,
-		globalStep: stepIndex,
-		changeGlobalStepsLength,
-	} = useContext(PlayContext);
+	const { activeCategory, algorithmInput: input } = useContext(PlayContext);
+
+	const { globalStep: stepIndex, changeGlobalStepsLength } =
+		useContext(StepContext);
 
 	const handlePassedStepsLength = stepsLength => {
 		changeGlobalStepsLength(stepsLength);
 	};
 
-	if (category === "sort")
+	if (activeCategory === "sort")
 		return (
 			<SortAlgorithmVisualizer
 				input={input}

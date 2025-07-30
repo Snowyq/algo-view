@@ -3,7 +3,7 @@ import { findClosest, insertSorted, removeSorted } from "../utils/arrays";
 export class CacheManager {
 	MAX_PERSISTENT_CACHE_SIZE = 100000;
 	MAX_DYNAMIC_CACHE_SIZE = 100;
-	DEFAULT_PERSISTENT_CACHE_SIZE = 100000;
+	DEFAULT_PERSISTENT_CACHE_SIZE = 10000;
 	DEFAULT_DYNAMIC_CACHE_SIZE = 30;
 	group;
 

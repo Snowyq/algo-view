@@ -1,9 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import SortArrayDisplay from "./SortArrayDisplay";
-import useSortAlgorithm from "../../hooks/useAlgorithm";
+import useAlgorithm from "../../hooks/useAlgorithm";
 import styled from "styled-components";
 import ButtonIcon from "../../ui/ButtonIcon";
 import PlayAlgorithmInstructions from "./PlayAlgorithmInstructions";
+import SortArrayCanvas from "./SortArrayCanvas";
+import { useRect } from "../../hooks/useRect";
+import Loader from "../../ui/Loader";
+import { IoSettings } from "react-icons/io5";
+import { IoMdClose } from "react-icons/io";
 
 const Container = styled.div`
 	display: flex;
@@ -22,7 +27,7 @@ const Body = styled.div`
 const AlgorithmContainer = styled.div`
 	width: 100%;
 	height: 100%;
-	padding: 4rem;
+	padding: 2rem;
 	display: flex;
 	gap: 2rem;
 	background-color: var(--color-grey-50);
@@ -33,21 +38,38 @@ const AlgorithmContainer = styled.div`
 const InstructionsContainer = styled.div`
 	/* width: 100%; */
 	display: flex;
-	/* position: absolute; */
+	position: absolute;
 	font-weight: 700;
-	/* right: 2rem;
+	right: 2rem;
 	padding: 0 1rem;
 	top: 2rem;
-	bottom: 2rem; */
+	bottom: 2rem;
 	z-index: 100;
-	backdrop-filter: blur(2px);
+	backdrop-filter: blur(4px);
 	flex-direction: column;
+`;
+
+const Sizer = styled.div`
+	width: 100%;
+	height: 100%;
+	position: relative;
+	overflow: hidden;
+`;
+
+const Header = styled.div`
+	width: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 0 0.5rem;
+	padding-bottom: 0.5rem;
+	/* background-color: blue; */
 `;
 
 const Options = styled.div`
 	display: flex;
-	padding: 0.7rem;
-	align-self: end;
+	align-items: center;
+	gap: 0.5rem;
 `;
 
 const Option = styled(ButtonIcon)`
@@ -60,53 +82,46 @@ function SortAlgorithmVisualizer({
 	stepIndex,
 	passStepsLength,
 }) {
+	const { ref, rect } = useRect();
 	const [localStepIndex, setCurrStepIndex] = useState(stepIndex);
-	const { getState, getStep, getArrayLength, getMaxValue, getStepsLength } =
-		useSortAlgorithm(registry.Class, input);
-
-	const step = getStep(localStepIndex);
-	const arrayLength = getArrayLength();
+	const { getStepsLength } = useAlgorithm(registry.Class, input);
+	// pass stepsLength to parentComponent
 	const stepsLength = getStepsLength();
-	const state = getState(localStepIndex);
-	const maxValue = getMaxValue();
-
 	useEffect(() => {
 		passStepsLength(stepsLength);
 	}, [stepsLength, passStepsLength]);
 
-	useEffect(() => {
-		setCurrStepIndex(() => {
-			if (stepIndex >= stepsLength - 1) return stepsLength - 1;
-			else if (stepIndex <= 0) return 0;
-			else return stepIndex;
-		});
-	}, [stepIndex, stepsLength]);
-
 	return (
 		<Container>
-			{/* <Options>
-				<Option>
-					<IoSettings />
-				</Option>
-			</Options> */}
+			<Header>
+				<h3>{registry.meta.name}</h3>
+				{/* <Options>
+					<Option>
+						<IoSettings />
+					</Option>
+					<Option>
+						<IoMdClose />
+					</Option>
+				</Options> */}
+			</Header>
 			<Body>
 				<AlgorithmContainer>
-					<SortArrayDisplay
-						registry={registry}
-						arrayLength={arrayLength}
-						step={step}
-						state={state}
-						maxValue={maxValue}
-						blockValueDisplayThreshold={30}
-					/>
+					<Sizer ref={ref}>
+						<SortArrayCanvas
+							id={registry.id}
+							stepIndex={stepIndex}
+							input={input}
+							parentRect={rect}
+						/>
+					</Sizer>
 				</AlgorithmContainer>
-				<InstructionsContainer>
+				{/* <InstructionsContainer>
 					<p>Instructions</p>
 					<PlayAlgorithmInstructions
 						instructions={registry.instructions}
 						step={step}
 					/>
-				</InstructionsContainer>
+				</InstructionsContainer> */}
 			</Body>
 		</Container>
 	);

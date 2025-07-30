@@ -1,3 +1,4 @@
+import { clamp } from "../../utils/values";
 import { Algorithm } from "../Algorithm";
 import { CacheManager } from "../CacheManager";
 import { OptionsManager } from "../OptionsManager";
@@ -43,13 +44,25 @@ export class SortAlgorithm extends Algorithm {
 		this.createSteps();
 	}
 
+	changeInput(array) {
+		this.array = array;
+		this.reset();
+	}
+
 	use() {
 		return {
 			steps: this.getSteps(),
 			operations: this.getOperations(),
+			array: this.getArray(),
+			minValue: this.getArrayMinMax().min,
+			maxValue: this.getArrayMinMax().max,
 			name: this.name,
 			complexity: this.complexity,
 		};
+	}
+
+	data() {
+		return this.use();
 	}
 
 	createStep(step) {
@@ -70,7 +83,9 @@ export class SortAlgorithm extends Algorithm {
 
 	getStepByIndex(index) {
 		const steps = this.getSteps();
-		if (steps) return steps[index];
+		const stepIndex = clamp(index, 0, steps.length - 1);
+		const step = steps[stepIndex];
+		return step;
 	}
 
 	createOperation(type, elements) {
@@ -151,6 +166,7 @@ export class SortAlgorithm extends Algorithm {
 	createSteps() {
 		const dir = this.direction;
 		const arr = this.getArray();
+
 		this.createStep({
 			type: "initial",
 			activeItems: [],
@@ -174,17 +190,24 @@ export class SortAlgorithm extends Algorithm {
 		return this.resultArray.slice();
 	}
 
-	getArrayMinMax() {
+	#calcArrayMinMax() {
 		const arr = this.getArray();
-		return {
-			min: Math.min(...arr),
-			max: Math.max(...arr),
-		};
+		this.minValue = Math.min(...arr);
+		this.maxValue = Math.max(...arr);
 	}
 
-	getOperationIdByStepIndex(stepIndex) {
+	getArrayMinMax() {
+		if (isNaN(this.minValue) || isNaN(this.maxValue)) {
+			this.#calcArrayMinMax();
+		}
+		return { min: this.minValue, max: this.maxValue };
+	}
+
+	getOperationIdByStepIndex(index) {
 		const steps = this.getSteps();
+		const stepIndex = clamp(index, 0, steps.length - 1);
 		// From given state find closest prev state with assigned operationId
+
 		if (steps[stepIndex].prevOperationId) {
 			return steps[stepIndex].prevOperationId;
 		}
@@ -208,9 +231,6 @@ export class SortAlgorithm extends Algorithm {
 		if (closestState) {
 			state = closestState.item.slice();
 			stateId = closestState.key;
-			// console.log("=================================");
-			// console.log("cached", operationId, "->", stateId, state);
-			// console.log("=================================");
 		}
 		if (stateId === operationId) return state;
 
@@ -219,29 +239,16 @@ export class SortAlgorithm extends Algorithm {
 			while (counter - 1 > operationId) {
 				counter--;
 				const operation = operations[counter];
-				// console.log("-----------------------------");
-				// console.log(operationId, counter, operation);
-				// console.log("before", state);
 				this.makeOperation(operation, state);
-				// console.log("after", state);
-				// console.log("-----------------------------");
 			}
 		} else if (stateId < operationId) {
 			let counter = stateId;
 			while (counter < operationId) {
 				counter++;
 				const operation = operations[counter];
-				// console.log("-----------------------------");
-				// console.log(operationId, counter, operation);
-				// console.log("before", state);
 				this.makeOperation(operation, state);
-				// console.log("after", state);
-				// console.log("-----------------------------");
 			}
 		}
-		// console.log("\\\\\\\\\\\\\\\\\\");
-		// console.log("end", state);
-		// console.log("\\\\\\\\\\\\\\\\\\");
 		return state;
 	}
 
@@ -254,16 +261,17 @@ export class SortAlgorithm extends Algorithm {
 
 	getStateByStepsIndex(stepIndex) {
 		const operationId = this.getOperationIdByStepIndex(stepIndex);
-		return this.getStateByOperationId(operationId);
+		const state = this.getStateByOperationId(operationId);
+		return state;
 	}
 
 	getArrayLength() {
 		return this.array.length;
 	}
 
-	sort() {}
-
 	getArray() {
 		return this.array.slice();
 	}
+
+	sort() {}
 }

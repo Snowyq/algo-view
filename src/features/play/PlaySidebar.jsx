@@ -1,74 +1,127 @@
-import styled from "styled-components";
+import styled, { css } from "styled-components";
 import PlayWindow from "./PlayWindow";
-import { useContext } from "react";
+import React, { useContext, useState } from "react";
 import { PlayContext } from "./PlayContext";
-import { getAlgorithmRegistriesByCategory } from "../../algorithms/algorithmsRegistry";
+import CustomSelect from "../../ui/Select";
+import MultiSelect from "../../ui/MultiSelect";
+import ButtonIcon from "../../ui/ButtonIcon";
+import { GoSidebarCollapse } from "react-icons/go";
+import Select from "../../ui/Select";
+
+const Category = styled.div`
+	display: flex;
+	flex-direction: column;
+	gap: 1rem;
+`;
 
 const StyledPlaySidebar = styled.div`
-	background-color: var(--color-grey-100);
-	width: 100%;
-	height: 100%;
-	box-shadow: 1px 1px 15px 5px var(--color-grey-300);
-	border: 5px solid var(--color-grey-200);
-	border-radius: 2.5rem;
-	padding: 2rem;
-	gap: 2rem;
-	display: flex;
-	flex-direction: column;
-	overflow-y: auto;
+	max-width: 24rem;
+	min-width: 15rem;
+	width: ${({ $isOpened }) => ($isOpened ? "30%" : "5rem")};
 `;
 
-const AlgorithmSelection = styled.div`
-	background-color: var(--color-grey-50);
-	border: 5px solid var(--color-grey-200);
-	border-radius: 2rem;
+const Container = styled.div`
+	display: flex;
+	flex-direction: column;
+	padding: 0 2rem;
 	gap: 1rem;
-	display: flex;
-	flex-direction: column;
-	padding: 1rem;
 `;
 
-const InputContainer = styled.div`
-	padding: 0.5rem;
+const Close = styled.div`
 	display: flex;
-	flex-direction: column;
+	justify-content: end;
+	align-items: center;
 `;
 
-function PlaySidebar() {
-	const { activeAlgorithmsCategory } = useContext(PlayContext);
-	const algorithms = getAlgorithmRegistriesByCategory(
-		activeAlgorithmsCategory
-	);
+const Algorithms = styled.div``;
+const Tools = styled.div`
+	padding: 0.5rem 1rem;
+`;
+const Body = styled.div`
+	padding: 0.5rem 0;
+`;
+
+function PlaySidebarComponent() {
+	const {
+		activeCategory,
+		activeAlgorithms,
+		changeActiveAlgorithms,
+		openAlgorithm,
+		closeAlgorithm,
+		changeActiveCategory,
+		categories,
+		algorithms,
+	} = useContext(PlayContext);
+
+	const [isOpened, setIsOpened] = useState(true);
+
+	const categoriesOptions = categories.map(cat => {
+		return { value: cat.id, label: cat.name };
+	});
+
+	const algorithmsOptions = algorithms.map(algo => {
+		return { value: algo.id, label: algo.meta.name };
+	});
+
+	const handleCategoryChange = e => {
+		console.log(e.target.value);
+		changeActiveCategory(e.target.value);
+	};
+
+	const handleAlgorithmSelect = option => {
+		openAlgorithm(option.value);
+	};
+
+	const handleAlgorithmDeselect = option => {
+		closeAlgorithm(option.value);
+	};
+
+	const handleAlgorithmsChange = options => {
+		const ids = options.map(option => option.value);
+		changeActiveAlgorithms(ids);
+	};
+
+	const handleToggleSidebar = () => {
+		setIsOpened(is => !is);
+	};
+	console.log(isOpened);
 
 	return (
-		<PlayWindow>
-			<AlgorithmSelection>
-				<h3>Algorithm Selection</h3>
-				<InputContainer>
-					<label>Select category</label>
-					<select></select>
-					{algorithms.map(registry => {
-						return <p>{registry.meta.name}</p>;
-					})}
-				</InputContainer>
-				<InputContainer>
-					<label>Select algorithms</label>
-					<select></select>
-				</InputContainer>
-			</AlgorithmSelection>
-			<AlgorithmSelection>
-				<h3>Algorithm Selection</h3>
-				<InputContainer>
-					<label>Select category</label>
-					<select></select>
-				</InputContainer>
-				<InputContainer>
-					<label>Select algorithms</label>
-					<select></select>
-				</InputContainer>
-			</AlgorithmSelection>
-		</PlayWindow>
+		<StyledPlaySidebar $isOpened={isOpened}>
+			<PlayWindow $isOpened={isOpened}>
+				<Body>
+					<Tools>
+						<Close>
+							<ButtonIcon onClick={handleToggleSidebar}>
+								<GoSidebarCollapse />
+							</ButtonIcon>
+						</Close>
+					</Tools>
+					<Container $isOpened={isOpened}>
+						<Category>
+							<p>Select Category</p>
+							<Select
+								selected={activeCategory}
+								options={categoriesOptions}
+								onChange={handleCategoryChange}
+							/>
+						</Category>
+						<Algorithms>
+							<MultiSelect
+								selected={activeAlgorithms.map(algo => algo.id)}
+								options={algorithmsOptions}
+								onChange={handleAlgorithmsChange}
+								onSelect={handleAlgorithmSelect}
+								onDeselect={handleAlgorithmDeselect}
+							/>
+						</Algorithms>
+					</Container>
+				</Body>
+			</PlayWindow>
+		</StyledPlaySidebar>
 	);
 }
+
+const PlaySidebar = React.memo(PlaySidebarComponent);
 
 export default PlaySidebar;

@@ -19,11 +19,6 @@ export class Algorithm {
 		groups: [],
 	};
 
-	constructor() {
-		// this.optionsManager = new OptionsManager(this.options);
-		// this.cacheManager = new CacheManager(this.cache);
-	}
-
 	getSteps() {
 		return this.steps.slice();
 	}

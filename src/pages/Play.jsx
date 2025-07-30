@@ -1,11 +1,14 @@
 import PlayLayout from "../features/play/PlayLayout";
 import PlayProvider from "../features/play/PlayProvider";
+import { StepProvider } from "../features/play/StepProvider";
 
 function Play() {
 	return (
-		<PlayProvider>
-			<PlayLayout />
-		</PlayProvider>
+		<StepProvider>
+			<PlayProvider>
+				<PlayLayout />
+			</PlayProvider>
+		</StepProvider>
 	);
 }
 
