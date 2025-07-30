@@ -86,8 +86,7 @@ const StyledNavLink = styled(NavLink)`
 const Nav = styled.nav`
 	display: flex;
 	gap: 2.4rem;
-	font-size: 1.6rem;
-	font-size: 16px;
+	/* font-size: 1.6rem; */
 	justify-content: center;
 	align-items: center;
 `;

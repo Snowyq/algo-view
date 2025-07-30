@@ -4,9 +4,13 @@ const StyledMultiSelect = styled.div`
 	width: 100%;
 `;
 
-function MultiSelect({ defaultOption }) {
+const Options = styled.div``;
+
+function MultiSelect({ selected }) {
 	return (
-		<StyledMultiSelect>{/* <Selected>{}</Selected> */}</StyledMultiSelect>
+		<StyledMultiSelect>
+			<Options></Options>
+		</StyledMultiSelect>
 	);
 }
 

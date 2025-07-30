@@ -1,159 +1,335 @@
-import styled from "styled-components";
-import { useRect } from "../hooks/useRect";
-import { useCallback, useEffect, useRef, useState } from "react";
-import useRateLimit from "../hooks/useRateLimit";
-import { clamp } from "../utils/values";
+import styled, { css } from "styled-components";
+import React, {
+	createContext,
+	useCallback,
+	useContext,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 
-const StyledSlider = styled.div`
-	width: 100%;
-	height: 100%;
-	display: flex;
-	align-items: center;
-	gap: 2rem;
-	background-color: var(--color-grey-400);
-	/* padding-left: ${({ size }) => size / 2 + "px"};
-	padding-right: ${({ size }) => size / 2 + "px"}; */
-`;
+/* -------------------------------------------------------------------------- */
+/*                              Styled Components                             */
+/* -------------------------------------------------------------------------- */
 
-const Dot = styled.div`
-	position: absolute;
-	background-color: var(--color-grey-50);
-	border-radius: 50%;
-	width: ${({ size }) => size + "px"};
-	height: ${({ size }) => size + "px"};
-
-	top: 50%;
-	translate: -50% -50%;
-	z-index: 1;
-	box-shadow: 1px 1px 0px 1px var(--color-grey-400);
-	cursor: pointer;
-
-	&::before {
-		content: "";
-		position: absolute;
-		left: 3px;
-		right: 3px;
-		top: 3px;
-		bottom: 3px;
-		z-index: -10;
-		border-radius: 50%;
-		background-color: var(--color-grey-500);
-	}
-`;
-const DotContainer = styled.div`
+const SliderContainer = styled.div`
 	position: relative;
 	width: 100%;
 	height: 100%;
+
 	cursor: pointer;
 `;
 
-const Display = styled.div`
+const DotContainer = styled.div`
 	position: absolute;
-	top: calc(-100% - 1.2rem);
-	left: 50%;
-	translate: -50% 0;
-	background-color: var(--color-grey-600);
-	border-radius: 5px;
-	padding: 0 0.3rem;
-	color: white;
-	opacity: ${({ $isDragging }) => ($isDragging ? 1 : 0)};
+	top: 50%;
+	height: 100%;
 	pointer-events: none;
-
-	${Dot}:hover & {
-		opacity: 1;
-	}
+	translate: -50% -50%;
+	z-index: 1000;
 `;
 
+const HoverDotContainer = styled.div`
+	position: absolute;
+	top: 50%;
+	height: 100%;
+	opacity: 0;
+	pointer-events: none;
+	translate: -50% -50%;
+	z-index: 500;
+`;
+
+const TooltipContainer = styled.div`
+	position: absolute;
+	pointer-events: none;
+	top: 50%;
+	opacity: 0;
+	height: 100%;
+	z-index: 750;
+	user-select: none;
+`;
+
+const ProgressContainer = styled.div`
+	position: absolute;
+	left: 0;
+	bottom: 0;
+	top: 0;
+	transition: width ${({ transition = 0 }) => transition}s;
+`;
+
+/* -------------------------------------------------------------------------- */
+/*                               Compound Parent                              */
+/* -------------------------------------------------------------------------- */
+
+const SliderContext = createContext();
+
 function Slider({
+	children,
+	value: stateValue,
+	maxValue,
+	minValue = 0,
+	snapToValue = true,
 	onChange,
 	onMouseUp,
-	onChangeInterval = 100,
-	display,
-	progress: stateProgress,
 }) {
-	const [isDragging, setIsDragging] = useState(false);
-	const [isInitialized, setIsInitialized] = useState(true);
+	/* ---------------------------------- Refs ---------------------------------- */
 
+	const tooltipRef = useRef();
+	const sliderRef = useRef();
 	const dotRef = useRef();
-	const { ref: dotContainerRef, rect: dotContainerRect } = useRect();
-	const limitedOnChange = useRateLimit(onChange, onChangeInterval);
+	const hoverDotRef = useRef();
+	const progressFillRef = useRef();
+	const prevVal = useRef();
 
-	const moveDot = useCallback(
-		progress => {
-			if (!dotRef.current || !dotContainerRect) return;
-			const clampedProgress = clamp(progress, 0, 1);
-			const percent = clampedProgress * 100;
-			dotRef.current.style.left = percent + "%";
+	/* --------------------------------- States --------------------------------- */
+
+	const [isDragging, setIsDragging] = useState(false);
+	const [tooltipValue, setTooltipValue] = useState(0);
+
+	/* --------------------------------- Helpers -------------------------------- */
+
+	const changeValue = useCallback(
+		value => {
+			if (!prevVal.current || prevVal.current !== value) {
+				prevVal.current = value;
+				onChange?.(value);
+			}
 		},
-		[dotContainerRect, dotRef]
+		[onChange]
 	);
 
-	const calculateProgress = useCallback(
-		event => {
-			const x = event.clientX - dotContainerRect.left;
-			const progress = clamp(x / dotContainerRect.width, 0, 1);
-			return progress;
+	// Dot
+	const moveDot = progress => setNodeLeft(dotRef, progress);
+
+	// hoverDot
+	const moveHoverDot = progress => setNodeLeft(hoverDotRef, progress);
+	const showHoverDot = () => setNodeOpacity(hoverDotRef, 1);
+	const hideHoverDot = () => setNodeOpacity(hoverDotRef, 0);
+
+	// Tooltip
+	const moveTooltip = progress => setNodeLeft(tooltipRef, progress);
+	const showTooltip = () => setNodeOpacity(tooltipRef, 1);
+	const hideTooltip = () => setNodeOpacity(tooltipRef, 0);
+
+	// ProgressFill
+	const setProgressFill = progress => setNodeRight(progressFillRef, progress);
+
+	// calculates final progress for moving dotes and tooltip
+	const getFinalProgressAndValue = useCallback(
+		e => {
+			if (!sliderRef.current || !e) return;
+			const parent = sliderRef.current.getBoundingClientRect();
+			const mouseX = e.clientX;
+			const progress = calcProgress(mouseX, parent.x, parent.width);
+			const value = getValueFromProgress(progress, minValue, maxValue);
+
+			let finalProgress;
+			if (snapToValue) {
+				finalProgress = getProgressFromValue(value, minValue, maxValue);
+			} else finalProgress = progress;
+
+			return { value, progress: finalProgress };
 		},
-		[dotContainerRect]
+		[sliderRef, maxValue, minValue, snapToValue]
 	);
+
+	/* ----------------------------- Event Listeners ---------------------------- */
+
+	const handleDotDrag = useCallback(
+		e => {
+			const { value } = getFinalProgressAndValue(e);
+			changeValue(value);
+		},
+		[getFinalProgressAndValue, changeValue]
+	);
+
+	const handleMouseMove = e => {
+		const { progress, value } = getFinalProgressAndValue(e);
+
+		if (isDragging) {
+			hideHoverDot();
+		} else {
+			showHoverDot();
+			moveHoverDot(progress);
+			setTooltipValue(value);
+			moveTooltip(progress);
+		}
+	};
 
 	const handleMouseDown = e => {
-		const progress = calculateProgress(e);
-		moveDot(progress);
-		limitedOnChange?.(progress);
+		disableSelection();
+		const { value } = getFinalProgressAndValue(e);
+		changeValue(value);
 		setIsDragging(true);
-		e.preventDefault();
 	};
 
 	const handleMouseUp = useCallback(() => {
+		enableSelection();
 		setIsDragging(false);
+		hideTooltip();
 		onMouseUp?.();
-	}, [onMouseUp]);
+	}, [setIsDragging, onMouseUp]);
 
-	const handleMouseMove = useCallback(
-		e => {
-			if (!isDragging) return;
-			const progress = calculateProgress(e);
-			moveDot(progress);
-			limitedOnChange?.(progress);
-		},
-		[isDragging, calculateProgress, limitedOnChange, moveDot]
+	const handleMouseEnter = () => {
+		showTooltip();
+	};
+
+	const handleMouseLeave = () => {
+		hideHoverDot();
+		if (!isDragging) {
+			hideTooltip();
+		}
+	};
+
+	/* --------------------------------- Effects -------------------------------- */
+
+	useEffect(() => {
+		if (isDragging) {
+			document.addEventListener("mousemove", handleDotDrag);
+			document.addEventListener("mouseup", handleMouseUp);
+		} else {
+			document.removeEventListener("mousemove", handleDotDrag);
+			document.removeEventListener("mouseup", handleMouseUp);
+		}
+		return () => {
+			document.removeEventListener("mousemove", handleDotDrag);
+			document.removeEventListener("mouseup", handleMouseUp);
+		};
+	}, [handleDotDrag, handleMouseUp, isDragging]);
+
+	useEffect(() => {
+		const progress = getProgressFromValue(stateValue, minValue, maxValue);
+		moveDot(progress);
+		setProgressFill(progress);
+		if (isDragging) {
+			moveTooltip(progress);
+			setTooltipValue(stateValue);
+		}
+	}, [stateValue, minValue, maxValue, isDragging, setTooltipValue]);
+
+	/* ------------------------- Context Provider Value ------------------------- */
+
+	const value = useMemo(
+		() => ({
+			dotRef,
+			hoverDotRef,
+			tooltipRef,
+			progressFillRef,
+			tooltipValue,
+		}),
+		[dotRef, hoverDotRef, tooltipRef, progressFillRef, tooltipValue]
 	);
 
-	const addListeners = useCallback(() => {
-		document.addEventListener("mousemove", handleMouseMove);
-		document.addEventListener("mouseup", handleMouseUp);
-	}, [handleMouseMove, handleMouseUp]);
-
-	const removeListeners = useCallback(() => {
-		document.removeEventListener("mousemove", handleMouseMove);
-		document.removeEventListener("mouseup", handleMouseUp);
-	}, [handleMouseMove, handleMouseUp]);
-
-	useEffect(() => {
-		if (isDragging) addListeners();
-		else removeListeners();
-		return removeListeners;
-	}, [isDragging, removeListeners, addListeners]);
-
-	useEffect(() => {
-		moveDot(stateProgress);
-	}, [stateProgress, moveDot]);
+	/* --------------------------------- Render --------------------------------- */
 
 	return (
-		<StyledSlider>
-			<DotContainer ref={dotContainerRef} onMouseDown={handleMouseDown}>
-				<Dot
-					size={16}
-					ref={dotRef}
-					onMouseDown={handleMouseDown}
-					$isInitialized={isInitialized}
-				>
-					<Display $isDragging={isDragging}>{display}</Display>
-				</Dot>
-			</DotContainer>
-		</StyledSlider>
+		<SliderContext.Provider value={value}>
+			<SliderContainer
+				ref={sliderRef}
+				onMouseDown={handleMouseDown}
+				onMouseUp={handleMouseUp}
+				onMouseLeave={handleMouseLeave}
+				onMouseMove={handleMouseMove}
+				onMouseEnter={handleMouseEnter}
+			>
+				{children}
+			</SliderContainer>
+		</SliderContext.Provider>
 	);
 }
 
+/* -------------------------------------------------------------------------- */
+/*                               Compound Children                            */
+/* -------------------------------------------------------------------------- */
+
+function Dot({ children }) {
+	const { dotRef } = useContext(SliderContext);
+	return (
+		<DotContainer ref={dotRef}>
+			{children && React.cloneElement(children)}
+		</DotContainer>
+	);
+}
+
+function HoverDot({ children }) {
+	const { hoverDotRef } = useContext(SliderContext);
+
+	return (
+		<HoverDotContainer ref={hoverDotRef}>
+			{children && React.cloneElement(children)}
+		</HoverDotContainer>
+	);
+}
+
+function Tooltip({ children, modifyValue = val => val }) {
+	const { tooltipRef, tooltipValue } = useContext(SliderContext);
+	const value = modifyValue(tooltipValue);
+	return (
+		<TooltipContainer ref={tooltipRef}>
+			{children && React.cloneElement(children, { children: value })}
+		</TooltipContainer>
+	);
+}
+
+function ProgressFill({ children, transition }) {
+	const { progressFillRef } = useContext(SliderContext);
+	return (
+		<ProgressContainer ref={progressFillRef} transition={transition}>
+			{children && React.cloneElement(children)}
+		</ProgressContainer>
+	);
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                   Helpers                                  */
+/* -------------------------------------------------------------------------- */
+
+const calcProgress = (mouseX, parentX, parentWidth) => {
+	const x = mouseX - parentX;
+	const progress = clamp(x / parentWidth, 0, 1);
+	return progress;
+};
+
+const setNodeLeft = (ref, left) => {
+	if (!ref.current) return;
+	ref.current.style.left = left * 100 + "%";
+};
+
+const setNodeRight = (ref, right) => {
+	if (!ref.current) return;
+	ref.current.style.width = right * 100 + "%";
+};
+
+const setNodeOpacity = (ref, opacity) => {
+	if (!ref.current) return;
+	ref.current.style.opacity = opacity;
+};
+
+const getValueFromProgress = (progress, minValue, maxValue) => {
+	const value = Math.round(progress * (maxValue - minValue) + minValue);
+	return value;
+};
+
+const getProgressFromValue = (value, min, max) => {
+	const progress = (value - min) / (max - min);
+	return clamp(progress, 0, 1);
+};
+
+function clamp(value, min, max) {
+	return Math.min(Math.max(value, min), max);
+}
+
+const disableSelection = () => {
+	document.body.style.userSelect = "none";
+};
+
+const enableSelection = () => {
+	document.body.style.userSelect = "auto";
+};
+
+Slider.ProgressFill = ProgressFill;
+Slider.Dot = Dot;
+Slider.HoverDot = HoverDot;
+Slider.Tooltip = Tooltip;
 export default Slider;

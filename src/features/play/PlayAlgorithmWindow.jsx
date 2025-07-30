@@ -20,11 +20,9 @@ function PlayAlgorithmWindow({ registry }) {
 	return (
 		<Container>
 			<PlayWindow>
-				<PlayWindow.Body>
-					<VisualizerContainer>
-						<PlayVisualizer registry={registry} />
-					</VisualizerContainer>
-				</PlayWindow.Body>
+				<VisualizerContainer>
+					<PlayVisualizer registry={registry} />
+				</VisualizerContainer>
 			</PlayWindow>
 		</Container>
 	);

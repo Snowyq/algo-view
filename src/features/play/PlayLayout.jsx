@@ -46,8 +46,7 @@ const Container = styled.div`
 	padding: 5rem;
 	height: 100%;
 	width: 100%;
-	display: grid;
-	grid-template-columns: 1fr 30rem;
+	display: flex;
 	gap: 5rem;
 	margin: 0 auto;
 `;
@@ -64,9 +63,9 @@ function PlayLayout() {
 		<StyledPlayground>
 			<DottedBackground
 				bg="var(--color-grey-100)"
-				color="var(--color-grey-400)"
+				color="var(--color-grey-200)"
 				size="2px"
-				space="1.5rem"
+				space="0.5rem"
 			/>
 			<Container>
 				<PlayMain>

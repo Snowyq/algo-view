@@ -23,6 +23,8 @@ import {
 import PlaySlider from "./PlaySlider";
 import PlayControlsButton from "./PlayControlsButton";
 import PlayStopButton from "../../ui/PlayStopButton";
+import Slider from "../../ui/Slider";
+import PlaySpeed from "./PlaySpeed";
 
 const Flex = styled.div`
 	display: flex;
@@ -34,6 +36,8 @@ const Group = styled.div``;
 
 const StyledPlayControls = styled(Flex)`
 	flex-direction: column;
+	height: 100%;
+	width: 100%;
 `;
 
 const Progress = styled.span`
@@ -42,19 +46,30 @@ const Progress = styled.span`
 `;
 
 const ProgressBar = styled(Flex)`
-	width: 80%;
+	width: 100%;
 	gap: 0.2rem;
 	flex-direction: column;
 `;
 
-const Container = styled(Flex)``;
+const Container = styled(Flex)`
+	width: 80%;
+	flex-direction: column;
+	gap: 1rem;
+`;
 
 const Controls = styled(Flex)`
 	display: flex;
-	justify-content: center;
+	justify-content: space-between;
+	width: 100%;
 	align-items: center;
-	flex-direction: column;
+	/* flex-direction: column; */
+
 	height: 100%;
+`;
+
+const SpeedSlider = styled.div`
+	width: 50px;
+	height: 5px;
 `;
 
 function PlayControls() {
@@ -65,15 +80,20 @@ function PlayControls() {
 		globalStepsLength,
 		changeGlobalStep,
 	} = useContext(StepContext);
+	const { animationSpeeds, activeCategory } = useContext(PlayContext);
+	const speeds = animationSpeeds[activeCategory];
 
 	const globalStepRef = useRef(globalStep);
 	const animationIntervalRef = useRef(null);
 	const animationTimeoutRef = useRef(null);
-	const [animationIntervalValue, setAnimationIntervalValue] = useState(5);
-	const progress = globalStep / globalStepsLength;
-	const progressString = `${globalStep} / ${globalStepsLength - 1}`;
-	const [isPlaying, setIsPlaying] = useState();
 	const wasPlayingRef = useRef(false);
+
+	const [isPlaying, setIsPlaying] = useState(false);
+	const [animationIntervalValue, setAnimationIntervalValue] = useState(
+		speeds[Math.round(speeds.length / 2)]
+	);
+
+	const progressString = `${globalStep} / ${globalStepsLength - 1}`;
 
 	const clearAnimationTimeout = () => {
 		if (animationTimeoutRef.current) {
@@ -111,13 +131,12 @@ function PlayControls() {
 		setIsPlaying(false);
 	};
 
-	const handleSliderChange = progress => {
-		const newStep = Math.round(globalStepsLength * progress);
+	const handleSliderChange = value => {
 		if (animationIntervalRef.current !== null) {
 			wasPlayingRef.current = true;
 		}
 		clearAnimationInterval();
-		changeGlobalStep(newStep);
+		changeGlobalStep(value);
 	};
 
 	const handleSliderMouseUp = () => {
@@ -135,7 +154,11 @@ function PlayControls() {
 		decreaseGlobalStep(steps);
 	};
 
-	const handleAnimationSpeedChange = progress => {};
+	const changeSpeed = val => {
+		stopAnimation();
+		setAnimationIntervalValue(val);
+		startAnimation();
+	};
 
 	useEffect(() => {
 		return () => clearAnimationInterval();
@@ -147,19 +170,26 @@ function PlayControls() {
 
 	return (
 		<PlayWindow>
-			<PlayWindow.Body>
-				<StyledPlayControls>
+			<StyledPlayControls>
+				<Container>
 					<ProgressBar>
 						<Progress>{progressString}</Progress>
 						<PlaySlider
-							display={globalStep}
-							handleSliderChange={handleSliderChange}
-							handleSliderMouseUp={handleSliderMouseUp}
-							progress={progress}
-							maxDisplay={globalStepsLength - 1}
+							onChange={handleSliderChange}
+							onMouseUp={handleSliderMouseUp}
+							value={globalStep}
+							min={0}
+							max={globalStepsLength - 1}
 						/>
 					</ProgressBar>
 					<Controls>
+						<Group>
+							<PlaySpeed
+								speed={animationIntervalValue}
+								speeds={speeds}
+								onChange={changeSpeed}
+							/>
+						</Group>
 						<Group>
 							<PlayControlsButton
 								icon={<FaBackward />}
@@ -175,9 +205,15 @@ function PlayControls() {
 								onClick={() => forward(1)}
 							/>
 						</Group>
+						<Group>
+							<PlayControlsButton
+								icon={<FaBackward />}
+								onClick={() => backward(1)}
+							/>
+						</Group>
 					</Controls>
-				</StyledPlayControls>
-			</PlayWindow.Body>
+				</Container>
+			</StyledPlayControls>
 		</PlayWindow>
 	);
 }

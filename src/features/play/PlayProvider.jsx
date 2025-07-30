@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { PlayContext, StepContext } from "./PlayContext";
 import { generateRandomArray } from "../../utils/randoms";
 import registryApi from "../../algorithms/algorithmsRegistryApi";
+import { AVAILABLE_SORT_ANIMATION_SPEEDS } from "../../utils/constants";
 
 const DEFAULT_INPUT = [
 	19, 28, 12, 27, 20, 11, 30, 15, 9, 4, 23, 2, 29, 25, 14, 12, 8, 3, 18, 10,
@@ -13,6 +14,9 @@ const DEFAULT_INPUT = [
 // const DEFAULT_INPUT = generateRandomArray(300, 0, 30);
 
 const DEFAULT_ALGOS = ["bubbleSort"];
+const animationSpeeds = {
+	sort: AVAILABLE_SORT_ANIMATION_SPEEDS,
+};
 
 function PlayProvider({ children }) {
 	const [activeCategory, setActiveCategory] = useState("sort");
@@ -76,6 +80,7 @@ function PlayProvider({ children }) {
 			algorithmInput,
 			categories,
 			algorithms,
+			animationSpeeds,
 		}),
 		[
 			openAlgorithm,
