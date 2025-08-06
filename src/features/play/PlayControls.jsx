@@ -58,18 +58,9 @@ const Container = styled(Flex)`
 `;
 
 const Controls = styled(Flex)`
-	display: flex;
-	justify-content: space-between;
 	width: 100%;
-	align-items: center;
-	/* flex-direction: column; */
-
 	height: 100%;
-`;
-
-const SpeedSlider = styled.div`
-	width: 50px;
-	height: 5px;
+	justify-content: space-between;
 `;
 
 function PlayControls() {
@@ -82,7 +73,6 @@ function PlayControls() {
 	} = useContext(StepContext);
 	const { animationSpeeds, activeCategory } = useContext(PlayContext);
 	const speeds = animationSpeeds[activeCategory];
-
 	const globalStepRef = useRef(globalStep);
 	const animationIntervalRef = useRef(null);
 	const animationTimeoutRef = useRef(null);
@@ -109,7 +99,7 @@ function PlayControls() {
 		}
 	};
 
-	const startAnimation = () => {
+	const startAnimation = interval => {
 		if (globalStep >= globalStepsLength - 1) return;
 		clearAnimationTimeout();
 		if (animationIntervalRef.current) return;
@@ -120,7 +110,7 @@ function PlayControls() {
 			} else {
 				increaseGlobalStep(1);
 			}
-		}, animationIntervalValue);
+		}, interval);
 		animationIntervalRef.current = id;
 		setIsPlaying(true);
 	};
@@ -142,7 +132,10 @@ function PlayControls() {
 	const handleSliderMouseUp = () => {
 		clearAnimationTimeout();
 		if (wasPlayingRef.current) {
-			let id = setTimeout(startAnimation, 100);
+			let id = setTimeout(
+				() => startAnimation(animationIntervalValue),
+				100
+			);
 			animationTimeoutRef.current = id;
 		}
 	};
@@ -157,7 +150,7 @@ function PlayControls() {
 	const changeSpeed = val => {
 		stopAnimation();
 		setAnimationIntervalValue(val);
-		startAnimation();
+		startAnimation(val);
 	};
 
 	useEffect(() => {
@@ -196,7 +189,9 @@ function PlayControls() {
 								onClick={() => backward(1)}
 							/>
 							<PlayStopButton
-								onStart={startAnimation}
+								onStart={() =>
+									startAnimation(animationIntervalValue)
+								}
 								onStop={stopAnimation}
 								isStopped={!isPlaying}
 							/>

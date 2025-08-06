@@ -4,11 +4,11 @@ import { StepProvider } from "../features/play/StepProvider";
 
 function Play() {
 	return (
-		<StepProvider>
-			<PlayProvider>
+		<PlayProvider>
+			<StepProvider>
 				<PlayLayout />
-			</PlayProvider>
-		</StepProvider>
+			</StepProvider>
+		</PlayProvider>
 	);
 }
 

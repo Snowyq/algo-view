@@ -55,7 +55,7 @@ const ProgressContainer = styled.div`
 	left: 0;
 	bottom: 0;
 	top: 0;
-	transition: width ${({ transition = 0 }) => transition}s;
+	transition: width ${({ transition = 0 }) => transition + "s"};
 `;
 
 /* -------------------------------------------------------------------------- */
@@ -164,12 +164,18 @@ function Slider({
 		setIsDragging(true);
 	};
 
-	const handleMouseUp = useCallback(() => {
-		enableSelection();
-		setIsDragging(false);
-		hideTooltip();
-		onMouseUp?.();
-	}, [setIsDragging, onMouseUp]);
+	const handleMouseUp = useCallback(
+		e => {
+			enableSelection();
+			setIsDragging(false);
+			const rect = sliderRef.current.getBoundingClientRect();
+			if (!isMouseOverRect(e, rect)) {
+				hideTooltip();
+			}
+			onMouseUp?.();
+		},
+		[setIsDragging, onMouseUp]
+	);
 
 	const handleMouseEnter = () => {
 		showTooltip();
@@ -327,6 +333,19 @@ const disableSelection = () => {
 const enableSelection = () => {
 	document.body.style.userSelect = "auto";
 };
+
+function isMouseOverRect(mouseEvent, rect) {
+	const mouseX = mouseEvent.clientX;
+	const mouseY = mouseEvent.clientY;
+
+	// rect should be an object like: { x: number, y: number, width: number, height: number }
+	return (
+		mouseX >= rect.x &&
+		mouseX <= rect.x + rect.width &&
+		mouseY >= rect.y &&
+		mouseY <= rect.y + rect.height
+	);
+}
 
 Slider.ProgressFill = ProgressFill;
 Slider.Dot = Dot;

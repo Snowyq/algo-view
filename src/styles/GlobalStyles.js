@@ -129,6 +129,18 @@ const GlobalStyles = createGlobalStyle`
 
   --nav-height: 5rem;
   
+
+    /* Step colors for canvas or animation types */
+  --color-step-swap: var(--color-blue-400);         /* #60a5fa */
+  --color-step-select: var(--color-pink-400);       /* #f472b6 */
+  --color-step-check: var(--color-yellow-400);      /* #facc15 */
+  --color-step-check-true: var(--color-green-400);  /* #4ade80 */
+  --color-step-check-false: var(--color-red-400);   /* #f87171 */
+  --color-step-check-value: var(--color-yellow-400);      /* same as --check */
+  --color-step-check-value-true: var(--color-green-400);  /* same as --check:true */
+  --color-step-check-value-false: var(--color-red-400);   /* same as --check:false */
+  --color-step-assign: #000;
+  --color-step-finish: var(--color-cyan-400);       /* #22d3ee */
 }
 
 *,

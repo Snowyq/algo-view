@@ -1,8 +1,8 @@
 import { SortAlgorithm } from "./SortAlgorithm";
 
 export class SelectionSort extends SortAlgorithm {
-	constructor(array) {
-		super(array);
+	constructor(...args) {
+		super(...args);
 	}
 
 	sort(arr) {
@@ -12,12 +12,10 @@ export class SelectionSort extends SortAlgorithm {
 			this.selectMany([
 				{
 					index: i,
-
 					options: { mode: "perm", id: "i", instructionId: ["i1"] },
 				},
 				{
 					index: i,
-
 					options: {
 						mode: "perm",
 						id: "minIdx",
@@ -26,6 +24,7 @@ export class SelectionSort extends SortAlgorithm {
 				},
 			]);
 			for (let j = i + 1; j < n; j++) {
+				this.countArrayAccess(2);
 				if (
 					this.check(j, "<", minIdx, arr, { instructionId: ["i3"] })
 				) {
@@ -43,8 +42,10 @@ export class SelectionSort extends SortAlgorithm {
 					id: "minIdx",
 					instructionId: ["i4"],
 				});
-			if (i !== minIdx)
+			if (i !== minIdx) {
+				this.countArrayAccess(2);
 				this.swap(i, minIdx, arr, { instructionId: ["i5"] });
+			}
 		}
 	}
 

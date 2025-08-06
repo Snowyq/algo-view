@@ -118,8 +118,6 @@ export class CacheManager {
 		if (!this.hasGroup(group)) return;
 		const storedKeys = this.getStoredValuesInfo(group);
 		insertSorted(storedKeys, key);
-		// if (!storedKeys.includes(key)) {
-		// }
 		this.cache[group].persistent.values[key] = item;
 	}
 
@@ -170,21 +168,7 @@ export class CacheManager {
 				this.addPersistent(group, index, state.slice());
 			}
 		});
-		// console.log(
-		// 	"stored:",
-		// 	this.cache.state.index.length,
-		// 	"mutations:",
-		// 	mutations.length
-		// );
+
 		return this;
 	}
 }
-
-// let state = array.slice();
-// 	operations.forEach((operation, index, arr) => {
-// 		this.makeOperation(operation, state);
-// 		if (shouldCache(index, arr)) {
-// 			this.addPersistentCache(group, index, state.slice());
-// 			insertSorted(info, index);
-// 		}
-//  	});

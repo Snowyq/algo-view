@@ -3,15 +3,25 @@ import useSortCanvas from "../../hooks/useSortCanvas";
 import useRateLimit from "../../hooks/useRateLimit";
 
 function SortArrayCanvas({
-	input,
 	id,
+	input,
 	stepIndex,
 	blockProportion = 0.8,
 	parentRect,
+	passStepsLength,
+	stepTypes,
+	// ref: passedRef,
 }) {
-	const ref = useRef();
-	const { drawCanvas, changeSize, changeSettings, isLoading, error } =
-		useSortCanvas(id, input, ref);
+	const canvasRef = useRef();
+	const canvasApi = useSortCanvas(id, input, stepTypes, canvasRef);
+	const {
+		drawCanvas,
+		changeSettings,
+		changeSize,
+		resetAlgorithm,
+		changeStepTypes,
+		stepsLength,
+	} = canvasApi;
 
 	useEffect(() => {
 		drawCanvas(stepIndex);
@@ -30,9 +40,19 @@ function SortArrayCanvas({
 		}
 	}, [parentRect, rateLimitedChangeSize]);
 
+	useEffect(() => {
+		console.log(stepsLength);
+		passStepsLength(stepsLength);
+	}, [passStepsLength, stepsLength]);
+
+	useEffect(() => {
+		console.log(stepTypes);
+		resetAlgorithm(input, { stepTypes });
+	}, [stepTypes, resetAlgorithm, input]);
+
 	return (
 		<canvas
-			ref={ref}
+			ref={canvasRef}
 			style={{
 				width: "100%",
 				height: "100%",

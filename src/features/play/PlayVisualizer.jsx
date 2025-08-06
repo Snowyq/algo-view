@@ -5,11 +5,14 @@ import SortAlgorithmVisualizer from "./SortAlgorithmVisualizer";
 function PlayVisualizer({ registry, Background }) {
 	const { activeCategory, algorithmInput: input } = useContext(PlayContext);
 
-	const { globalStep: stepIndex, changeGlobalStepsLength } =
-		useContext(StepContext);
+	const {
+		globalStep: stepIndex,
+		stepTypes,
+		passStepsLength,
+	} = useContext(StepContext);
 
 	const handlePassedStepsLength = stepsLength => {
-		changeGlobalStepsLength(stepsLength);
+		passStepsLength(stepsLength, registry.id);
 	};
 
 	if (activeCategory === "sort")
@@ -17,6 +20,7 @@ function PlayVisualizer({ registry, Background }) {
 			<SortAlgorithmVisualizer
 				input={input}
 				stepIndex={stepIndex}
+				stepTypes={stepTypes}
 				passStepsLength={handlePassedStepsLength}
 				registry={registry}
 				Background={Background}

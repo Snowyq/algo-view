@@ -9,6 +9,7 @@ import { useRect } from "../../hooks/useRect";
 import Loader from "../../ui/Loader";
 import { IoSettings } from "react-icons/io5";
 import { IoMdClose } from "react-icons/io";
+import useSortCanvas from "../../hooks/useSortCanvas";
 
 const Container = styled.div`
 	display: flex;
@@ -81,15 +82,10 @@ function SortAlgorithmVisualizer({
 	input,
 	stepIndex,
 	passStepsLength,
+	stepTypes,
 }) {
 	const { ref, rect } = useRect();
 	const [localStepIndex, setCurrStepIndex] = useState(stepIndex);
-	const { getStepsLength } = useAlgorithm(registry.Class, input);
-	// pass stepsLength to parentComponent
-	const stepsLength = getStepsLength();
-	useEffect(() => {
-		passStepsLength(stepsLength);
-	}, [stepsLength, passStepsLength]);
 
 	return (
 		<Container>
@@ -108,10 +104,12 @@ function SortAlgorithmVisualizer({
 				<AlgorithmContainer>
 					<Sizer ref={ref}>
 						<SortArrayCanvas
+							input={input}
 							id={registry.id}
 							stepIndex={stepIndex}
-							input={input}
 							parentRect={rect}
+							stepTypes={stepTypes}
+							passStepsLength={passStepsLength}
 						/>
 					</Sizer>
 				</AlgorithmContainer>

@@ -3,6 +3,21 @@ import { Algorithm } from "../Algorithm";
 import { CacheManager } from "../CacheManager";
 import { OptionsManager } from "../OptionsManager";
 
+export const sortStepTypes = [
+	"initial",
+	"check",
+	"check-true",
+	"check-false",
+	"check-value",
+	"check-value-true",
+	"check-value-false",
+	"swap",
+	"copy",
+	"select",
+	"finish",
+	"assign",
+];
+
 export class SortAlgorithm extends Algorithm {
 	optionsManager;
 	cacheManager;
@@ -12,33 +27,29 @@ export class SortAlgorithm extends Algorithm {
 	operations = [];
 	selected = [];
 
-	options = {
-		steps: {
-			types: {
-				initial: true,
-				check: true,
-				"check-true": true,
-				"check-false": true,
-				swap: true,
-				select: true,
-				finish: true,
-			},
-		},
+	shouldCountSubArrays = false;
+	shouldCountArrayAccess = false;
+	metrics = {};
+
+	stepTypes = {
+		enabled: [],
+		available: [],
 	};
 
-	constructor(array) {
+	constructor(array, options) {
 		super();
 		this.array = array;
-		this.optionsManager = new OptionsManager(this.options);
 		this.cacheManager = new CacheManager(this.cache);
-		this.init();
+		this.init(options);
 	}
 
-	init() {
+	init(options) {
+		this.setEnabledStepTypes(options?.stepTypes);
 		this.createSteps();
 	}
 
 	reset() {
+		this.selected = [];
 		this.operations = [];
 		this.steps = [];
 		this.createSteps();
@@ -65,19 +76,65 @@ export class SortAlgorithm extends Algorithm {
 		return this.use();
 	}
 
-	createStep(step) {
-		if (this.options.steps.types[step.type]) {
-			this.steps.push({ ...step, selected: this.selected });
+	setEnabledStepTypes(types, shouldReset = false) {
+		if (Array.isArray(types)) {
+			this.stepTypes.enabled = types.slice();
+		} else {
+			this.stepTypes.enabled = sortStepTypes.slice();
 		}
-		if (!("operationId" in step)) {
-			step.prevOperationId =
-				this.operations.length === 0
-					? undefined
-					: this.operations.length - 1;
+
+		if (shouldReset) {
+			this.reset();
 		}
 	}
 
+	addStepTypeToAvailableTypes(type) {
+		if (!this.stepTypes.available.includes(type)) {
+			this.stepTypes.available.push(type);
+		}
+	}
+
+	isStepTypeEnabled(type) {
+		return this.stepTypes.enabled.includes(type);
+	}
+
+	createStep(step) {
+		this.addStepTypeToAvailableTypes(step.type);
+		if (!this.isStepTypeEnabled(step.type)) return;
+		this.assignPrevOperationIdToStep(step);
+
+		const metrics = this.createStepMetrics();
+
+		// finally destructure step into steps creating new object
+		this.steps.push({
+			...step,
+			metrics,
+			selected: this.selected.slice(),
+		});
+	}
+
+	assignPrevOperationIdToStep(step) {
+		if (!("operationId" in step)) {
+			if (this.operations.length > 0) {
+				step.prevOperationId = this.operations.length - 1;
+			}
+		}
+	}
+
+	createStepMetrics() {
+		const metrics = {};
+		for (const key in this.metrics) {
+			metrics[key] = {
+				count: this.metrics[key].count,
+				name: this.metrics[key].name,
+			};
+		}
+
+		return metrics;
+	}
+
 	getSteps() {
+		console.log(this.steps);
 		return this.steps.slice();
 	}
 
@@ -88,64 +145,172 @@ export class SortAlgorithm extends Algorithm {
 		return step;
 	}
 
-	createOperation(type, elements) {
-		this.operations.push({ type, elements });
+	createOperation(type, elements, payload) {
+		this.operations.push({ type, elements, payload });
 		return this.operations.length - 1;
 	}
 
-	swap(index1, index2, arr, options) {
-		const activeItems = [index1, index2];
-		const instructionId = options.instructionId;
-		const actionType = "swap";
-		const operationId = this.createOperation(actionType, activeItems);
-		[arr[index1], arr[index2]] = [arr[index2], arr[index1]];
+	/* -------------------------------------------------------------------------- */
+	/*                                 Step Types                                 */
+	/* -------------------------------------------------------------------------- */
+
+	assign(targetIndex, item, arr, options) {
+		// operation details
+		const type = "assign";
+		const instructionId = options?.instructionId;
+		const payload = item;
+		const activeItems = [targetIndex];
+
+		this.count(type, "assignments");
+
+		// Creates and executes an operation. Saves its id and assigns it to step
+		const operationId = this.createOperation(type, activeItems, payload);
+		this.makeOperation({ type, elements: [targetIndex], payload }, arr);
+
+		// creates step
 		this.createStep({
-			type: actionType,
+			type,
+			activeItems,
+			instructionId,
+			operationId,
+		});
+	}
+
+	copy(targetIndex, copiedIndex, arr, options) {
+		// operation details
+		const type = "copy";
+		const instructionId = options?.instructionId;
+		const payload = arr[copiedIndex];
+		const activeItems = [targetIndex, copiedIndex];
+
+		this.count(type, "copies");
+
+		// Creates and executes an operation. Saves its id and assigns it to step
+		const operationId = this.createOperation(type, activeItems, payload);
+		this.makeOperation({ type, elements: activeItems }, arr);
+
+		// creates step
+		this.createStep({
+			type,
+			activeItems,
+			instructionId,
+			operationId,
+		});
+	}
+
+	swap(index1, index2, arr, options) {
+		// Operation Details
+		const type = "swap";
+		const activeItems = [index1, index2];
+		const instructionId = options?.instructionId;
+
+		this.count(type, "swaps");
+
+		// saves and executes operation
+		const operationId = this.createOperation(type, activeItems);
+		this.makeOperation({ type, elements: activeItems }, arr);
+
+		// creates step and binding operation id with it
+		this.createStep({
+			type,
 			activeItems,
 			operationId,
 			instructionId,
 		});
 	}
 
-	check(index1, operator, index2, arr, options) {
-		const activeItems = [index1, index2];
-		const instructionId = options.instructionId;
+	checkWithValue(index, operator, value, arr, options) {
+		// Operation Details
+		const type = "check-value";
+		const activeItems = [index];
+		const payload = value;
+		const instructionId = options?.instructionId;
+
+		// creates check step
 		this.createStep({
-			type: "check",
+			type,
+			activeItems,
+			operator,
+			payload,
+			instructionId,
+		});
+
+		// creates additional step based on result of comparison
+		const result = this.compare(arr[index], value, operator);
+
+		if (result) {
+			this.createStep({
+				type: "check-value-true",
+				activeItems,
+				payload,
+				instructionId,
+			});
+		} else {
+			this.createStep({
+				type: "check-value-false",
+				activeItems,
+				payload,
+				instructionId,
+			});
+		}
+
+		// return result for easier sort method creation
+		return result;
+	}
+
+	check(index1, operator, index2, arr, options) {
+		// Operation Details
+		const type = "check";
+		const activeItems = [index1, index2];
+		const instructionId = options?.instructionId;
+
+		// creates check step
+		this.createStep({
+			type,
 			activeItems,
 			operator,
 			instructionId,
 		});
-		// Create step for result of comparison
-		const isTrue = this.compare(arr[index1], arr[index2], operator);
-		if (isTrue)
+
+		// creates additional step based on result of comparison
+		const result = this.compare(arr[index1], arr[index2], operator);
+
+		if (result) {
 			this.createStep({ type: "check-true", activeItems, instructionId });
-		else
+		} else {
 			this.createStep({
 				type: "check-false",
 				activeItems,
 				instructionId,
 			});
+		}
 
-		// return Result of comparison for use in if statement
-		return isTrue;
+		// return result for easier sort method creation
+		return result;
 	}
 
 	select(index, options) {
-		if (options.mode === "perm") {
+		// Operation details
+		const type = "select";
+		const activeItems = [index];
+
+		// handles perm selection
+		if (options && options.mode === "perm") {
 			this.selected = this.selected.filter(el => el.id !== options.id);
 			this.selected.push({ id: options.id, index });
 		}
-		this.createStep({
-			type: "select",
-			activeItems: [index],
-			instructionId: options.instructionId,
-		});
+
+		// creates step
+		this.createStep({ type, activeItems });
+	}
+
+	unSelect(id) {
+		this.selected = this.selected.filter(el => el.id !== id);
 	}
 
 	selectMany(selects) {
 		selects.forEach(sel => {
-			if (sel.options.mode === "perm") {
+			if (sel.options && sel.options.mode === "perm") {
 				this.selected = this.selected.filter(
 					el => el.id !== sel.options.id
 				);
@@ -157,10 +322,38 @@ export class SortAlgorithm extends Algorithm {
 			activeItems: selects.map(sel => sel.index),
 			instructionId: [
 				...new Set(
-					selects.map(sel => sel.options.instructionId).flat()
+					selects.map(sel => sel.options?.instructionId).flat()
 				),
 			],
 		});
+	}
+
+	/* -------------------------------------------------------------------------- */
+	/*                                   Metrics                                  */
+	/* -------------------------------------------------------------------------- */
+
+	countArrayAccess(count = 1) {
+		this.count("arrayAccess", "Array Accesses", count);
+	}
+
+	countSubArrays(count = 1) {
+		this.count("subArrays", "Sub Arrays", count);
+	}
+
+	countConditionChecks(count = 1) {
+		this.count("conditionChecks", "Condition Checks", count);
+	}
+
+	countRecursiveCalls(count = 1) {
+		this.count("recursiveCalls", "Recursive Calls", count);
+	}
+
+	count(id, name, count = 1) {
+		if (!(id in this.metrics)) {
+			this.metrics[id] = { count, name: name ? name : id };
+		} else {
+			this.metrics[id].count = this.metrics[id].count + count;
+		}
 	}
 
 	createSteps() {
@@ -205,8 +398,8 @@ export class SortAlgorithm extends Algorithm {
 
 	getOperationIdByStepIndex(index) {
 		const steps = this.getSteps();
+		if (!steps || steps.length === 0) return;
 		const stepIndex = clamp(index, 0, steps.length - 1);
-		// From given state find closest prev state with assigned operationId
 
 		if (steps[stepIndex].prevOperationId) {
 			return steps[stepIndex].prevOperationId;
@@ -257,6 +450,15 @@ export class SortAlgorithm extends Algorithm {
 			const [index1, index2] = operation.elements;
 			[state[index1], state[index2]] = [state[index2], state[index1]];
 		}
+		if (operation.type === "assign") {
+			const [targetIndex] = operation.elements;
+			state[targetIndex] = operation.payload;
+		}
+
+		if (operation.type === "copy") {
+			const [targetIndex, copiedIndex] = operation.elements;
+			state[targetIndex] = state[copiedIndex];
+		}
 	}
 
 	getStateByStepsIndex(stepIndex) {
@@ -274,4 +476,44 @@ export class SortAlgorithm extends Algorithm {
 	}
 
 	sort() {}
+
+	static getInstructions() {}
 }
+
+// assignMany(assignArray, arr) {
+// 		const type = "assign";
+// 		let id;
+// 		let instructionId = [];
+// 		let finalActiveItems = [];
+// 		assignArray.forEach(assign => {
+// 			// operation details
+// 			const targetIndex = assign.targetIndex;
+// 			const itemType = assign.options?.itemType ?? "value"; // value or index
+// 			let instruction = assign.options?.instructionId;
+// 			if (instruction) instructionId.push(instruction);
+// 			// Handling item type
+// 			let payload, activeItems;
+// 			if (itemType === "index") {
+// 				payload = arr[assign.item];
+// 				activeItems = [targetIndex, assign.item];
+// 			} else if (itemType === "value") {
+// 				payload = assign.item;
+// 				activeItems = [targetIndex];
+// 			}
+
+// 			finalActiveItems = finalActiveItems.concat(
+// 				finalActiveItems,
+// 				activeItems
+// 			);
+// 			// Creates and executes an operation. Saves its id and assigns it to step
+// 			id = this.createOperation(type, activeItems, payload);
+// 			this.makeOperation({ type, elements: [targetIndex], payload }, arr);
+// 		});
+
+// 		this.createStep({
+// 			type,
+// 			activeItems: finalActiveItems,
+// 			instructionId,
+// 			operationId: id,
+// 		});
+// 	}
