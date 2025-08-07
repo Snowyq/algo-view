@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from "react";
-import useSortCanvas from "../../hooks/useSortCanvas";
-import useRateLimit from "../../hooks/useRateLimit";
+import useSortCanvas from "../hooks/useSortCanvas";
+import useRateLimit from "../hooks/useRateLimit";
 
 function SortArrayCanvas({
 	id,
@@ -10,7 +10,6 @@ function SortArrayCanvas({
 	parentRect,
 	passStepsLength,
 	stepTypes,
-	// ref: passedRef,
 }) {
 	const canvasRef = useRef();
 	const canvasApi = useSortCanvas(id, input, stepTypes, canvasRef);
@@ -19,7 +18,6 @@ function SortArrayCanvas({
 		changeSettings,
 		changeSize,
 		resetAlgorithm,
-		changeStepTypes,
 		stepsLength,
 	} = canvasApi;
 
@@ -41,12 +39,10 @@ function SortArrayCanvas({
 	}, [parentRect, rateLimitedChangeSize]);
 
 	useEffect(() => {
-		console.log(stepsLength);
 		passStepsLength(stepsLength);
 	}, [passStepsLength, stepsLength]);
 
 	useEffect(() => {
-		console.log(stepTypes);
 		resetAlgorithm(input, { stepTypes });
 	}, [stepTypes, resetAlgorithm, input]);
 
@@ -64,3 +60,13 @@ function SortArrayCanvas({
 }
 
 export default SortArrayCanvas;
+{
+	/* <SortArrayCanvas
+					input={input}
+					id={registry.id}
+					stepIndex={stepIndex}
+					parentRect={rect}
+					stepTypes={stepTypes}
+					passStepsLength={handlePassStepsLength}
+				/> */
+}

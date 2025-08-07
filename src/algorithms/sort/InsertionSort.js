@@ -7,7 +7,7 @@ export class InsertionSort extends SortAlgorithm {
 
 	sort(arr) {
 		for (let i = 1; i < arr.length; i++) {
-			this.select(i);
+			this.select(i, { mode: "perm", id: "i" });
 			this.countArrayAccess();
 			let key = arr[i];
 			let j = i - 1;

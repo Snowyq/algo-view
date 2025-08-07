@@ -140,6 +140,8 @@ const GlobalStyles = createGlobalStyle`
   --color-step-check-value-true: var(--color-green-400);  /* same as --check:true */
   --color-step-check-value-false: var(--color-red-400);   /* same as --check:false */
   --color-step-assign: #000;
+  --color-step-copy: #888;
+  --color-step-copy-to: #444;
   --color-step-finish: var(--color-cyan-400);       /* #22d3ee */
 }
 

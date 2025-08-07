@@ -1,7 +1,6 @@
 import { clamp } from "../../utils/values";
 import { Algorithm } from "../Algorithm";
 import { CacheManager } from "../CacheManager";
-import { OptionsManager } from "../OptionsManager";
 
 export const sortStepTypes = [
 	"initial",
@@ -13,51 +12,94 @@ export const sortStepTypes = [
 	"check-value-false",
 	"swap",
 	"copy",
+	"copy-from",
+	"copy-to",
 	"select",
 	"finish",
 	"assign",
 ];
 
+/* -------------------------------------------------------------------------- */
+/*                                    Class                                   */
+/* -------------------------------------------------------------------------- */
+
 export class SortAlgorithm extends Algorithm {
-	optionsManager;
+	// support instances
 	cacheManager;
-	name;
-	complexity;
-	MAX_GROUP_CACHE_SIZE = 20;
-	operations = [];
-	selected = [];
+	//
 
-	shouldCountSubArrays = false;
-	shouldCountArrayAccess = false;
-	metrics = {};
+	// state
+	array = []; //					input
+	steps = []; // 					algorithm steps
+	operations = []; //				operations (mutates array)
+	selected = []; //				select item between steps - managed by select
+	//								options params
 
+	// config
+	options = {};
 	stepTypes = {
 		enabled: [],
 		available: [],
 	};
+	//
+
+	// metrics
+	shouldCountSubArrays = false;
+	shouldCountArrayAccess = false;
+	metrics = {};
+	//
 
 	constructor(array, options) {
 		super();
+
 		this.array = array;
-		this.cacheManager = new CacheManager(this.cache);
-		this.init(options);
+		this.options = options;
+
+		this.init();
 	}
 
-	init(options) {
-		this.setEnabledStepTypes(options?.stepTypes);
+	/**
+	 * init
+	 * @param {object} options
+	 * set enabled step types (if not provided - all enabled)
+	 * create sort steps only by selected step types
+	 */
+	init() {
+		this.mountCache();
+		this.applyOptions();
+		this.prepareArray();
 		this.createSteps();
 	}
 
+	/**
+	 * reset
+	 * algorithm states are reset
+	 */
 	reset() {
 		this.selected = [];
 		this.operations = [];
 		this.steps = [];
-		this.createSteps();
 	}
 
-	changeInput(array) {
+	update(array, options) {
 		this.array = array;
+		if (options) this.options = { ...this.options, ...options };
+
 		this.reset();
+		this.init();
+	}
+
+	prepareArray() {
+		this.#calcArrayMinMax();
+	}
+
+	applyOptions() {
+		const { stepTypes } = this.options;
+		this.setEnabledStepTypes(stepTypes);
+	}
+
+	mountCache() {
+		this.cacheManager = new CacheManager(this.cache);
 	}
 
 	use() {
@@ -67,14 +109,68 @@ export class SortAlgorithm extends Algorithm {
 			array: this.getArray(),
 			minValue: this.getArrayMinMax().min,
 			maxValue: this.getArrayMinMax().max,
-			name: this.name,
-			complexity: this.complexity,
 		};
 	}
 
 	data() {
 		return this.use();
 	}
+
+	/* -------------------------------------------------------------------------- */
+	/*                                Steps Creation                              */
+	/* -------------------------------------------------------------------------- */
+
+	createSteps() {
+		const dir = this.direction;
+		const arr = this.getArray();
+
+		this.createStep({
+			type: "initial",
+			activeItems: [],
+		});
+		this.sort(arr, dir);
+		this.createStep({
+			type: "finish",
+			activeItems: Array.from({ length: arr.length }, (_, i) => i),
+		});
+		this.cacheManager
+			.initGroup("state")
+			.createPersistentCache(
+				"state",
+				this.getArray(),
+				this.getOperations(),
+				this.makeOperation
+			);
+	}
+
+	createStep(step) {
+		this.addStepTypeToAvailableTypes(step.type);
+		if (!this.isStepTypeEnabled(step.type)) return;
+		this.assignPrevOperationIdToStep(step);
+
+		const metrics = this.createStepMetrics();
+
+		// finally destructure step into steps creating new object
+		this.steps.push({
+			...step,
+			metrics,
+			selected: this.selected.slice(),
+		});
+	}
+
+	createStepMetrics() {
+		const metrics = {};
+		for (const key in this.metrics) {
+			metrics[key] = {
+				count: this.metrics[key].count,
+				name: this.metrics[key].name,
+			};
+		}
+
+		return metrics;
+	}
+
+	/* --------------------------- Handling step types -------------------------- */
 
 	setEnabledStepTypes(types, shouldReset = false) {
 		if (Array.isArray(types)) {
@@ -98,21 +194,6 @@ export class SortAlgorithm extends Algorithm {
 		return this.stepTypes.enabled.includes(type);
 	}
 
-	createStep(step) {
-		this.addStepTypeToAvailableTypes(step.type);
-		if (!this.isStepTypeEnabled(step.type)) return;
-		this.assignPrevOperationIdToStep(step);
-
-		const metrics = this.createStepMetrics();
-
-		// finally destructure step into steps creating new object
-		this.steps.push({
-			...step,
-			metrics,
-			selected: this.selected.slice(),
-		});
-	}
-
 	assignPrevOperationIdToStep(step) {
 		if (!("operationId" in step)) {
 			if (this.operations.length > 0) {
@@ -121,21 +202,137 @@ export class SortAlgorithm extends Algorithm {
 		}
 	}
 
-	createStepMetrics() {
-		const metrics = {};
-		for (const key in this.metrics) {
-			metrics[key] = {
-				count: this.metrics[key].count,
-				name: this.metrics[key].name,
-			};
-		}
+	/* -------------------------------------------------------------------------- */
+	/*                                 Operations                                 */
+	/* -------------------------------------------------------------------------- */
 
-		return metrics;
+	createOperation(type, elements, payload) {
+		this.operations.push({ type, elements, payload });
+		return this.operations.length - 1;
 	}
 
+	makeOperation(operation, state) {
+		if (operation.type === "swap") {
+			const [index1, index2] = operation.elements;
+			[state[index1], state[index2]] = [state[index2], state[index1]];
+		}
+		if (operation.type === "assign") {
+			const [targetIndex] = operation.elements;
+			state[targetIndex] = operation.payload;
+		}
+
+		if (operation.type === "copy") {
+			const [targetIndex, copiedIndex] = operation.elements;
+			state[targetIndex] = state[copiedIndex];
+		}
+	}
+
+	/* -------------------------------------------------------------------------- */
+	/*                                   Metrics                                  */
+	/* -------------------------------------------------------------------------- */
+
+	countArrayAccess(count) {
+		this.count("arrayAccess", "Array Accesses", count);
+	}
+
+	countSubArrays(count) {
+		this.count("subArrays", "Sub Arrays", count);
+	}
+
+	countConditionChecks(count) {
+		this.count("conditionChecks", "Condition Checks", count);
+	}
+
+	countRecursiveCalls(count) {
+		this.count("recursiveCalls", "Recursive Calls", count);
+	}
+
+	count(id, name, count = 1) {
+		if (!(id in this.metrics)) {
+			this.metrics[id] = { count, name: name ? name : id };
+		} else {
+			this.metrics[id].count = this.metrics[id].count + count;
+		}
+	}
+
+	/* -------------------------------------------------------------------------- */
+	/*                         Querying Algorithm states                          */
+	/* -------------------------------------------------------------------------- */
+
 	getSteps() {
-		console.log(this.steps);
 		return this.steps.slice();
+	}
+
+	getArrayLength() {
+		return this.array.length;
+	}
+
+	getArray() {
+		return this.array.slice();
+	}
+
+	getArrayMinMax() {
+		if (isNaN(this.minValue) || isNaN(this.maxValue)) {
+			this.#calcArrayMinMax();
+		}
+		return { min: this.minValue, max: this.maxValue };
+	}
+
+	/* -------------------------------- Query By -------------------------------- */
+
+	getStateByOperationId(operationId) {
+		let state = this.getArray();
+		let stateId = 0;
+		if (isNaN(operationId)) return state;
+		const operations = this.getOperations();
+
+		// Restore state by prev operationId and calculate state from that
+		const closestState = this.cacheManager.getClosest("state", operationId);
+		if (closestState) {
+			state = closestState.item.slice();
+			stateId = closestState.key;
+		}
+		if (stateId === operationId) return state;
+
+		if (stateId > operationId) {
+			let counter = stateId + 1;
+			while (counter - 1 > operationId) {
+				counter--;
+				const operation = operations[counter];
+				this.makeOperation(operation, state);
+			}
+		} else if (stateId < operationId) {
+			let counter = stateId;
+			while (counter < operationId) {
+				counter++;
+				const operation = operations[counter];
+				this.makeOperation(operation, state);
+			}
+		}
+		return state;
+	}
+
+	getStateByStepsIndex(stepIndex) {
+		const operationId = this.getOperationIdByStepIndex(stepIndex);
+		const state = this.getStateByOperationId(operationId);
+		return state;
+	}
+
+	getOperationIdByStepIndex(index) {
+		const steps = this.getSteps();
+		if (!steps || steps.length === 0) return;
+		const stepIndex = clamp(index, 0, steps.length - 1);
+
+		if (steps[stepIndex].prevOperationId) {
+			return steps[stepIndex].prevOperationId;
+		}
+
+		for (let i = stepIndex; i > 0; i--) {
+			const step = steps[i];
+			if (!isNaN(step.operationId)) {
+				return step.operationId;
+			}
+		}
 	}
 
 	getStepByIndex(index) {
@@ -145,14 +342,28 @@ export class SortAlgorithm extends Algorithm {
 		return step;
 	}
 
-	createOperation(type, elements, payload) {
-		this.operations.push({ type, elements, payload });
-		return this.operations.length - 1;
+	/* -------------------------------------------------------------------------- */
+	/*                                    Utils                                   */
+	/* -------------------------------------------------------------------------- */
+
+	#calcArrayMinMax() {
+		const arr = this.getArray();
+		this.minValue = Math.min(...arr);
+		this.maxValue = Math.max(...arr);
 	}
+
+	/* -------------------------------------------------------------------------- */
+	/*                      To implemented in child instance                      */
+	/* -------------------------------------------------------------------------- */
+
+	sort() {}
+	static getInstructions() {}
 
 	/* -------------------------------------------------------------------------- */
 	/*                                 Step Types                                 */
 	/* -------------------------------------------------------------------------- */
+
+	/* --------------------------------- assign --------------------------------- */
 
 	assign(targetIndex, item, arr, options) {
 		// operation details
@@ -176,6 +387,8 @@ export class SortAlgorithm extends Algorithm {
 		});
 	}
 
+	/* ---------------------------------- copy ---------------------------------- */
+
 	copy(targetIndex, copiedIndex, arr, options) {
 		// operation details
 		const type = "copy";
@@ -185,18 +398,25 @@ export class SortAlgorithm extends Algorithm {
 
 		this.count(type, "copies");
 
+		this.createStep({
+			type: "copy",
+			activeItems,
+			instructionId,
+		});
+
 		// Creates and executes an operation. Saves its id and assigns it to step
 		const operationId = this.createOperation(type, activeItems, payload);
 		this.makeOperation({ type, elements: activeItems }, arr);
 
-		// creates step
 		this.createStep({
-			type,
+			type: "copy-to",
 			activeItems,
 			instructionId,
 			operationId,
 		});
 	}
+
+	/* ---------------------------------- swap ---------------------------------- */
 
 	swap(index1, index2, arr, options) {
 		// Operation Details
@@ -218,6 +438,8 @@ export class SortAlgorithm extends Algorithm {
 			instructionId,
 		});
 	}
+
+	/* --------------------------- check against value -------------------------- */
 
 	checkWithValue(index, operator, value, arr, options) {
 		// Operation Details
@@ -258,6 +480,8 @@ export class SortAlgorithm extends Algorithm {
 		return result;
 	}
 
+	/* ---------------------------------- check --------------------------------- */
+
 	check(index1, operator, index2, arr, options) {
 		// Operation Details
 		const type = "check";
@@ -288,6 +512,8 @@ export class SortAlgorithm extends Algorithm {
 		// return result for easier sort method creation
 		return result;
 	}
+
+	/* --------------------------------- select --------------------------------- */
 
 	select(index, options) {
 		// Operation details
@@ -327,157 +553,6 @@ export class SortAlgorithm extends Algorithm {
 			],
 		});
 	}
-
-	/* -------------------------------------------------------------------------- */
-	/*                                   Metrics                                  */
-	/* -------------------------------------------------------------------------- */
-
-	countArrayAccess(count = 1) {
-		this.count("arrayAccess", "Array Accesses", count);
-	}
-
-	countSubArrays(count = 1) {
-		this.count("subArrays", "Sub Arrays", count);
-	}
-
-	countConditionChecks(count = 1) {
-		this.count("conditionChecks", "Condition Checks", count);
-	}
-
-	countRecursiveCalls(count = 1) {
-		this.count("recursiveCalls", "Recursive Calls", count);
-	}
-
-	count(id, name, count = 1) {
-		if (!(id in this.metrics)) {
-			this.metrics[id] = { count, name: name ? name : id };
-		} else {
-			this.metrics[id].count = this.metrics[id].count + count;
-		}
-	}
-
-	createSteps() {
-		const dir = this.direction;
-		const arr = this.getArray();
-
-		this.createStep({
-			type: "initial",
-			activeItems: [],
-		});
-		this.sort(arr, dir);
-		this.createStep({
-			type: "finish",
-			activeItems: Array.from({ length: arr.length }, (_, i) => i),
-		});
-		this.cacheManager
-			.initGroup("state")
-			.createPersistentCache(
-				"state",
-				this.getArray(),
-				this.getOperations(),
-				this.makeOperation
-			);
-	}
-
-	getResult() {
-		return this.resultArray.slice();
-	}
-
-	#calcArrayMinMax() {
-		const arr = this.getArray();
-		this.minValue = Math.min(...arr);
-		this.maxValue = Math.max(...arr);
-	}
-
-	getArrayMinMax() {
-		if (isNaN(this.minValue) || isNaN(this.maxValue)) {
-			this.#calcArrayMinMax();
-		}
-		return { min: this.minValue, max: this.maxValue };
-	}
-
-	getOperationIdByStepIndex(index) {
-		const steps = this.getSteps();
-		if (!steps || steps.length === 0) return;
-		const stepIndex = clamp(index, 0, steps.length - 1);
-
-		if (steps[stepIndex].prevOperationId) {
-			return steps[stepIndex].prevOperationId;
-		}
-
-		for (let i = stepIndex; i > 0; i--) {
-			const step = steps[i];
-			if (!isNaN(step.operationId)) {
-				return step.operationId;
-			}
-		}
-	}
-
-	getStateByOperationId(operationId) {
-		let state = this.getArray();
-		let stateId = 0;
-		if (isNaN(operationId)) return state;
-		const operations = this.getOperations();
-
-		// Restore state by prev operationId and calculate state from that
-		const closestState = this.cacheManager.getClosest("state", operationId);
-		if (closestState) {
-			state = closestState.item.slice();
-			stateId = closestState.key;
-		}
-		if (stateId === operationId) return state;
-
-		if (stateId > operationId) {
-			let counter = stateId + 1;
-			while (counter - 1 > operationId) {
-				counter--;
-				const operation = operations[counter];
-				this.makeOperation(operation, state);
-			}
-		} else if (stateId < operationId) {
-			let counter = stateId;
-			while (counter < operationId) {
-				counter++;
-				const operation = operations[counter];
-				this.makeOperation(operation, state);
-			}
-		}
-		return state;
-	}
-
-	makeOperation(operation, state) {
-		if (operation.type === "swap") {
-			const [index1, index2] = operation.elements;
-			[state[index1], state[index2]] = [state[index2], state[index1]];
-		}
-		if (operation.type === "assign") {
-			const [targetIndex] = operation.elements;
-			state[targetIndex] = operation.payload;
-		}
-
-		if (operation.type === "copy") {
-			const [targetIndex, copiedIndex] = operation.elements;
-			state[targetIndex] = state[copiedIndex];
-		}
-	}
-
-	getStateByStepsIndex(stepIndex) {
-		const operationId = this.getOperationIdByStepIndex(stepIndex);
-		const state = this.getStateByOperationId(operationId);
-		return state;
-	}
-
-	getArrayLength() {
-		return this.array.length;
-	}
-
-	getArray() {
-		return this.array.slice();
-	}
-
-	sort() {}
-
-	static getInstructions() {}
 }
 
 // assignMany(assignArray, arr) {

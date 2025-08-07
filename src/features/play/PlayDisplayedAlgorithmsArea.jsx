@@ -27,7 +27,10 @@ const categories = {
 			grid-template-rows: 1fr 1fr;
 			grid-template-columns: 1fr 1fr;
 		`,
-		5: css``,
+		5: css`
+			grid-template-rows: 1fr 1fr 1fr;
+			grid-template-columns: 1fr 1fr;
+		`,
 		6: css`
 			grid-template-rows: 1fr 1fr 1fr;
 			grid-template-columns: 1fr 1fr;
@@ -69,6 +72,7 @@ function PlayDisplayedAlgorithmsArea() {
 						<PlayAlgorithmWindow
 							key={`${index}-${id}`}
 							registry={registry}
+							category={activeCategory}
 						/>
 					);
 				})}

@@ -17,6 +17,7 @@ export class MergeSort extends SortAlgorithm {
 			// Create new subarrays
 			let arr1 = new Array(l1);
 			let arr2 = new Array(l2);
+
 			this.countSubArrays(2);
 
 			// Assign values in subarrays
@@ -86,7 +87,12 @@ export class MergeSort extends SortAlgorithm {
 
 			// Middle index to create subarray halves
 			let middle = left + parseInt((right - left) / 2);
+			const all = Array.from(Array(right - left), (_, index) => {
+				return { index: left + index };
+			});
 
+			this.selectMany(all);
+			this.select(middle);
 			// Apply mergeSort to both the halves
 			this.countRecursiveCalls(2);
 			mergeSort(arr, left, middle);

@@ -7,8 +7,13 @@ export class SelectionSort extends SortAlgorithm {
 
 	sort(arr) {
 		let n = arr.length;
+
+		this.countConditionChecks();
 		for (let i = 0; i < n; i++) {
+			this.countConditionChecks();
+
 			let minIdx = i;
+
 			this.selectMany([
 				{
 					index: i,
@@ -23,8 +28,13 @@ export class SelectionSort extends SortAlgorithm {
 					},
 				},
 			]);
+
+			this.countConditionChecks();
 			for (let j = i + 1; j < n; j++) {
+				this.countConditionChecks();
+
 				this.countArrayAccess(2);
+				this.countConditionChecks();
 				if (
 					this.check(j, "<", minIdx, arr, { instructionId: ["i3"] })
 				) {
@@ -36,12 +46,16 @@ export class SelectionSort extends SortAlgorithm {
 					});
 				}
 			}
-			if (minIdx !== arr.length - 1)
+
+			if (minIdx !== arr.length - 1) {
 				this.select(minIdx, {
 					mode: "perm",
 					id: "minIdx",
 					instructionId: ["i4"],
 				});
+			}
+
+			this.countConditionChecks();
 			if (i !== minIdx) {
 				this.countArrayAccess(2);
 				this.swap(i, minIdx, arr, { instructionId: ["i5"] });

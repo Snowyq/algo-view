@@ -4,15 +4,17 @@ import { clamp } from "../../utils/values";
 
 const DEFAULT_STEP_TYPES = [
 	"initial",
-	// "check",
-	// "check-true",
-	// "check-false",
-	// "check-value",
-	// "check-value-true",
-	// "check-value-false",
+	"check",
+	"check-true",
+	"check-false",
+	"check-value",
+	"check-value-true",
+	"check-value-false",
 	"swap",
 	"copy",
-	// "select",
+	"copy-from",
+	"copy-to",
+	"select",
 	"finish",
 	"assign",
 ];
@@ -46,10 +48,6 @@ export function StepProvider({ children }) {
 			const longest = reset ? 0 : length;
 			return newLength > longest ? newLength : longest;
 		});
-	}, []);
-
-	const changeStepTypes = useCallback(types => {
-		setStepTypes(types);
 	}, []);
 
 	const passStepsLength = useCallback(

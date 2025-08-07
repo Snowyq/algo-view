@@ -12,6 +12,7 @@ export class ShellSort extends SortAlgorithm {
 		this.countConditionChecks();
 		for (let gap = Math.floor(n / 2); gap > 0; gap = Math.floor(gap / 2)) {
 			this.countConditionChecks();
+
 			// Do a gapped insertion sort for this gap size.
 			this.countConditionChecks();
 			for (let i = gap; i < n; i++) {
@@ -22,8 +23,12 @@ export class ShellSort extends SortAlgorithm {
 				let temp = arr[i];
 
 				let j = i;
-
 				this.countConditionChecks();
+
+				if (arr[j - gap] > temp) {
+					this.select(j - gap, { mode: "perm", id: "j" });
+				}
+
 				while (
 					j >= gap &&
 					this.checkWithValue(j - gap, ">", temp, arr)
@@ -32,6 +37,12 @@ export class ShellSort extends SortAlgorithm {
 					// arr[j] = arr[j - gap];
 					this.copy(j, j - gap, arr);
 					j -= gap;
+
+					if (arr[j - gap] > temp) {
+						this.select(j - gap, { mode: "perm", id: "j" });
+					} else {
+						this.unSelect("j");
+					}
 				}
 				// arr[j] = temp;
 				this.assign(j, temp, arr);

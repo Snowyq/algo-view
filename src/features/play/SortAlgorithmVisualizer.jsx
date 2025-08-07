@@ -1,29 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import SortArrayDisplay from "./SortArrayDisplay";
-import useAlgorithm from "../../hooks/useAlgorithm";
+import { useContext, useEffect, useRef, useState } from "react";
+
 import styled from "styled-components";
-import ButtonIcon from "../../ui/ButtonIcon";
-import PlayAlgorithmInstructions from "./PlayAlgorithmInstructions";
-import SortArrayCanvas from "./SortArrayCanvas";
+
+import SortArrayCanvas from "../../assets/SortArrayCanvas";
 import { useRect } from "../../hooks/useRect";
-import Loader from "../../ui/Loader";
-import { IoSettings } from "react-icons/io5";
-import { IoMdClose } from "react-icons/io";
+import { PlayContext, StepContext } from "./PlayContext";
 import useSortCanvas from "../../hooks/useSortCanvas";
-
-const Container = styled.div`
-	display: flex;
-	flex-direction: column;
-	width: 100%;
-	height: 100%;
-`;
-
-const Body = styled.div`
-	width: 100%;
-	height: 100%;
-	display: flex;
-	gap: 2rem;
-`;
+import useRateLimit from "../../hooks/useRateLimit";
 
 const AlgorithmContainer = styled.div`
 	width: 100%;
@@ -36,20 +19,6 @@ const AlgorithmContainer = styled.div`
 	border-radius: 15px;
 `;
 
-const InstructionsContainer = styled.div`
-	/* width: 100%; */
-	display: flex;
-	position: absolute;
-	font-weight: 700;
-	right: 2rem;
-	padding: 0 1rem;
-	top: 2rem;
-	bottom: 2rem;
-	z-index: 100;
-	backdrop-filter: blur(4px);
-	flex-direction: column;
-`;
-
 const Sizer = styled.div`
 	width: 100%;
 	height: 100%;
@@ -57,71 +26,56 @@ const Sizer = styled.div`
 	overflow: hidden;
 `;
 
-const Header = styled.div`
-	width: 100%;
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding: 0 0.5rem;
-	padding-bottom: 0.5rem;
-	/* background-color: blue; */
-`;
+function SortAlgorithmVisualizer({ registry }) {
+	const { algorithmInput: input } = useContext(PlayContext);
+	const {
+		globalStep: stepIndex,
+		stepTypes,
+		passStepsLength,
+	} = useContext(StepContext);
 
-const Options = styled.div`
-	display: flex;
-	align-items: center;
-	gap: 0.5rem;
-`;
+	const canvasRef = useRef();
+	const canvasApi = useSortCanvas(registry.id, input, stepTypes, canvasRef);
+	const { drawCanvas, changeSize, resetAlgorithm, stepsLength } = canvasApi;
 
-const Option = styled(ButtonIcon)`
-	background-color: transparent;
-`;
-
-function SortAlgorithmVisualizer({
-	registry,
-	input,
-	stepIndex,
-	passStepsLength,
-	stepTypes,
-}) {
-	const { ref, rect } = useRect();
 	const [localStepIndex, setCurrStepIndex] = useState(stepIndex);
+	const { ref, rect } = useRect();
+
+	useEffect(() => {
+		drawCanvas(stepIndex);
+	}, [drawCanvas, stepIndex]);
+
+	const resize = () => changeSize(rect);
+	const rateLimitedChangeSize = useRateLimit(resize, 100);
+
+	useEffect(() => {
+		if (rect?.width && rect?.height) {
+			rateLimitedChangeSize(rect);
+		}
+	}, [rect, rateLimitedChangeSize]);
+
+	useEffect(() => {
+		passStepsLength(stepsLength, registry.id);
+	}, [passStepsLength, stepsLength, registry.id]);
+
+	useEffect(() => {
+		resetAlgorithm(input, { stepTypes });
+	}, [stepTypes, resetAlgorithm, input]);
 
 	return (
-		<Container>
-			<Header>
-				<h3>{registry.meta.name}</h3>
-				{/* <Options>
-					<Option>
-						<IoSettings />
-					</Option>
-					<Option>
-						<IoMdClose />
-					</Option>
-				</Options> */}
-			</Header>
-			<Body>
-				<AlgorithmContainer>
-					<Sizer ref={ref}>
-						<SortArrayCanvas
-							input={input}
-							id={registry.id}
-							stepIndex={stepIndex}
-							parentRect={rect}
-							stepTypes={stepTypes}
-							passStepsLength={passStepsLength}
-						/>
-					</Sizer>
-				</AlgorithmContainer>
-				{/* <InstructionsContainer>
-					<p>Instructions</p>
-					<PlayAlgorithmInstructions
-						instructions={registry.instructions}
-						step={step}
-					/>
-				</InstructionsContainer> */}
-			</Body>
-		</Container>
+		<AlgorithmContainer>
+			<Sizer ref={ref}>
+				<canvas
+					ref={canvasRef}
+					style={{
+						width: "100%",
+						height: "100%",
+						display: "block",
+						position: "absolute",
+					}}
+				/>
+			</Sizer>
+		</AlgorithmContainer>
 	);
 }
 
