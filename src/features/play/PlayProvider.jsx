@@ -11,14 +11,14 @@ import { generateRandomArray } from "../../utils/randoms";
 // 	11, 19, 3, 9, 5, 14, 17, 28, 8, 7, 2, 18, 12, 16, 29, 13, 22, 10, 4,
 // ];
 // const DEFAULT_INPUT = [10, 25, 13, 11, 5, 7, 10, 22, 19, 4];
-const DEFAULT_INPUT = generateRandomArray(300, 0, 30);
+const DEFAULT_INPUT = generateRandomArray(50, 0, 30);
 
+// const DEFAULT_ALGOS = ["selectionSort"];
 const DEFAULT_ALGOS = [
-	"selectionSort",
-	"bubbleSort",
-	"mergeSort",
-	"insertionSort",
-	"shellSort",
+	{
+		id: "selectionSort",
+		isReady: false,
+	},
 ];
 const animationSpeeds = {
 	sort: AVAILABLE_SORT_ANIMATION_SPEEDS,
@@ -28,6 +28,8 @@ function PlayProvider({ children }) {
 	const [activeCategory, setActiveCategory] = useState("sort");
 	const [activeAlgorithms, setActiveAlgorithms] = useState(DEFAULT_ALGOS);
 	const [algorithmInput, setAlgorithmInput] = useState(DEFAULT_INPUT);
+
+	const allAlgorithmsReady = activeAlgorithms.every(algo => algo.isReady);
 
 	const categories = registryApi.getCategories();
 	const categoriesLogs = registryApi.getCategoriesLogs();
@@ -53,15 +55,15 @@ function PlayProvider({ children }) {
 				algorithmId
 			);
 			if (!algorithmRegistry) return;
-			setActiveAlgorithms(algos => [...algos, algorithmId]);
+			const newAlgo = { id: algorithmId, isReady: false };
+			setActiveAlgorithms(algos => [...algos, newAlgo]);
 		},
 		[activeCategory]
 	);
 
 	const closeAlgorithm = useCallback(algorithmId => {
 		setActiveAlgorithms(algos => {
-			if (!algos.includes(algorithmId)) return algos;
-			return algos.filter(algoId => algoId !== algorithmId);
+			return algos.filter(algo => algo.id !== algorithmId);
 		});
 	}, []);
 
@@ -75,9 +77,19 @@ function PlayProvider({ children }) {
 		[activeCategory]
 	);
 
+	const changeAlgorithmStatus = useCallback((id, isReady) => {
+		setActiveAlgorithms(algos => {
+			return algos.map(algo => {
+				if (algo.id === id) algo.isReady = Boolean(isReady);
+				return algo;
+			});
+		});
+	}, []);
+
 	const playContextValue = useMemo(
 		() => ({
 			openAlgorithm,
+			changeAlgorithmStatus,
 			closeAlgorithm,
 			changeActiveAlgorithms,
 			activeCategory,
@@ -88,6 +100,7 @@ function PlayProvider({ children }) {
 			categories,
 			algorithms,
 			animationSpeeds,
+			allAlgorithmsReady,
 		}),
 		[
 			openAlgorithm,
@@ -95,11 +108,13 @@ function PlayProvider({ children }) {
 			changeActiveAlgorithms,
 			activeCategory,
 			changeActiveCategory,
+			changeAlgorithmStatus,
 			changeInput,
 			activeAlgorithms,
 			algorithmInput,
 			categories,
 			algorithms,
+			allAlgorithmsReady,
 		]
 	);
 

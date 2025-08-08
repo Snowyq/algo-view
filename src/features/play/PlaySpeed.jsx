@@ -46,7 +46,6 @@ function PlaySpeed({ speed, onChange, speeds }) {
 	const sliderState = isHidden ? "hidden" : "visible";
 	const maxValue = speeds.length - 1;
 	const value = speeds.findIndex(el => el === speed);
-	console.log(value);
 
 	const handleOnChange = index => {
 		onChange(speeds[index]);

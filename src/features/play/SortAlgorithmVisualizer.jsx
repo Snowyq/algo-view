@@ -1,12 +1,11 @@
-import { useContext, useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import styled from "styled-components";
 
-import SortArrayCanvas from "../../assets/SortArrayCanvas";
-import { useRect } from "../../hooks/useRect";
 import { PlayContext, StepContext } from "./PlayContext";
 import useSortCanvas from "../../hooks/useSortCanvas";
-import useRateLimit from "../../hooks/useRateLimit";
+import Loader from "../../ui/Loader";
+import useOnResize from "../../hooks/useOnResize";
 
 const AlgorithmContainer = styled.div`
 	width: 100%;
@@ -27,6 +26,9 @@ const Sizer = styled.div`
 `;
 
 function SortAlgorithmVisualizer({ registry }) {
+	//
+	/* -------------------------------- Contexts -------------------------------- */
+
 	const { algorithmInput: input } = useContext(PlayContext);
 	const {
 		globalStep: stepIndex,
@@ -34,37 +36,55 @@ function SortAlgorithmVisualizer({ registry }) {
 		passStepsLength,
 	} = useContext(StepContext);
 
-	const canvasRef = useRef();
-	const canvasApi = useSortCanvas(registry.id, input, stepTypes, canvasRef);
-	const { drawCanvas, changeSize, resetAlgorithm, stepsLength } = canvasApi;
+	/* ---------------------------------- Refs ---------------------------------- */
 
+	const canvasRef = useRef();
+	const sizerRef = useRef();
+
+	/* --------------------------------- States --------------------------------- */
+
+	const [isLoading, setIsLoading] = useState(true);
 	const [localStepIndex, setCurrStepIndex] = useState(stepIndex);
-	const { ref, rect } = useRect();
+
+	/* -------------------------------- CanvasApi ------------------------------- */
+
+	const algoOptions = useMemo(() => {
+		return { stepTypes };
+	}, [stepTypes]);
+
+	const canvasApi = useSortCanvas(canvasRef, registry.id, input, algoOptions);
+	const { drawCanvas, changeSize, renderAlgorithm, onStatusType } = canvasApi;
+
+	const onResize = ref => {
+		if (!ref.current) return;
+		const rect = ref.current.getBoundingClientRect();
+		changeSize(rect);
+	};
+	useOnResize(onResize, sizerRef);
+
+	useEffect(() => {
+		setIsLoading(true);
+		if (!sizerRef.current) return;
+		const rect = sizerRef.current.getBoundingClientRect();
+		renderAlgorithm(input, algoOptions, rect);
+	}, [algoOptions, renderAlgorithm, input]);
+
+	useEffect(() => {
+		onStatusType("render-done", payload => {
+			const { stepsLength } = payload;
+			if (stepsLength) passStepsLength(stepsLength);
+			setIsLoading(false);
+		});
+	}, [onStatusType, passStepsLength]);
 
 	useEffect(() => {
 		drawCanvas(stepIndex);
 	}, [drawCanvas, stepIndex]);
 
-	const resize = () => changeSize(rect);
-	const rateLimitedChangeSize = useRateLimit(resize, 100);
-
-	useEffect(() => {
-		if (rect?.width && rect?.height) {
-			rateLimitedChangeSize(rect);
-		}
-	}, [rect, rateLimitedChangeSize]);
-
-	useEffect(() => {
-		passStepsLength(stepsLength, registry.id);
-	}, [passStepsLength, stepsLength, registry.id]);
-
-	useEffect(() => {
-		resetAlgorithm(input, { stepTypes });
-	}, [stepTypes, resetAlgorithm, input]);
-
 	return (
 		<AlgorithmContainer>
-			<Sizer ref={ref}>
+			<Sizer ref={sizerRef}>
+				{isLoading && <Loader />}
 				<canvas
 					ref={canvasRef}
 					style={{

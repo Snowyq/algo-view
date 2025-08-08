@@ -26,14 +26,19 @@ import { sortStepTypes } from "../algorithms/sort/SortAlgorithm";
  * }}
  */
 
-function useSortCanvas(id, input, stepTypes, canvasRef) {
+function useSortCanvas(canvasRef, id, input, options) {
 	const [worker, setWorker] = useState(null);
-	const [isLoading, setIsLoading] = useState(true);
+	const [status, setStatus] = useState("unmounted");
+	// "mounted", "resized", "canvas-initialized", "colors-loaded", "settings-updated",  "draw-done", "render-done"
 	const [error, setError] = useState("");
-	const [stepsLength, setStepsLength] = useState(null);
 
 	const offscreenRef = useRef(null);
 
+	const callbacksRef = useRef({});
+
+	const setOnStatusType = useCallback((type, cb) => {
+		callbacksRef.current[type] = typeof cb === "function" ? cb : undefined;
+	}, []);
 	/* -------------------------------------------------------------------------- */
 	/*                                   Effects                                  */
 	/* -------------------------------------------------------------------------- */
@@ -50,29 +55,25 @@ function useSortCanvas(id, input, stepTypes, canvasRef) {
 		myWorker.onmessage = function (event) {
 			const { type, message, payload } = event.data;
 
+			function executeCallback(type) {
+				const fn = callbacksRef.current[type];
+				if (typeof fn === "function") {
+					fn?.(payload);
+				}
+			}
+
 			// after first drawing disabling loading state
-			if (type === "ready") {
-				setIsLoading(false);
-				setError("");
-			}
-			if (type === "initialized") {
-				const { stepsLength: length } = payload;
-				setStepsLength(length);
-			}
-			if (type === "error") setError(message);
-			if (type === "reset-done") {
-				const { stepsLength: length } = payload;
-				console.log(length);
-				setStepsLength(length);
+			setStatus(type);
+
+			executeCallback(type);
+
+			if (type === "error") {
+				setError(message);
 			}
 		};
 
 		// Initialize Algorithm
 		myWorker.postMessage({ type: "mount", payload: { id } });
-		myWorker.postMessage({
-			type: "init",
-			payload: { input, options: { stepTypes } },
-		});
 		myWorker.postMessage({
 			type: "load-step-colors",
 			payload: { stepColors: getStepColors() },
@@ -84,7 +85,7 @@ function useSortCanvas(id, input, stepTypes, canvasRef) {
 		return () => {
 			myWorker.terminate();
 		};
-	}, [id, input, stepTypes, canvasRef]);
+	}, [id, canvasRef]);
 
 	/* ----------------------- Initialize Offscreen Canvas ---------------------- */
 	useEffect(() => {
@@ -164,39 +165,44 @@ function useSortCanvas(id, input, stepTypes, canvasRef) {
 		[worker]
 	);
 
-	const changeStepTypes = useCallback(
-		types => {
-			if (!worker) return;
-			worker.postMessage({
-				type: "update-step-types",
-				payload: { enabledStepTypes: types },
-			});
-		},
-		[worker]
-	);
+	// const changeStepTypes = useCallback(
+	// 	types => {
+	// 		if (!worker) return;
+	// 		worker.postMessage({
+	// 			type: "update-step-types",
+	// 			payload: { enabledStepTypes: types },
+	// 		});
+	// 	},
+	// 	[worker]
+	// );
 
-	const resetAlgorithm = useCallback(
-		(input, options) => {
+	const renderAlgorithm = useCallback(
+		(input, options, rect) => {
 			if (!worker) return;
+			const devicePixelRatio = getDevicePixelRatio();
 			worker.postMessage({
-				type: "reset-algorithm",
-				payload: { input, options },
+				type: "render-algorithm",
+				payload: { input, options, devicePixelRatio, rect },
 			});
 		},
 		[worker]
 	);
 
 	return {
-		resetAlgorithm,
+		renderAlgorithm,
 		drawCanvas,
 		changeSettings,
 		changeSize,
 		changeColors,
-		stepsLength,
-		isLoading,
+		status,
 		error,
+		onStatusType: setOnStatusType,
 	};
 }
+
+/* -------------------------------------------------------------------------- */
+/*                                    Utils                                   */
+/* -------------------------------------------------------------------------- */
 
 function getDevicePixelRatio() {
 	const dpr = window.devicePixelRatio;

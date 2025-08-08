@@ -3,7 +3,6 @@ import styled from "styled-components";
 // import DottedBackground from "../../ui/DottedBackground";
 import PlayDisplayedAlgorithmsArea from "./PlayDisplayedAlgorithmsArea";
 import PlaySidebar from "./PlaySidebar";
-import PlayHeader from "./PlayHeader";
 import PlayControls from "./PlayControls";
 
 const StyledPlayground = styled.div`
