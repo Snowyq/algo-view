@@ -1,6 +1,5 @@
 import registryApi from "../algorithms/algorithmsRegistryApi";
 
-// Cached variables between WebWorker calls
 let AlgorithmClass = null;
 let AlgorithmInstance = null;
 let ctx = null;
@@ -8,7 +7,7 @@ let currStepIndex = null;
 let dpr = null;
 let stepColors = null;
 let doFirstRender = true;
-let animationIntervalId;
+let currentAnimationFrameId = null;
 
 let canvasHeight = 0;
 let canvasHeightDpr = 0;
@@ -28,6 +27,13 @@ let labelFont = "10px sans-serif";
 self.onmessage = function (event) {
 	const { type, payload, canvas } = event.data;
 
+	function postError(message) {
+		postMessage({
+			type: "error",
+			message,
+		});
+	}
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 Event Types                                */
 	/* -------------------------------------------------------------------------- */
@@ -37,20 +43,17 @@ self.onmessage = function (event) {
 	if (type === "draw-canvas") {
 		const { stepIndex, devicePixelRatio } = payload;
 
-		adjustSize(null, null, devicePixelRatio);
-
-		if (!AlgorithmInstance || isNaN(stepIndex)) {
-			postMessage({
-				type: "error",
-				message: !AlgorithmInstance
-					? "Cannot draw canvas: Algorithm instance not initialized"
-					: "Cannot draw canvas: stepIndex not set",
-			});
+		if (!AlgorithmInstance) {
+			postError("Cannot draw canvas: Algorithm instance not initialized");
 			return;
 		}
 
-		currStepIndex = stepIndex; // saving stepIndex for refreshing purposes
+		if (isNaN(stepIndex)) {
+			postError("Cannot draw canvas: stepIndex not set");
+			return;
+		}
 
+		adjustSize(null, null, devicePixelRatio);
 		draw(stepIndex);
 
 		postMessage({ type: "draw-done" });
@@ -61,10 +64,10 @@ self.onmessage = function (event) {
 
 	if (type === "resize") {
 		const { width, height, devicePixelRatio } = payload;
-		if (shouldResize(width, height, devicePixelRatio)) {
-			resize(width, height, devicePixelRatio);
-			redraw();
-		}
+
+		const resized = adjustSize(width, height, devicePixelRatio);
+		if (resized) redraw();
+
 		postMessage({ type: "resized" });
 		return;
 	}
@@ -72,7 +75,13 @@ self.onmessage = function (event) {
 	/* ---------------------------- Initialize Canvas --------------------------- */
 
 	if (type === "init-canvas") {
+		if (!canvas) {
+			postError("canvas offscreen not provided");
+			return;
+		}
+
 		ctx = canvas.getContext("2d");
+
 		postMessage({ type: "canvas-initialized" });
 		return;
 	}
@@ -82,6 +91,7 @@ self.onmessage = function (event) {
 	if (type === "load-step-colors") {
 		const { stepColors: colors } = payload;
 		updateStepColors(colors);
+
 		postMessage({ type: "colors-loaded" });
 		return;
 	}
@@ -89,8 +99,22 @@ self.onmessage = function (event) {
 	/* -------------------------- Find Algorithm Class -------------------------- */
 
 	if (type === "mount") {
+		const { id } = payload;
+
+		if (!id) {
+			postError("No Algorithm Id provided");
+			return;
+		}
+
 		const Class = findAlgorithmClass("sort", payload.id);
+
+		if (!Class) {
+			postError(`Algorithm Class with Id: ${id} cannot be find`);
+			return;
+		}
+
 		mountAlgorithmClass(Class);
+
 		postMessage({ type: "mounted" });
 		return;
 	}
@@ -98,9 +122,14 @@ self.onmessage = function (event) {
 	/* ---------------------------- Render Algorithm ---------------------------- */
 
 	if (type === "render-algorithm") {
-		console.log("render");
 		const { devicePixelRatio, input, options, rect } = payload;
+
 		adjustSize(rect.width, rect.height, devicePixelRatio);
+
+		if (!input) {
+			postError("Array to sort not provided");
+			return;
+		}
 
 		doFirstRender = true;
 		createAlgorithmInstance(input, options);
@@ -112,9 +141,8 @@ self.onmessage = function (event) {
 	/* ----------------------------- Update Settings ---------------------------- */
 
 	if (type === "settings") {
-		console.log("settings");
 		const { settings, devicePixelRatio } = payload;
-		updateDevicePixelRatio(devicePixelRatio);
+		adjustSize(null, null, devicePixelRatio);
 		updateSettings(settings);
 		redraw();
 		postMessage({ type: "settings-updated" });
@@ -126,9 +154,8 @@ self.onmessage = function (event) {
 /*                              Helper Functions                              */
 /* -------------------------------------------------------------------------- */
 
-function shouldResize(width, height, devicePixelRatio) {
-	if (width !== canvasWidth || height !== canvasHeight) return true;
-	if (devicePixelRatio && dpr !== devicePixelRatio) return true;
+function updateStepIndex(newIndex) {
+	currStepIndex = newIndex;
 }
 
 function updateStepColors(colors) {
@@ -152,15 +179,38 @@ function getAlgorithmStepsLength() {
 	return AlgorithmInstance.getStepsLength();
 }
 
+function updateSettings(payload) {
+	const {
+		blockProportion: blockProportionValue,
+		upperBlockMargin: upperBlockMarginValue,
+		textDisplayThreshold: textDisplayThresholdValue,
+	} = payload;
+	if (blockProportionValue) blockRatio = blockProportionValue;
+	if (upperBlockMarginValue) upperBlockMargin = upperBlockMarginValue;
+	if (textDisplayThresholdValue)
+		textDisplayThreshold = textDisplayThresholdValue;
+}
+
+/* ---------------------------- Size Adjustments ---------------------------- */
+
+function adjustSize(width, height, devicePixelRatio) {
+	let resized = false;
+	if (shouldResize(width, height, devicePixelRatio)) {
+		resize(width, height, devicePixelRatio);
+		resized = true;
+	}
+	return resized;
+}
+
 function updateDevicePixelRatio(newDpr) {
 	if (!newDpr) return;
 	dpr = newDpr;
 }
 
-function adjustSize(width, height, devicePixelRatio) {
-	if (shouldResize(width, height, devicePixelRatio)) {
-		resize(width, height, devicePixelRatio);
-	}
+function shouldResize(width, height, devicePixelRatio) {
+	if (width !== canvasWidth || height !== canvasHeight) return true;
+	if (devicePixelRatio && dpr !== devicePixelRatio) return true;
+	return false;
 }
 
 function resize(width, height, devicePixelRatio) {
@@ -176,6 +226,8 @@ function resize(width, height, devicePixelRatio) {
 	}
 }
 
+/* --------------------------------- Drawing -------------------------------- */
+
 function redraw() {
 	if (!isNaN(currStepIndex)) {
 		draw(currStepIndex);
@@ -185,32 +237,80 @@ function redraw() {
 function draw(stepIndex) {
 	if (!AlgorithmInstance) return;
 
+	if (currentAnimationFrameId !== null) {
+		cancelAnimationFrame(currentAnimationFrameId);
+		currentAnimationFrameId = null;
+	}
+
+	updateStepIndex(stepIndex);
 	const state = AlgorithmInstance.getStateByStepsIndex(stepIndex);
 	const step = AlgorithmInstance.getStepByIndex(stepIndex);
 	const maxValue = AlgorithmInstance.getArrayMinMax().max;
 
+	if (doFirstRender) {
+		animateDrawArray(state, step, maxValue);
+		doFirstRender = false;
+	} else {
+		drawArray(state, step, maxValue);
+	}
+}
+
+function handleDraw(callback) {
+	if (!ctx || !ctx.canvas) return;
+	if (!dpr) updateDevicePixelRatio(1);
+
+	ctx.save();
+
+	ctx.scale(dpr, dpr);
+	ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+	callback();
+
+	ctx.restore();
+}
+
+function drawBlock(
+	val,
+	index,
+	step,
+	blockWidth,
+	gapWidth,
+	maxValue,
+	showText = true
+) {
+	// Account for vertical space above each block to fit the text label
+
+	const blockHeight = calculateBlockHeight(val, maxValue);
+	const x = index * (blockWidth + gapWidth);
+	const y = canvasHeight - blockHeight;
+	// Determine the step type to apply corresponding highlight styles
+	const type = getBlockDisplayType(step, index);
+
+	// Apply fill style based on step type
+	ctx.fillStyle = getColorByType(type);
+	ctx.fillRect(x, y, blockWidth, blockHeight);
+
+	// Display block value only if its width exceeds the configured threshold
+	if (blockWidth >= textDisplayThreshold && showText) {
+		displayText(val, x + blockWidth / 2, y - 5);
+	}
+}
+
+function drawArray(state, step, maxValue) {
+	let output = [];
+	if (!state) return output;
+
+	// Calculate block and gap widths proportionally based on canvas size
+	let { blockWidth, gapWidth } = calcBlockGapWidth(state.length, blockRatio);
+
 	handleDraw(() => {
-		console.log("draw");
-		if (doFirstRender) {
-			animateDrawArray(state, step, maxValue);
-			doFirstRender = false;
-		} else {
-			drawArray(state, step, maxValue);
-		}
+		state.forEach((val, index) => {
+			drawBlock(val, index, step, blockWidth, gapWidth, maxValue);
+		});
 	});
 }
 
-function updateSettings(payload) {
-	const {
-		blockProportion: blockProportionValue,
-		upperBlockMargin: upperBlockMarginValue,
-		textDisplayThreshold: textDisplayThresholdValue,
-	} = payload;
-	if (blockProportionValue) blockRatio = blockProportionValue;
-	if (upperBlockMarginValue) upperBlockMargin = upperBlockMarginValue;
-	if (textDisplayThresholdValue)
-		textDisplayThreshold = textDisplayThresholdValue;
-}
+/* ----------------------------- Drawing Helpers ---------------------------- */
 
 function getColorByType(type) {
 	if (stepColors) {
@@ -230,20 +330,6 @@ function calcBlockGapWidth(arrayLength, blockProportion) {
 		gapWidth = 0;
 	}
 	return { blockWidth, gapWidth };
-}
-
-function handleDraw(callback) {
-	if (!ctx || !ctx.canvas) return;
-	if (!dpr) updateDevicePixelRatio(1);
-
-	ctx.save();
-
-	ctx.scale(dpr, dpr);
-	ctx.clearRect(0, 0, canvasWidth, canvasHeight);
-
-	callback();
-
-	ctx.restore();
 }
 
 const calculateBlockHeight = (value, maxValue) => {
@@ -270,37 +356,21 @@ function getBlockDisplayType(step, index) {
 	return type;
 }
 
-function drawBlock(val, index, step, blockWidth, gapWidth, maxValue) {
-	// Account for vertical space above each block to fit the text label
+/* -------------------------------- Animating ------------------------------- */
 
-	const blockHeight = calculateBlockHeight(val, maxValue);
-	const x = index * (blockWidth + gapWidth);
-	const y = canvasHeight - blockHeight;
-	// Determine the step type to apply corresponding highlight styles
-	const type = getBlockDisplayType(step, index);
+function handleAnimate(callback) {
+	const startTime = performance.now();
 
-	// Apply fill style based on step type
-	ctx.fillStyle = getColorByType(type);
-	ctx.fillRect(x, y, blockWidth, blockHeight);
-
-	// Display block value only if its width exceeds the configured threshold
-	if (blockWidth >= textDisplayThreshold) {
-		displayText(val, x + blockWidth / 2, y - 5);
+	function frame(now) {
+		const shouldRepeat = callback(now, startTime);
+		if (shouldRepeat) {
+			currentAnimationFrameId = requestAnimationFrame(frame);
+		} else {
+			currentAnimationFrameId = null;
+		}
 	}
-}
 
-function drawArray(state, step, maxValue) {
-	let output = [];
-	if (!state) return output;
-
-	// Calculate block and gap widths proportionally based on canvas size
-	let { blockWidth, gapWidth } = calcBlockGapWidth(state.length, blockRatio);
-
-	const drawEachValue = (val, index) => {
-		drawBlock(val, index, step, blockWidth, gapWidth, maxValue);
-	};
-
-	state.forEach(drawEachValue);
+	currentAnimationFrameId = requestAnimationFrame(frame);
 }
 
 function animateDrawArray(
@@ -316,8 +386,8 @@ function animateDrawArray(
 	// Calculate block and gap widths proportionally based on canvas size
 	let { blockWidth, gapWidth } = calcBlockGapWidth(state.length, blockRatio);
 
-	const onDraw = (val, index) => {
-		drawBlock(val, index, step, blockWidth, gapWidth, maxValue);
+	const onDraw = (val, index, showText) => {
+		drawBlock(val, index, step, blockWidth, gapWidth, maxValue, showText);
 	};
 
 	if (appearInSameTime) {
@@ -327,17 +397,6 @@ function animateDrawArray(
 	}
 }
 
-function handleAnimate(callback) {
-	const startTime = performance.now();
-
-	function frame(now) {
-		const shouldRepeat = callback(now, startTime);
-		if (shouldRepeat) requestAnimationFrame(frame);
-	}
-
-	requestAnimationFrame(frame);
-}
-
 function animateAtOnce(state, onDraw, duration) {
 	const onFrame = (now, startTime) => {
 		const progress = Math.min((now - startTime) / duration, 1);
@@ -345,7 +404,7 @@ function animateAtOnce(state, onDraw, duration) {
 		handleDraw(() => {
 			const drawEachValue = (val, index) => {
 				const animatedVal = val * progress;
-				onDraw(animatedVal, index);
+				onDraw(animatedVal, index, progress === 1);
 			};
 
 			state.forEach(drawEachValue);
@@ -371,7 +430,7 @@ function animateInSequence(state, onDraw, duration) {
 					1
 				);
 				const animatedVal = val * progress;
-				onDraw(animatedVal, index);
+				onDraw(animatedVal, index, progress === 1);
 			};
 			state.forEach(drawEachValue);
 		});
