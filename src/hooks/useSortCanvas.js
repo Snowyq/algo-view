@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { sortStepTypes } from "../algorithms/sort/SortAlgorithm";
 
 /**
  * useSortCanvas
@@ -25,13 +26,19 @@ import { useCallback, useEffect, useRef, useState } from "react";
  * }}
  */
 
-function useSortCanvas(id, input, canvasRef) {
+function useSortCanvas(canvasRef, id, input, options) {
 	const [worker, setWorker] = useState(null);
-	const [isLoading, setIsLoading] = useState(true);
+	const [status, setStatus] = useState("unmounted");
+	// "mounted", "resized", "canvas-initialized", "colors-loaded", "settings-updated",  "draw-done", "render-done"
 	const [error, setError] = useState("");
 
 	const offscreenRef = useRef(null);
 
+	const callbacksRef = useRef({});
+
+	const setOnStatusType = useCallback((type, cb) => {
+		callbacksRef.current[type] = typeof cb === "function" ? cb : undefined;
+	}, []);
 	/* -------------------------------------------------------------------------- */
 	/*                                   Effects                                  */
 	/* -------------------------------------------------------------------------- */
@@ -46,19 +53,31 @@ function useSortCanvas(id, input, canvasRef) {
 
 		// handling responses from Worker
 		myWorker.onmessage = function (event) {
-			const { type, message } = event.data;
+			const { type, message, payload } = event.data;
+
+			function executeCallback(type) {
+				const fn = callbacksRef.current[type];
+				if (typeof fn === "function") {
+					fn?.(payload);
+				}
+			}
 
 			// after first drawing disabling loading state
-			if (type === "ready") {
-				setIsLoading(false);
-				setError("");
+			setStatus(type);
+
+			executeCallback(type);
+
+			if (type === "error") {
+				setError(message);
 			}
-			if (type === "error") setError(message);
 		};
 
 		// Initialize Algorithm
 		myWorker.postMessage({ type: "mount", payload: { id } });
-		myWorker.postMessage({ type: "init", payload: { input } });
+		myWorker.postMessage({
+			type: "load-step-colors",
+			payload: { stepColors: getStepColors() },
+		});
 
 		// saving worker in state
 		setWorker(myWorker);
@@ -66,11 +85,11 @@ function useSortCanvas(id, input, canvasRef) {
 		return () => {
 			myWorker.terminate();
 		};
-	}, [id, input, canvasRef]);
+	}, [id, canvasRef]);
 
 	/* ----------------------- Initialize Offscreen Canvas ---------------------- */
 	useEffect(() => {
-		if (!offscreenRef.current && worker) {
+		if (!offscreenRef.current && worker && canvasRef.current) {
 			const canvas = canvasRef.current;
 			const offscreen = canvas.transferControlToOffscreen();
 
@@ -94,7 +113,11 @@ function useSortCanvas(id, input, canvasRef) {
 	const drawCanvas = useCallback(
 		stepIndex => {
 			if (!worker) return;
-			worker.postMessage({ type: "draw-canvas", payload: { stepIndex } });
+			const devicePixelRatio = getDevicePixelRatio();
+			worker.postMessage({
+				type: "draw-canvas",
+				payload: { stepIndex, devicePixelRatio },
+			});
 		},
 		[worker]
 	);
@@ -105,7 +128,11 @@ function useSortCanvas(id, input, canvasRef) {
 	const changeSettings = useCallback(
 		settings => {
 			if (!worker) return;
-			worker.postMessage({ type: "settings", payload: settings });
+			const devicePixelRatio = getDevicePixelRatio();
+			worker.postMessage({
+				type: "settings",
+				payload: { settings, devicePixelRatio },
+			});
 		},
 		[worker]
 	);
@@ -117,16 +144,84 @@ function useSortCanvas(id, input, canvasRef) {
 	const changeSize = useCallback(
 		parentRect => {
 			if (!worker) return;
+			const devicePixelRatio = getDevicePixelRatio();
 			const { width, height } = parentRect;
 			worker.postMessage({
 				type: "resize",
-				payload: { width, height },
+				payload: { width, height, devicePixelRatio },
 			});
 		},
 		[worker]
 	);
 
-	return { drawCanvas, changeSettings, changeSize, isLoading, error };
+	const changeColors = useCallback(
+		colors => {
+			if (!worker) return;
+			worker.postMessage({
+				type: "load-step-colors",
+				payload: { stepColors: colors },
+			});
+		},
+		[worker]
+	);
+
+	// const changeStepTypes = useCallback(
+	// 	types => {
+	// 		if (!worker) return;
+	// 		worker.postMessage({
+	// 			type: "update-step-types",
+	// 			payload: { enabledStepTypes: types },
+	// 		});
+	// 	},
+	// 	[worker]
+	// );
+
+	const renderAlgorithm = useCallback(
+		(input, options, rect) => {
+			if (!worker) return;
+			const devicePixelRatio = getDevicePixelRatio();
+			worker.postMessage({
+				type: "render-algorithm",
+				payload: { input, options, devicePixelRatio, rect },
+			});
+		},
+		[worker]
+	);
+
+	return {
+		renderAlgorithm,
+		drawCanvas,
+		changeSettings,
+		changeSize,
+		changeColors,
+		status,
+		error,
+		onStatusType: setOnStatusType,
+	};
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                    Utils                                   */
+/* -------------------------------------------------------------------------- */
+
+function getDevicePixelRatio() {
+	const dpr = window.devicePixelRatio;
+	return dpr || 1;
+}
+
+function getCssVar(name) {
+	return getComputedStyle(document.documentElement)
+		.getPropertyValue(name)
+		.trim();
+}
+
+function getStepColors() {
+	const stepColors = {};
+	for (const key in sortStepTypes) {
+		const type = sortStepTypes[key];
+		stepColors[type] = getCssVar(`--color-step-${type}`);
+	}
+	return stepColors;
 }
 
 export default useSortCanvas;

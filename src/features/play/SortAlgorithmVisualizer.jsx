@@ -1,28 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import SortArrayDisplay from "./SortArrayDisplay";
-import useAlgorithm from "../../hooks/useAlgorithm";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
+
 import styled from "styled-components";
-import ButtonIcon from "../../ui/ButtonIcon";
-import PlayAlgorithmInstructions from "./PlayAlgorithmInstructions";
-import SortArrayCanvas from "./SortArrayCanvas";
-import { useRect } from "../../hooks/useRect";
+
+import { PlayContext, StepContext } from "./PlayContext";
+import useSortCanvas from "../../hooks/useSortCanvas";
 import Loader from "../../ui/Loader";
-import { IoSettings } from "react-icons/io5";
-import { IoMdClose } from "react-icons/io";
-
-const Container = styled.div`
-	display: flex;
-	flex-direction: column;
-	width: 100%;
-	height: 100%;
-`;
-
-const Body = styled.div`
-	width: 100%;
-	height: 100%;
-	display: flex;
-	gap: 2rem;
-`;
+import useOnResize from "../../hooks/useOnResize";
 
 const AlgorithmContainer = styled.div`
 	width: 100%;
@@ -35,20 +18,6 @@ const AlgorithmContainer = styled.div`
 	border-radius: 15px;
 `;
 
-const InstructionsContainer = styled.div`
-	/* width: 100%; */
-	display: flex;
-	position: absolute;
-	font-weight: 700;
-	right: 2rem;
-	padding: 0 1rem;
-	top: 2rem;
-	bottom: 2rem;
-	z-index: 100;
-	backdrop-filter: blur(4px);
-	flex-direction: column;
-`;
-
 const Sizer = styled.div`
 	width: 100%;
 	height: 100%;
@@ -56,74 +25,77 @@ const Sizer = styled.div`
 	overflow: hidden;
 `;
 
-const Header = styled.div`
-	width: 100%;
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding: 0 0.5rem;
-	padding-bottom: 0.5rem;
-	/* background-color: blue; */
-`;
+function SortAlgorithmVisualizer({ registry }) {
+	//
+	/* -------------------------------- Contexts -------------------------------- */
 
-const Options = styled.div`
-	display: flex;
-	align-items: center;
-	gap: 0.5rem;
-`;
+	const { algorithmInput: input } = useContext(PlayContext);
+	const {
+		globalStep: stepIndex,
+		stepTypes,
+		passStepsLength,
+	} = useContext(StepContext);
 
-const Option = styled(ButtonIcon)`
-	background-color: transparent;
-`;
+	/* ---------------------------------- Refs ---------------------------------- */
 
-function SortAlgorithmVisualizer({
-	registry,
-	input,
-	stepIndex,
-	passStepsLength,
-}) {
-	const { ref, rect } = useRect();
+	const canvasRef = useRef();
+	const sizerRef = useRef();
+
+	/* --------------------------------- States --------------------------------- */
+
+	const [isLoading, setIsLoading] = useState(true);
 	const [localStepIndex, setCurrStepIndex] = useState(stepIndex);
-	const { getStepsLength } = useAlgorithm(registry.Class, input);
-	// pass stepsLength to parentComponent
-	const stepsLength = getStepsLength();
+
+	/* -------------------------------- CanvasApi ------------------------------- */
+
+	const algoOptions = useMemo(() => {
+		return { stepTypes };
+	}, [stepTypes]);
+
+	const canvasApi = useSortCanvas(canvasRef, registry.id, input, algoOptions);
+	const { drawCanvas, changeSize, renderAlgorithm, onStatusType } = canvasApi;
+
+	const onResize = ref => {
+		if (!ref.current) return;
+		const rect = ref.current.getBoundingClientRect();
+		changeSize(rect);
+	};
+	useOnResize(onResize, sizerRef);
+
 	useEffect(() => {
-		passStepsLength(stepsLength);
-	}, [stepsLength, passStepsLength]);
+		setIsLoading(true);
+		if (!sizerRef.current) return;
+		const rect = sizerRef.current.getBoundingClientRect();
+		renderAlgorithm(input, algoOptions, rect);
+	}, [algoOptions, renderAlgorithm, input]);
+
+	useEffect(() => {
+		onStatusType("render-done", payload => {
+			const { stepsLength } = payload;
+			if (stepsLength) passStepsLength(stepsLength);
+			setIsLoading(false);
+		});
+	}, [onStatusType, passStepsLength]);
+
+	useEffect(() => {
+		drawCanvas(stepIndex);
+	}, [drawCanvas, stepIndex]);
 
 	return (
-		<Container>
-			<Header>
-				<h3>{registry.meta.name}</h3>
-				{/* <Options>
-					<Option>
-						<IoSettings />
-					</Option>
-					<Option>
-						<IoMdClose />
-					</Option>
-				</Options> */}
-			</Header>
-			<Body>
-				<AlgorithmContainer>
-					<Sizer ref={ref}>
-						<SortArrayCanvas
-							id={registry.id}
-							stepIndex={stepIndex}
-							input={input}
-							parentRect={rect}
-						/>
-					</Sizer>
-				</AlgorithmContainer>
-				{/* <InstructionsContainer>
-					<p>Instructions</p>
-					<PlayAlgorithmInstructions
-						instructions={registry.instructions}
-						step={step}
-					/>
-				</InstructionsContainer> */}
-			</Body>
-		</Container>
+		<AlgorithmContainer>
+			<Sizer ref={sizerRef}>
+				{isLoading && <Loader />}
+				<canvas
+					ref={canvasRef}
+					style={{
+						width: "100%",
+						height: "100%",
+						display: "block",
+						position: "absolute",
+					}}
+				/>
+			</Sizer>
+		</AlgorithmContainer>
 	);
 }
 

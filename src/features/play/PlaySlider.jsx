@@ -32,9 +32,7 @@ const Dot = styled.div`
 
 	top: 50%;
 	translate: -50% -50%;
-	z-index: 1;
 	box-shadow: 1px 1px 0px 1px var(--color-grey-400);
-	cursor: pointer;
 
 	&::before {
 		content: "";
@@ -62,7 +60,7 @@ const Tooltip = styled.div`
 
 const Fill = styled.div`
 	width: 100%;
-	height: 100%;
+	height: 90%;
 	background-color: var(--color-grey-500);
 	border-radius: 15px;
 `;

@@ -27,7 +27,10 @@ const categories = {
 			grid-template-rows: 1fr 1fr;
 			grid-template-columns: 1fr 1fr;
 		`,
-		5: css``,
+		5: css`
+			grid-template-rows: 1fr 1fr 1fr;
+			grid-template-columns: 1fr 1fr;
+		`,
 		6: css`
 			grid-template-rows: 1fr 1fr 1fr;
 			grid-template-columns: 1fr 1fr;
@@ -60,15 +63,17 @@ function PlayDisplayedAlgorithmsArea() {
 	return (
 		<StyledPlayViewArea>
 			<Grid num={activeAlgorithms.length} category={activeCategory}>
-				{activeAlgorithms.map((id, index) => {
+				{activeAlgorithms.map((algo, index) => {
 					const registry = registryApi.getAlgorithmRegistry(
 						activeCategory,
-						id
+						algo.id
 					);
+					if (!registry) return <></>;
 					return (
 						<PlayAlgorithmWindow
-							key={`${index}-${id}`}
+							key={`${index}-${algo.id}`}
 							registry={registry}
+							category={activeCategory}
 						/>
 					);
 				})}

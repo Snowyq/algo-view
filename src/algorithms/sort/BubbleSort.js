@@ -1,20 +1,24 @@
 import { SortAlgorithm } from "./SortAlgorithm";
 
 export class BubbleSort extends SortAlgorithm {
-	name = "BubbleSort";
-	complexity = "O(n^2)";
-
-	constructor(array) {
-		super(array);
+	constructor(...args) {
+		super(...args);
 	}
 
 	sort(arr) {
+		this.countConditionChecks();
 		for (let i = 1; i < arr.length; i++) {
+			this.countConditionChecks();
 			for (let j = 0; j < arr.length - i; j++) {
+				this.countConditionChecks();
 				this.select(j, {
 					instructionId: j === 0 ? ["i0", "i1"] : ["i1"],
 				});
+
+				this.countArrayAccess(2);
+				this.countConditionChecks();
 				if (this.check(j, ">", j + 1, arr, { instructionId: ["i2"] })) {
+					this.countArrayAccess(2);
 					this.swap(j, j + 1, arr, { instructionId: ["i3"] });
 				}
 			}

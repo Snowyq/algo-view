@@ -1,6 +1,6 @@
 import PlayWindow from "./PlayWindow";
-import PlayVisualizer from "./PlayVisualizer";
 import styled from "styled-components";
+import PlaySortWindow from "./PlaySortWindow";
 
 const Container = styled.div`
 	display: flex;
@@ -8,23 +8,20 @@ const Container = styled.div`
 	width: 100%;
 	justify-content: center;
 	align-items: center;
-`;
-
-const VisualizerContainer = styled(Container)`
-	width: 100%;
-	max-width: 100%;
 	padding: 1rem;
 `;
 
-function PlayAlgorithmWindow({ registry }) {
+const WindowCategories = {
+	sort: PlaySortWindow,
+};
+
+function PlayAlgorithmWindow({ registry, category }) {
+	const Window = WindowCategories[category];
+
 	return (
-		<Container>
-			<PlayWindow>
-				<VisualizerContainer>
-					<PlayVisualizer registry={registry} />
-				</VisualizerContainer>
-			</PlayWindow>
-		</Container>
+		<PlayWindow>
+			<Container>{Window && <Window registry={registry} />}</Container>
+		</PlayWindow>
 	);
 }
 
