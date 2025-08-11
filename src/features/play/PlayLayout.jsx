@@ -4,74 +4,54 @@ import styled from "styled-components";
 import PlayDisplayedAlgorithmsArea from "./PlayDisplayedAlgorithmsArea";
 import PlaySidebar from "./PlaySidebar";
 import PlayControls from "./PlayControls";
+import useWindowSize from "../../hooks/useWindowSize";
+import PlaySidebarDesktop from "./PlaySidebarDesktop";
+import PlaySidebarMobile from "./PlaySidebarMobile";
+import PlayInfo from "./PlayInfo";
 
 const StyledPlayground = styled.div`
 	height: 100%;
 	width: 100%;
 	position: relative;
+	overflow: hidden;
 	/* padding: 1rem 2rem 1rem 1.5rem; */
 `;
 
-const DottedBackground = styled.div`
-	--dot-bg: ${({ bg }) => bg || "white"};
-	--dot-color: ${({ color }) => color || "black"};
-	--dot-size: ${({ size }) => size || "1px"};
-	--dot-space: ${({ space }) => space || "2.5rem"};
-	background:
-		linear-gradient(
-				90deg,
-				var(--dot-bg) calc(var(--dot-space) - var(--dot-size)),
-				transparent 1%
-			)
-			center / var(--dot-space) var(--dot-space),
-		linear-gradient(
-				var(--dot-bg) calc(var(--dot-space) - var(--dot-size)),
-				transparent 1%
-			)
-			center / var(--dot-space) var(--dot-space),
-		var(--dot-color);
-
-	height: 100%;
-	width: 100%;
-	position: absolute;
-	left: 0;
-	top: 0;
-	/* background-color: yellow; */
-	/* box-shadow: 1px 1px 25px 5px var(--color-grey-300); */
-	/* border: 5px solid var(--color-grey-100); */
-`;
-
 const Container = styled.div`
-	padding: 5rem;
 	height: 100%;
 	width: 100%;
 	display: flex;
-	gap: 5rem;
-	margin: 0 auto;
+	/* flex-direction: column; */
 `;
 
 const PlayMain = styled.div`
-	display: grid;
+	flex-direction: column;
 	width: 100%;
-	grid-template-rows: 1fr 10rem;
-	gap: 5rem;
+	height: 100%;
+	display: flex;
+`;
+
+const PlayGroup = styled.div`
+	display: flex;
+	height: 100%;
 `;
 
 function PlayLayout() {
+	const { size } = useWindowSize();
+
+	const Sidebar = size.width > 640 ? PlaySidebarDesktop : PlaySidebarMobile;
+
 	return (
 		<StyledPlayground>
-			<DottedBackground
-				bg="var(--color-grey-100)"
-				color="var(--color-grey-200)"
-				size="2px"
-				space="0.5rem"
-			/>
 			<Container>
+				<PlayInfo />
 				<PlayMain>
-					<PlayDisplayedAlgorithmsArea />
+					<PlayGroup>
+						<PlayDisplayedAlgorithmsArea />
+					</PlayGroup>
 					<PlayControls />
 				</PlayMain>
-				<PlaySidebar />
+				<Sidebar />
 			</Container>
 		</StyledPlayground>
 	);

@@ -16,6 +16,7 @@ const AlgorithmContainer = styled.div`
 	background-color: var(--color-grey-50);
 	box-shadow: 0.2rem 0.2rem 0px 2px var(--color-grey-300);
 	border-radius: 15px;
+	max-height: 800px;
 `;
 
 const Sizer = styled.div`
@@ -25,7 +26,7 @@ const Sizer = styled.div`
 	overflow: hidden;
 `;
 
-function SortAlgorithmVisualizer({ registry }) {
+function SortAlgorithmVisualizer({ registry, onStepUpdate }) {
 	//
 	/* -------------------------------- Contexts -------------------------------- */
 
@@ -75,7 +76,10 @@ function SortAlgorithmVisualizer({ registry }) {
 			if (stepsLength) passStepsLength(stepsLength);
 			setIsLoading(false);
 		});
-	}, [onStatusType, passStepsLength]);
+		onStatusType("draw-done", payload => {
+			onStepUpdate?.(payload);
+		});
+	}, [onStatusType, passStepsLength, onStepUpdate]);
 
 	useEffect(() => {
 		drawCanvas(stepIndex);

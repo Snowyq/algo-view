@@ -1,79 +1,118 @@
 import styled from "styled-components";
-import PlayControlsButton from "./PlayControlsButton";
-import { BsSpeedometer } from "react-icons/bs";
-import { useState } from "react";
-import Slider from "../../ui/Slider";
-const SliderContainer = styled.div``;
-const SliderOutput = styled.div`
-	width: 10rem;
-	height: 5px;
-	background-color: var(--color-grey-300);
-	border-radius: 5px;
-	transition: height 0.3s;
+import { BsSpeedometer, BsSpeedometer2 } from "react-icons/bs";
+import { useCallback, useMemo, useState } from "react";
+import Selector from "../../ui/Selector";
+
+const Option = styled.div`
+	padding: 0.25rem 0.5rem;
+	cursor: pointer;
 
 	&:hover {
-		height: 8px;
+		background-color: var(--color-grey-100);
 	}
 `;
 
-const HoverDot = styled.div`
-	height: 100%;
-	width: 5px;
-	background-color: var(--color-grey-400);
-`;
-
-const SliderFill = styled.div`
-	width: 100%;
-	height: 100%;
-	background-color: var(--color-grey-400);
-	border-radius: 5px;
-`;
-
-const Tooltip = styled.div`
-	line-height: 1;
-	padding: 0.1rem 0.25rem;
-	background-color: var(--color-grey-100);
+const Wrapper = styled.div`
+	background-color: var(--color-grey-50);
+	overflow: hidden;
+	border-radius: 10px;
+	box-shadow: 0 0 15px 0px var(--color-grey-400);
 `;
 
 const StyledPlaySpeed = styled.div`
-	display: flex;
-	align-items: center;
-	gap: 1rem;
+	position: relative;
 `;
 
-function PlaySpeed({ speed, onChange, speeds }) {
-	const [isHidden, setIsHidden] = useState();
-	const sliderState = isHidden ? "hidden" : "visible";
-	const maxValue = speeds.length - 1;
-	const value = speeds.findIndex(el => el === speed);
+const SpeedButton = styled.button`
+	display: flex;
+	flex-direction: column;
+	padding: 0.2rem;
+	align-items: center;
+	justify-content: center;
+	height: auto;
+	background-color: var(--color-grey-100);
+	border-radius: 5px;
+	border: none;
+`;
 
-	const handleOnChange = index => {
-		onChange(speeds[index]);
+const SpeedButtonValue = styled.span`
+	display: block;
+	width: auto;
+	line-height: 1.4rem;
+	font-size: 1.4rem;
+	border-radius: 2.5px;
+
+	width: 4rem;
+	height: fit-content;
+`;
+
+const Icon = styled.span`
+	font-size: 2.2rem;
+`;
+
+const SelectorContainer = styled.div`
+	display: ${({ state }) => (state === "hidden" ? "none" : "block")};
+	position: absolute;
+
+	bottom: 0;
+	right: -0.5rem;
+	translate: 100% 0%;
+`;
+
+function PlaySpeed({ speed, onChange, speeds, freeze, unfreeze }) {
+	const [isHidden, setIsHidden] = useState(true);
+
+	const handleOnChange = option => {
+		onChange?.(option);
+		unfreeze?.();
+		setIsHidden(true);
+	};
+
+	const handleClick = () => {
+		setIsHidden(isHid => {
+			if (isHid) freeze?.();
+			else unfreeze?.();
+			return !isHid;
+		});
+	};
+
+	const displaySeconds = ms => {
+		const sec = ms / 1000;
+		const value = ms % 1000 === 0 ? sec : sec.toFixed(1);
+		return value + "s";
+	};
+
+	const display = useCallback(timeMs => {
+		return timeMs >= 100 ? displaySeconds(timeMs) : timeMs + "ms";
+	}, []);
+
+	const renderOptions = option => {
+		return <Option>{display(option)}</Option>;
 	};
 
 	return (
 		<StyledPlaySpeed>
-			<PlayControlsButton icon={<BsSpeedometer />} />
-			<SliderContainer state={sliderState}>
-				<SliderOutput state={sliderState}>
-					<Slider
-						maxValue={maxValue}
-						value={value}
+			<SpeedButton onClick={handleClick}>
+				<Icon>
+					<BsSpeedometer2 />
+				</Icon>
+				<SpeedButtonValue>{display(speed)}</SpeedButtonValue>
+			</SpeedButton>
+			<SelectorContainer state={isHidden ? "hidden" : "visible"}>
+				{!isHidden && (
+					<Selector
+						Wrapper={props => (
+							<Wrapper
+								{...props}
+								state={isHidden ? "hidden" : "visible"}
+							/>
+						)}
 						onChange={handleOnChange}
-					>
-						<Slider.HoverDot>
-							<HoverDot />
-						</Slider.HoverDot>
-						<Slider.ProgressFill transition={0.2}>
-							<SliderFill />
-						</Slider.ProgressFill>
-						<Slider.Tooltip modifyValue={val => speeds[val] + "ms"}>
-							<Tooltip />
-						</Slider.Tooltip>
-					</Slider>
-				</SliderOutput>
-			</SliderContainer>
-			<span>{speed}ms</span>
+						options={speeds}
+						render={renderOptions}
+					/>
+				)}
+			</SelectorContainer>
 		</StyledPlaySpeed>
 	);
 }

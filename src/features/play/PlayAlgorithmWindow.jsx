@@ -9,6 +9,8 @@ const Container = styled.div`
 	justify-content: center;
 	align-items: center;
 	padding: 1rem;
+	margin: 0 auto;
+	/* max-width: 1200px; */
 `;
 
 const WindowCategories = {

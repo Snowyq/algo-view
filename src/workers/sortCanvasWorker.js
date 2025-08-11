@@ -55,8 +55,13 @@ self.onmessage = function (event) {
 
 		adjustSize(null, null, devicePixelRatio);
 		draw(stepIndex);
+		const metrics = AlgorithmInstance.getMetrics();
+		const step = AlgorithmInstance.getStepByIndex(stepIndex);
 
-		postMessage({ type: "draw-done" });
+		postMessage({
+			type: "draw-done",
+			payload: { step, index: stepIndex, metrics },
+		});
 		return;
 	}
 
@@ -134,8 +139,9 @@ self.onmessage = function (event) {
 		doFirstRender = true;
 		createAlgorithmInstance(input, options);
 		const stepsLength = getAlgorithmStepsLength();
+		const metrics = AlgorithmInstance.getMetrics();
 
-		postMessage({ type: "render-done", payload: { stepsLength } });
+		postMessage({ type: "render-done", payload: { stepsLength, metrics } });
 	}
 
 	/* ----------------------------- Update Settings ---------------------------- */
@@ -378,7 +384,7 @@ function animateDrawArray(
 	step,
 	maxValue,
 	duration = 1500,
-	appearInSameTime = false
+	appearStyle = "sequence" // 'sequence', 'atOnce',
 ) {
 	let output = [];
 	if (!state) return output;
@@ -390,11 +396,12 @@ function animateDrawArray(
 		drawBlock(val, index, step, blockWidth, gapWidth, maxValue, showText);
 	};
 
-	if (appearInSameTime) {
-		animateAtOnce(state, onDraw, duration);
-	} else {
-		animateInSequence(state, onDraw, duration);
-	}
+	const animations = {
+		sequence: () => animateInSequence(state, onDraw, duration),
+		atOnce: () => animateAtOnce(state, onDraw, duration),
+	};
+
+	(animations[appearStyle] || animations.atOnce)();
 }
 
 function animateAtOnce(state, onDraw, duration) {

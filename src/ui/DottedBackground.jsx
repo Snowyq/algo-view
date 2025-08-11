@@ -1,6 +1,6 @@
 import styled from "styled-components";
 
-const StyledDottedBackground = styled.div`
+export const DottedBackground = styled.div`
 	--dot-bg: ${({ bg }) => bg || "white"};
 	--dot-color: ${({ color }) => color || "black"};
 	--dot-size: ${({ size }) => size || "1px"};
@@ -21,30 +21,10 @@ const StyledDottedBackground = styled.div`
 
 	height: 100%;
 	width: 100%;
-	border-radius: ${({ borderRadius }) => borderRadius || "5rem"};
+	position: absolute;
+	left: 0;
+	top: 0;
+	/* background-color: yellow; */
 	/* box-shadow: 1px 1px 25px 5px var(--color-grey-300); */
 	/* border: 5px solid var(--color-grey-100); */
 `;
-
-function DottedBackground({
-	bg = "white",
-	color = "black",
-	size = "1px",
-	space = "2.5rem",
-	borderRadius = "0rem",
-	children,
-}) {
-	return (
-		<StyledDottedBackground
-			bg={bg}
-			color={color}
-			size={size}
-			space={space}
-			borderRadius={borderRadius}
-		>
-			{children}
-		</StyledDottedBackground>
-	);
-}
-
-export default DottedBackground;
