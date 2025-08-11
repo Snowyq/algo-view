@@ -3,15 +3,20 @@ import PlaySidebar from "./PlaySidebar";
 import PlayWindow from "./PlayWindow";
 import ButtonIcon from "../../ui/ButtonIcon";
 import { GoSidebarCollapse } from "react-icons/go";
-import { useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { BsLayoutSidebarReverse, BsPinAngleFill } from "react-icons/bs";
 import { IoIosArrowBack } from "react-icons/io";
+import { PlayContext } from "./PlayContext";
+import PlaySelectCategory from "./PlaySelectCategory";
+import PlaySelectAlgorithms from "./PlaySelectAlgorithms";
 
 const sidebarStates = {
 	hidden: css`
 		width: 0;
 	`,
 	visible: css`
+		/* width: 30%;
+		/* min-width: 20rem; */
 		width: 30rem;
 	`,
 };
@@ -31,11 +36,13 @@ const Sidebar = styled.div`
 const Container = styled.div`
 	display: flex;
 	flex-direction: column;
-	padding: 0 2rem;
+	padding: 2rem 2rem;
 	height: 100%;
 
-	gap: 1rem;
+	gap: 1.5rem;
 `;
+
+const Header = styled.div``;
 
 const SidebarOutlet = styled.div`
 	width: 30rem;
@@ -88,33 +95,9 @@ const ArrowCollapse = styled.div`
 	${({ state }) => arrowStates[state]}
 `;
 
-const PinCollapse = styled.div`
-	position: absolute;
-	font-size: 1.6rem;
-	top: 50%;
-	left: 20%;
-	translate: 0 -50%;
-	transition: rotate 0.5s;
-
-	${({ state }) => arrowStates[state]}
-`;
-
 function PlaySidebarDesktop() {
 	const [isOpen, setIsOpen] = useState(false);
-	const [isPinned, setIsPinned] = useState(false);
-	const [isMouseNearby, setIsMouseNearby] = useState(false);
-	const sidebarRef = useRef(null);
 	const state = isOpen ? "visible" : "hidden";
-
-	const intervalRef = useRef(null);
-
-	const handleMove = e => {
-		const { clientX } = e;
-		if (window.innerWidth - clientX < 20) {
-			open();
-			setIsMouseNearby(true);
-		}
-	};
 
 	const open = () => {
 		setIsOpen(true);
@@ -122,40 +105,50 @@ function PlaySidebarDesktop() {
 
 	const close = () => {
 		setIsOpen(false);
-		setIsMouseNearby(false);
 	};
 
 	const toggleOpen = () => {
-		setIsMouseNearby(false);
 		setIsOpen(x => !x);
 	};
 
-	const handleMouseLeave = e => {
-		if (isMouseNearby) {
-			if (intervalRef.current) {
-				clearInterval(intervalRef.current);
-			}
-			intervalRef.current = setInterval(close, 1000);
-		}
-	};
+	const {
+		activeCategory,
+		activeAlgorithms,
+		changeActiveAlgorithms,
+		openAlgorithm,
+		closeAlgorithm,
+		changeActiveCategory,
+		categories,
+		algorithms,
+	} = useContext(PlayContext);
 
-	const handleMouseEnter = () => {
-		if (intervalRef.current) {
-			clearInterval(intervalRef.current);
-		}
-	};
-
-	useEffect(() => {
-		window.addEventListener("mousemove", handleMove);
+	const categoriesOptions = categories.map(cat => {
+		return { value: cat.id, label: cat.name };
 	});
 
+	const algorithmsOptions = algorithms.map(algo => {
+		return { value: algo.id, label: algo.meta.name };
+	});
+
+	const handleCategoryChange = e => {
+		changeActiveCategory(e.target.value);
+	};
+
+	const handleAlgorithmSelect = option => {
+		openAlgorithm(option.value);
+	};
+
+	const handleAlgorithmDeselect = option => {
+		closeAlgorithm(option.value);
+	};
+
+	const handleAlgorithmsChange = options => {
+		const ids = options.map(option => option.value);
+		changeActiveAlgorithms(ids);
+	};
+
 	return (
-		<Sidebar
-			state={state}
-			ref={sidebarRef}
-			onMouseLeave={handleMouseLeave}
-			onMouseEnter={handleMouseEnter}
-		>
+		<Sidebar state={state}>
 			<CollapseButtonHolder>
 				<CollapseButton onClick={toggleOpen} $fontSize={"2.6rem"}>
 					<ArrowCollapse state={state}>
@@ -163,17 +156,19 @@ function PlaySidebarDesktop() {
 					</ArrowCollapse>
 					<BsLayoutSidebarReverse />
 				</CollapseButton>
-				<CollapseButton onClick={toggleOpen}>
-					<PinCollapse>
-						<BsPinAngleFill />
-					</PinCollapse>
-					<BsLayoutSidebarReverse />
-				</CollapseButton>
 			</CollapseButtonHolder>
 
 			<SidebarOutlet state={state}>
 				<Container>
-					<PlaySidebar />
+					<Header>
+						<h3>Visualizer Config</h3>
+					</Header>
+					<PlaySelectCategory
+						options={categoriesOptions}
+						selected={activeAlgorithms}
+						onChange={handleCategoryChange}
+					/>
+					<PlaySelectAlgorithms />
 				</Container>
 			</SidebarOutlet>
 		</Sidebar>

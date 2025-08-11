@@ -26,7 +26,7 @@ import { sortStepTypes } from "../algorithms/sort/SortAlgorithm";
  * }}
  */
 
-function useSortCanvas(canvasRef, id, input, options) {
+function useSortCanvas(canvasRef, id) {
 	const [worker, setWorker] = useState(null);
 	const [status, setStatus] = useState("unmounted");
 	// "mounted", "resized", "canvas-initialized", "colors-loaded", "settings-updated",  "draw-done", "render-done"
@@ -85,7 +85,7 @@ function useSortCanvas(canvasRef, id, input, options) {
 		return () => {
 			myWorker.terminate();
 		};
-	}, [id, canvasRef]);
+	}, [id]);
 
 	/* ----------------------- Initialize Offscreen Canvas ---------------------- */
 	useEffect(() => {
@@ -105,6 +105,22 @@ function useSortCanvas(canvasRef, id, input, options) {
 	/* -------------------------------------------------------------------------- */
 	/*                                 Callbacks                                  */
 	/* -------------------------------------------------------------------------- */
+
+	// const initCanvas = useCallback(
+	// 	canvasRef => {
+	// 		if (!offscreenRef.current && worker && canvasRef.current) {
+	// 			const canvas = canvasRef.current;
+	// 			const offscreen = canvas.transferControlToOffscreen();
+
+	// 			worker.postMessage({ type: "init-canvas", canvas: offscreen }, [
+	// 				offscreen,
+	// 			]);
+
+	// 			offscreenRef.current = offscreen;
+	// 		}
+	// 	},
+	// 	[offscreenRef, worker]
+	// );
 
 	/**
 	 * drawCanvas

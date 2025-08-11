@@ -44,7 +44,6 @@ function PlayLayout() {
 	return (
 		<StyledPlayground>
 			<Container>
-				<PlayInfo />
 				<PlayMain>
 					<PlayGroup>
 						<PlayDisplayedAlgorithmsArea />

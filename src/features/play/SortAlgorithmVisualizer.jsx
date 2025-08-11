@@ -32,9 +32,9 @@ function SortAlgorithmVisualizer({ registry, onStepUpdate }) {
 
 	const { algorithmInput: input } = useContext(PlayContext);
 	const {
-		globalStep: stepIndex,
 		stepTypes,
 		passStepsLength,
+		globalStep: stepIndex,
 	} = useContext(StepContext);
 
 	/* ---------------------------------- Refs ---------------------------------- */
@@ -45,7 +45,6 @@ function SortAlgorithmVisualizer({ registry, onStepUpdate }) {
 	/* --------------------------------- States --------------------------------- */
 
 	const [isLoading, setIsLoading] = useState(true);
-	const [localStepIndex, setCurrStepIndex] = useState(stepIndex);
 
 	/* -------------------------------- CanvasApi ------------------------------- */
 

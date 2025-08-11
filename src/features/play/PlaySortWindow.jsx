@@ -1,12 +1,14 @@
-import { useCallback, useContext, useState } from "react";
+import { useCallback, useContext, useEffect, useState } from "react";
 import styled from "styled-components";
 import SortAlgorithmVisualizer from "./SortAlgorithmVisualizer";
 import PlayStepMetrics from "./PlayStepMetrics";
 import ButtonIcon from "../../ui/ButtonIcon";
 import { FiSettings } from "react-icons/fi";
-import { RiFileSettingsFill } from "react-icons/ri";
+import { RiFileSettingsFill, RiNumbersLine } from "react-icons/ri";
 import { IoSettings } from "react-icons/io5";
-import { PlayContext } from "./PlayContext";
+import { PlayContext, StepContext } from "./PlayContext";
+import PlaySlider from "./PlaySlider";
+import { IoIosArrowBack, IoIosArrowForward } from "react-icons/io";
 
 const Header = styled.div`
 	display: flex;
@@ -16,7 +18,9 @@ const Header = styled.div`
 `;
 
 const Heading = styled.h2``;
-
+const Tools = styled.div`
+	display: flex;
+`;
 const Container = styled.div`
 	width: 100%;
 	height: 100%;
@@ -33,30 +37,35 @@ const Top = styled.div`
 	width: 100%;
 `;
 
-const Metrics = styled.div`
-	padding-right: 0.5rem;
-	width: 100%;
-	display: flex;
-	justify-content: end;
-	width: fit-content;
-`;
-
-const Body = styled.div`
+const Main = styled.div`
 	display: flex;
 	flex-direction: column;
-	width: 100%;
 	gap: 1rem;
 	height: 100%;
+	width: 100%;
+`;
+
+const Controls = styled.div`
+	display: flex;
+	padding: 0 1rem;
+	align-items: center;
+	gap: 1rem;
+`;
+
+const ControlsButtons = styled.div`
+	display: flex;
+	gap: 0.2rem;
 `;
 
 function PlaySortWindow({ registry }) {
 	const [metrics, setMetrics] = useState({});
-	const { activeAlgorithms } = useContext(PlayContext);
-	console.log(activeAlgorithms);
+	const [showMetrics, setShowMetrics] = useState(false);
 
-	const [showMetrics, setShowMetics] = useState(
-		activeAlgorithms.length === 1
-	);
+	const { allMetricsVisible } = useContext(PlayContext);
+
+	const toggleDisplayMetrics = () => setShowMetrics(x => !x);
+	const hideDisplayMetrics = () => setShowMetrics(true);
+	const showDisplayMetrics = () => setShowMetrics(true);
 
 	const loadMetrics = metrics => {
 		setMetrics(metrics);
@@ -79,21 +88,39 @@ function PlaySortWindow({ registry }) {
 		}
 	};
 
+	useEffect(() => {
+		setShowMetrics(allMetricsVisible);
+	}, [allMetricsVisible]);
+
 	return (
 		<Container>
 			<Top>
 				<Header>
 					<Heading>{registry.meta.name}</Heading>
-					<ButtonIcon>
-						<IoSettings />
-					</ButtonIcon>
+					<Tools>
+						<ButtonIcon onClick={toggleDisplayMetrics}>
+							<RiNumbersLine />
+						</ButtonIcon>
+						<ButtonIcon>
+							<IoSettings />
+						</ButtonIcon>
+					</Tools>
 				</Header>
-				<PlayStepMetrics metrics={metrics} />
+				{showMetrics && <PlayStepMetrics metrics={metrics} />}
 			</Top>
-			<SortAlgorithmVisualizer
-				registry={registry}
-				onStepUpdate={handleUpdate}
-			/>
+			<Main>
+				<SortAlgorithmVisualizer
+					registry={registry}
+					onStepUpdate={handleUpdate}
+				/>
+				{/* <Controls>
+					<PlaySlider />
+					<ControlsButtons>
+						<IoIosArrowBack />
+						<IoIosArrowForward />
+					</ControlsButtons>
+				</Controls> */}
+			</Main>
 		</Container>
 	);
 }

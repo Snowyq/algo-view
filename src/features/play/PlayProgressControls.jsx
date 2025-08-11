@@ -2,8 +2,8 @@ import { FaBackward, FaForward } from "react-icons/fa6";
 import PlayControlsButton from "./PlayControlsButton";
 import PlayStopButton from "../../ui/PlayStopButton";
 import styled from "styled-components";
-import { RiForward10Line } from "react-icons/ri";
 import { TbRewindBackward10, TbRewindForward10 } from "react-icons/tb";
+import { memo } from "react";
 
 const Container = styled.div`
 	display: flex;
@@ -44,4 +44,4 @@ function PlayProgressControls({
 	);
 }
 
-export default PlayProgressControls;
+export default memo(PlayProgressControls);

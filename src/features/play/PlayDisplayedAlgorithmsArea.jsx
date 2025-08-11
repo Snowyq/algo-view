@@ -49,7 +49,7 @@ const categories = {
 };
 
 const Grid = styled.div`
-	gap: 3rem;
+	gap: 2rem;
 	display: grid;
 	padding: 5rem;
 	/* grid-template-columns: 1fr 1fr; */

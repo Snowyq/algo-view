@@ -1,9 +1,10 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { PlayContext, StepContext } from "./PlayContext";
 import registryApi from "../../algorithms/algorithmsRegistryApi";
 import { AVAILABLE_SORT_ANIMATION_SPEEDS } from "../../utils/constants";
 import { generateRandomArray } from "../../utils/randoms";
 import { MergeSort } from "../../algorithms/sort/MergeSort";
+import useSortCanvas from "../../hooks/useSortCanvas";
 
 // const DEFAULT_INPUT = [
 // 	19, 28, 12, 27, 20, 11, 30, 15, 9, 4, 23, 2, 29, 25, 14, 12, 8, 3, 18, 10,
@@ -62,6 +63,15 @@ function PlayProvider({ children }) {
 	const [activeAlgorithms, setActiveAlgorithms] = useState(DEFAULT_ALGOS);
 	const [algorithmInput, setAlgorithmInput] = useState(DEFAULT_INPUT);
 
+	const [allMetricsVisible, setAllMetricsVisible] = useState(false);
+
+	const metricsToggleAll = useCallback(
+		() => setAllMetricsVisible(x => !x),
+		[]
+	);
+	const metricsHideAll = useCallback(() => setAllMetricsVisible(false), []);
+	const metricsShowAll = useCallback(() => setAllMetricsVisible(true), []);
+
 	const allAlgorithmsReady = activeAlgorithms.every(algo => algo.isReady);
 
 	const categories = registryApi.getCategories();
@@ -89,7 +99,10 @@ function PlayProvider({ children }) {
 			);
 			if (!algorithmRegistry) return;
 			const newAlgo = { id: algorithmId, isReady: false };
-			setActiveAlgorithms(algos => [...algos, newAlgo]);
+			setActiveAlgorithms(algos => {
+				if (algos.find(algo => algo.id === newAlgo.id)) return algos;
+				else return [...algos, newAlgo];
+			});
 		},
 		[activeCategory]
 	);
@@ -119,6 +132,8 @@ function PlayProvider({ children }) {
 		});
 	}, []);
 
+	useEffect(() => {});
+
 	const playContextValue = useMemo(
 		() => ({
 			openAlgorithm,
@@ -134,6 +149,10 @@ function PlayProvider({ children }) {
 			algorithms,
 			animationSpeeds,
 			allAlgorithmsReady,
+			metricsToggleAll,
+			metricsHideAll,
+			metricsShowAll,
+			allMetricsVisible,
 		}),
 		[
 			openAlgorithm,
@@ -148,6 +167,10 @@ function PlayProvider({ children }) {
 			categories,
 			algorithms,
 			allAlgorithmsReady,
+			metricsToggleAll,
+			metricsHideAll,
+			metricsShowAll,
+			allMetricsVisible,
 		]
 	);
 

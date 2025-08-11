@@ -1,11 +1,20 @@
 import styled from "styled-components";
 import PlayWindow from "./PlayWindow";
-import { useContext, useEffect, useRef, useState } from "react";
+import {
+	memo,
+	useCallback,
+	useContext,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 import { PlayContext, StepContext } from "./PlayContext";
 
 import PlaySpeed from "./PlaySpeed";
 import PlayProgressBar from "./PlayProgressBar";
 import PlayProgressControls from "./PlayProgressControls";
+import ButtonIcon from "../../ui/ButtonIcon";
+import { RiNumbersLine } from "react-icons/ri";
 
 const Flex = styled.div`
 	display: flex;
@@ -24,6 +33,10 @@ const Center = styled(Group)`
 
 const Left = styled(Group)`
 	left: 0;
+`;
+
+const Right = styled(Group)`
+	right: 0;
 `;
 
 const StyledPlayControls = styled(Flex)`
@@ -63,7 +76,8 @@ function PlayControls() {
 		globalStepsLength,
 		changeGlobalStep,
 	} = useContext(StepContext);
-	const { animationSpeeds, activeCategory } = useContext(PlayContext);
+	const { animationSpeeds, activeCategory, metricsToggleAll } =
+		useContext(PlayContext);
 	const speeds = animationSpeeds[activeCategory];
 	const globalStepRef = useRef(globalStep);
 	const animationIntervalRef = useRef(null);
@@ -89,27 +103,30 @@ function PlayControls() {
 		}
 	};
 
-	const startAnimation = interval => {
-		if (globalStep >= globalStepsLength - 1) return;
-		clearAnimationTimeout();
-		if (animationIntervalRef.current) return;
-		const id = setInterval(() => {
-			const currentStep = globalStepRef.current;
-			if (currentStep >= globalStepsLength - 1) {
-				stopAnimation();
-			} else {
-				increaseGlobalStep(1);
-			}
-		}, interval);
-		animationIntervalRef.current = id;
-		setIsPlaying(true);
-	};
-
-	const stopAnimation = () => {
+	const stopAnimation = useCallback(() => {
 		clearAnimationInterval();
 		wasPlayingRef.current = false;
 		setIsPlaying(false);
-	};
+	}, []);
+
+	const startAnimation = useCallback(
+		interval => {
+			if (globalStep >= globalStepsLength - 1) return;
+			clearAnimationTimeout();
+			if (animationIntervalRef.current) return;
+			const id = setInterval(() => {
+				const currentStep = globalStepRef.current;
+				if (currentStep >= globalStepsLength - 1) {
+					stopAnimation();
+				} else {
+					increaseGlobalStep(1);
+				}
+			}, interval);
+			animationIntervalRef.current = id;
+			setIsPlaying(true);
+		},
+		[globalStepsLength, increaseGlobalStep, globalStep, stopAnimation]
+	);
 
 	const freezeAnimation = () => {
 		if (animationIntervalRef.current !== null) {
@@ -133,23 +150,36 @@ function PlayControls() {
 		changeGlobalStep(value);
 	};
 
-	const forward = steps => {
-		increaseGlobalStep(steps);
-	};
-	const backward = steps => {
-		decreaseGlobalStep(steps);
-	};
+	const forward = useCallback(
+		steps => {
+			increaseGlobalStep(steps);
+		},
+		[increaseGlobalStep]
+	);
+	const backward = useCallback(
+		steps => {
+			decreaseGlobalStep(steps);
+		},
+		[decreaseGlobalStep]
+	);
 
-	const changeSpeed = val => {
-		console.log(val);
-		if (isPlaying) {
-			stopAnimation();
-			setAnimationIntervalValue(val);
-			startAnimation(val);
-		} else {
-			setAnimationIntervalValue(val);
-		}
-	};
+	const start = useCallback(
+		() => startAnimation(animationIntervalValue),
+		[animationIntervalValue, startAnimation]
+	);
+	const stop = useCallback(stopAnimation, [stopAnimation]);
+	const changeSpeed = useCallback(
+		val => {
+			if (isPlaying) {
+				stopAnimation();
+				setAnimationIntervalValue(val);
+				startAnimation(val);
+			} else {
+				setAnimationIntervalValue(val);
+			}
+		},
+		[isPlaying, startAnimation, stopAnimation]
+	);
 
 	useEffect(() => {
 		return () => clearAnimationInterval();
@@ -159,8 +189,6 @@ function PlayControls() {
 		globalStepRef.current = globalStep;
 	}, [globalStep]);
 
-	const start = () => startAnimation(animationIntervalValue);
-	const stop = stopAnimation;
 	return (
 		<StyledPlayControls>
 			<Container>
@@ -192,10 +220,15 @@ function PlayControls() {
 							isPlaying={isPlaying}
 						/>
 					</Center>
+					<Right>
+						<ButtonIcon onClick={metricsToggleAll}>
+							<RiNumbersLine />
+						</ButtonIcon>
+					</Right>
 				</Controls>
 			</Container>
 		</StyledPlayControls>
 	);
 }
 
-export default PlayControls;
+export default memo(PlayControls);
