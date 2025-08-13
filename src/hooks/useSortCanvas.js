@@ -26,10 +26,9 @@ import { sortStepTypes } from "../algorithms/sort/SortAlgorithm";
  * }}
  */
 
-function useSortCanvas(canvasRef, id, input, options) {
+function useSortCanvas(canvasRef, id) {
 	const [worker, setWorker] = useState(null);
-	const [status, setStatus] = useState("unmounted");
-	// "mounted", "resized", "canvas-initialized", "colors-loaded", "settings-updated",  "draw-done", "render-done"
+	const [status, setStatus] = useState("unmounted"); // "mounted", "resized", "canvas-initialized", "colors-loaded", "settings-updated",  "draw-done", "render-done"
 	const [error, setError] = useState("");
 
 	const offscreenRef = useRef(null);
@@ -85,7 +84,7 @@ function useSortCanvas(canvasRef, id, input, options) {
 		return () => {
 			myWorker.terminate();
 		};
-	}, [id, canvasRef]);
+	}, [id]);
 
 	/* ----------------------- Initialize Offscreen Canvas ---------------------- */
 	useEffect(() => {
@@ -105,6 +104,22 @@ function useSortCanvas(canvasRef, id, input, options) {
 	/* -------------------------------------------------------------------------- */
 	/*                                 Callbacks                                  */
 	/* -------------------------------------------------------------------------- */
+
+	// const initCanvas = useCallback(
+	// 	canvasRef => {
+	// 		if (!offscreenRef.current && worker && canvasRef.current) {
+	// 			const canvas = canvasRef.current;
+	// 			const offscreen = canvas.transferControlToOffscreen();
+
+	// 			worker.postMessage({ type: "init-canvas", canvas: offscreen }, [
+	// 				offscreen,
+	// 			]);
+
+	// 			offscreenRef.current = offscreen;
+	// 		}
+	// 	},
+	// 	[offscreenRef, worker]
+	// );
 
 	/**
 	 * drawCanvas
@@ -165,20 +180,10 @@ function useSortCanvas(canvasRef, id, input, options) {
 		[worker]
 	);
 
-	// const changeStepTypes = useCallback(
-	// 	types => {
-	// 		if (!worker) return;
-	// 		worker.postMessage({
-	// 			type: "update-step-types",
-	// 			payload: { enabledStepTypes: types },
-	// 		});
-	// 	},
-	// 	[worker]
-	// );
-
 	const renderAlgorithm = useCallback(
 		(input, options, rect) => {
 			if (!worker) return;
+
 			const devicePixelRatio = getDevicePixelRatio();
 			worker.postMessage({
 				type: "render-algorithm",
@@ -222,6 +227,32 @@ function getStepColors() {
 		stepColors[type] = getCssVar(`--color-step-${type}`);
 	}
 	return stepColors;
+}
+
+function deepEqual(obj1, obj2) {
+	if (obj1 === obj2) return true;
+
+	if (
+		typeof obj1 !== "object" ||
+		obj1 === null ||
+		typeof obj2 !== "object" ||
+		obj2 === null
+	) {
+		return false;
+	}
+
+	const keys1 = Object.keys(obj1);
+	const keys2 = Object.keys(obj2);
+
+	if (keys1.length !== keys2.length) return false;
+
+	for (let key of keys1) {
+		if (!keys2.includes(key) || !deepEqual(obj1[key], obj2[key])) {
+			return false;
+		}
+	}
+
+	return true;
 }
 
 export default useSortCanvas;

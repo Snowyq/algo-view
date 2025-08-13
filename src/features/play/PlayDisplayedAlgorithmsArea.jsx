@@ -3,10 +3,13 @@ import PlayAlgorithmWindow from "./PlayAlgorithmWindow";
 import { useContext } from "react";
 import { PlayContext } from "./PlayContext";
 import registryApi from "../../algorithms/algorithmsRegistryApi";
+import { DottedBackground } from "../../ui/DottedBackground";
 
 const StyledPlayViewArea = styled.div`
 	height: 100%;
 	width: 100%;
+
+	position: relative;
 	/* background-color: var(--color-grey-0);
 	box-shadow: 1px 1px 15px 5px var(--color-grey-200);
 	border: 5px solid var(--color-grey-200); */
@@ -46,9 +49,9 @@ const categories = {
 };
 
 const Grid = styled.div`
+	gap: 2rem;
 	display: grid;
-	gap: 3rem;
-
+	padding: 5rem;
 	/* grid-template-columns: 1fr 1fr; */
 	height: 100%;
 	width: 100%;
@@ -62,8 +65,14 @@ function PlayDisplayedAlgorithmsArea() {
 
 	return (
 		<StyledPlayViewArea>
+			<DottedBackground
+				bg="var(--color-grey-100)"
+				color="var(--color-grey-300)"
+				size="2px"
+				space=".5rem"
+			/>
 			<Grid num={activeAlgorithms.length} category={activeCategory}>
-				{activeAlgorithms.map((algo, index) => {
+				{activeAlgorithms.map(algo => {
 					const registry = registryApi.getAlgorithmRegistry(
 						activeCategory,
 						algo.id
@@ -71,7 +80,7 @@ function PlayDisplayedAlgorithmsArea() {
 					if (!registry) return <></>;
 					return (
 						<PlayAlgorithmWindow
-							key={`${index}-${algo.id}`}
+							key={algo.id}
 							registry={registry}
 							category={activeCategory}
 						/>

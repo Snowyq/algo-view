@@ -47,6 +47,7 @@ export class SortAlgorithm extends Algorithm {
 	shouldCountSubArrays = false;
 	shouldCountArrayAccess = false;
 	metrics = {};
+	metricsItemList = [];
 	//
 
 	constructor(array, options) {
@@ -250,9 +251,18 @@ export class SortAlgorithm extends Algorithm {
 	count(id, name, count = 1) {
 		if (!(id in this.metrics)) {
 			this.metrics[id] = { count, name: name ? name : id };
+			this.metricsItemList.push({ id, name });
 		} else {
 			this.metrics[id].count = this.metrics[id].count + count;
 		}
+	}
+
+	getMetrics() {
+		return this.metrics;
+	}
+
+	getMetricsItems() {
+		return this.metricsItemList;
 	}
 
 	/* -------------------------------------------------------------------------- */

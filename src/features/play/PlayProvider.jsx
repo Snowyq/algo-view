@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { PlayContext, StepContext } from "./PlayContext";
 import registryApi from "../../algorithms/algorithmsRegistryApi";
 import { AVAILABLE_SORT_ANIMATION_SPEEDS } from "../../utils/constants";
@@ -15,10 +15,42 @@ const DEFAULT_INPUT = generateRandomArray(50, 0, 30);
 
 // const DEFAULT_ALGOS = ["selectionSort"];
 const DEFAULT_ALGOS = [
-	{
-		id: "selectionSort",
-		isReady: false,
-	},
+	// {
+	// 	id: "mergeSort",
+	// 	isReady: false,
+	// },
+	// {
+	// 	id: "mergeSort",
+	// 	isReady: false,
+	// },
+	// {
+	// 	id: "mergeSort",
+	// 	isReady: false,
+	// },
+	// {
+	// 	id: "mergeSort",
+	// 	isReady: false,
+	// },
+	// {
+	// 	id: "mergeSort",
+	// 	isReady: false,
+	// },
+	// {
+	// 	id: "mergeSort",
+	// 	isReady: false,
+	// },
+	// {
+	// 	id: "mergeSort",
+	// 	isReady: false,
+	// },
+	// {
+	// 	id: "mergeSort",
+	// 	isReady: false,
+	// },
+	// {
+	// 	id: "mergeSort",
+	// 	isReady: false,
+	// },
 ];
 const animationSpeeds = {
 	sort: AVAILABLE_SORT_ANIMATION_SPEEDS,
@@ -28,6 +60,15 @@ function PlayProvider({ children }) {
 	const [activeCategory, setActiveCategory] = useState("sort");
 	const [activeAlgorithms, setActiveAlgorithms] = useState(DEFAULT_ALGOS);
 	const [algorithmInput, setAlgorithmInput] = useState(DEFAULT_INPUT);
+
+	const [allMetricsVisible, setAllMetricsVisible] = useState(false);
+
+	const metricsToggleAll = useCallback(
+		() => setAllMetricsVisible(x => !x),
+		[]
+	);
+	const metricsHideAll = useCallback(() => setAllMetricsVisible(false), []);
+	const metricsShowAll = useCallback(() => setAllMetricsVisible(true), []);
 
 	const allAlgorithmsReady = activeAlgorithms.every(algo => algo.isReady);
 
@@ -56,14 +97,18 @@ function PlayProvider({ children }) {
 			);
 			if (!algorithmRegistry) return;
 			const newAlgo = { id: algorithmId, isReady: false };
-			setActiveAlgorithms(algos => [...algos, newAlgo]);
+			setActiveAlgorithms(algos => {
+				if (algos.find(algo => algo.id === newAlgo.id)) return algos;
+				else return [...algos, newAlgo];
+			});
 		},
 		[activeCategory]
 	);
 
 	const closeAlgorithm = useCallback(algorithmId => {
 		setActiveAlgorithms(algos => {
-			return algos.filter(algo => algo.id !== algorithmId);
+			const newAlgos = algos.filter(algo => algo.id !== algorithmId);
+			return newAlgos;
 		});
 	}, []);
 
@@ -86,6 +131,8 @@ function PlayProvider({ children }) {
 		});
 	}, []);
 
+	useEffect(() => {});
+
 	const playContextValue = useMemo(
 		() => ({
 			openAlgorithm,
@@ -101,6 +148,10 @@ function PlayProvider({ children }) {
 			algorithms,
 			animationSpeeds,
 			allAlgorithmsReady,
+			metricsToggleAll,
+			metricsHideAll,
+			metricsShowAll,
+			allMetricsVisible,
 		}),
 		[
 			openAlgorithm,
@@ -115,6 +166,10 @@ function PlayProvider({ children }) {
 			categories,
 			algorithms,
 			allAlgorithmsReady,
+			metricsToggleAll,
+			metricsHideAll,
+			metricsShowAll,
+			allMetricsVisible,
 		]
 	);
 

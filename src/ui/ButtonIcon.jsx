@@ -21,12 +21,16 @@ const ButtonIcon = styled.button`
 	--hover-background: var(--color-grey-100);
 	--hover-color: var(--color-grey-800);
 
-	${({ variation = "default" }) => variations[variation]}
+	--size: ${({ size = "2.2rem" }) => size};
+	--padding: ${({ padding = "0.6rem" }) => padding};
+	--border: ${({ border = "none" }) => border};
+	--border-radius: ${({ $borderRadius = "50%" }) => $borderRadius};
 
+	${({ variation = "default" }) => variations[variation]};
 	background: none;
-	border: none;
-	padding: 0.6rem;
-	border-radius: 50%;
+	border: var(--border);
+	padding: var(--padding);
+	border-radius: var(--border-radius);
 	transition: all 0.2s;
 	background-color: ${({ background }) => background || "var(--background)"};
 
@@ -38,8 +42,8 @@ const ButtonIcon = styled.button`
 	}
 
 	& svg {
-		width: 2.2rem;
-		height: 2.2rem;
+		width: var(--size);
+		height: var(--size);
 		color: var(--color);
 	}
 `;

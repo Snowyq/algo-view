@@ -10,7 +10,7 @@ import useOnResize from "../../hooks/useOnResize";
 const AlgorithmContainer = styled.div`
 	width: 100%;
 	height: 100%;
-	padding: 2rem;
+	padding: 5rem;
 	display: flex;
 	gap: 2rem;
 	background-color: var(--color-grey-50);
@@ -25,15 +25,15 @@ const Sizer = styled.div`
 	overflow: hidden;
 `;
 
-function SortAlgorithmVisualizer({ registry }) {
+function SortAlgorithmVisualizer({ registry, onStepUpdate }) {
 	//
 	/* -------------------------------- Contexts -------------------------------- */
 
 	const { algorithmInput: input } = useContext(PlayContext);
 	const {
-		globalStep: stepIndex,
 		stepTypes,
 		passStepsLength,
+		globalStep: stepIndex,
 	} = useContext(StepContext);
 
 	/* ---------------------------------- Refs ---------------------------------- */
@@ -44,7 +44,6 @@ function SortAlgorithmVisualizer({ registry }) {
 	/* --------------------------------- States --------------------------------- */
 
 	const [isLoading, setIsLoading] = useState(true);
-	const [localStepIndex, setCurrStepIndex] = useState(stepIndex);
 
 	/* -------------------------------- CanvasApi ------------------------------- */
 
@@ -70,12 +69,15 @@ function SortAlgorithmVisualizer({ registry }) {
 	}, [algoOptions, renderAlgorithm, input]);
 
 	useEffect(() => {
+		onStatusType("draw-done", payload => {
+			onStepUpdate?.(payload);
+		});
 		onStatusType("render-done", payload => {
 			const { stepsLength } = payload;
-			if (stepsLength) passStepsLength(stepsLength);
+			if (stepsLength) passStepsLength(stepsLength, registry.id);
 			setIsLoading(false);
 		});
-	}, [onStatusType, passStepsLength]);
+	}, [onStatusType, onStepUpdate, passStepsLength, registry]);
 
 	useEffect(() => {
 		drawCanvas(stepIndex);
