@@ -3,7 +3,7 @@ import PlaySidebar from "./PlaySidebar";
 import PlayWindow from "./PlayWindow";
 import ButtonIcon from "../../ui/ButtonIcon";
 import { GoSidebarCollapse } from "react-icons/go";
-import { useContext, useEffect, useRef, useState } from "react";
+import { memo, useContext, useEffect, useRef, useState } from "react";
 import { BsLayoutSidebarReverse, BsPinAngleFill } from "react-icons/bs";
 import { IoIosArrowBack } from "react-icons/io";
 import { PlayContext } from "./PlayContext";
@@ -17,7 +17,7 @@ const sidebarStates = {
 	visible: css`
 		/* width: 30%;
 		/* min-width: 20rem; */
-		width: 30rem;
+		width: 35rem;
 	`,
 };
 
@@ -45,7 +45,7 @@ const Container = styled.div`
 const Header = styled.div``;
 
 const SidebarOutlet = styled.div`
-	width: 30rem;
+	width: 35rem;
 	overflow: hidden;
 
 	height: 100%;
@@ -61,7 +61,7 @@ const CollapseButtonHolder = styled.div`
 `;
 
 const CollapseButton = styled.button`
-	--border-color: var(--color-grey-200);
+	--border-color: var(--color-grey-300);
 	--border-radius: 2rem;
 
 	border: none;
@@ -70,6 +70,8 @@ const CollapseButton = styled.button`
 	padding: 0.2em 0.2em;
 	position: absolute;
 	right: 0;
+
+	box-shadow: 1px 4px 0px -1px var(--color-grey-400);
 
 	border-top-left-radius: var(--border-radius);
 	border-bottom-left-radius: var(--border-radius);
@@ -99,52 +101,8 @@ function PlaySidebarDesktop() {
 	const [isOpen, setIsOpen] = useState(false);
 	const state = isOpen ? "visible" : "hidden";
 
-	const open = () => {
-		setIsOpen(true);
-	};
-
-	const close = () => {
-		setIsOpen(false);
-	};
-
 	const toggleOpen = () => {
 		setIsOpen(x => !x);
-	};
-
-	const {
-		activeCategory,
-		activeAlgorithms,
-		changeActiveAlgorithms,
-		openAlgorithm,
-		closeAlgorithm,
-		changeActiveCategory,
-		categories,
-		algorithms,
-	} = useContext(PlayContext);
-
-	const categoriesOptions = categories.map(cat => {
-		return { value: cat.id, label: cat.name };
-	});
-
-	const algorithmsOptions = algorithms.map(algo => {
-		return { value: algo.id, label: algo.meta.name };
-	});
-
-	const handleCategoryChange = e => {
-		changeActiveCategory(e.target.value);
-	};
-
-	const handleAlgorithmSelect = option => {
-		openAlgorithm(option.value);
-	};
-
-	const handleAlgorithmDeselect = option => {
-		closeAlgorithm(option.value);
-	};
-
-	const handleAlgorithmsChange = options => {
-		const ids = options.map(option => option.value);
-		changeActiveAlgorithms(ids);
 	};
 
 	return (
@@ -163,11 +121,7 @@ function PlaySidebarDesktop() {
 					<Header>
 						<h3>Visualizer Config</h3>
 					</Header>
-					<PlaySelectCategory
-						options={categoriesOptions}
-						selected={activeAlgorithms}
-						onChange={handleCategoryChange}
-					/>
+
 					<PlaySelectAlgorithms />
 				</Container>
 			</SidebarOutlet>
@@ -175,4 +129,4 @@ function PlaySidebarDesktop() {
 	);
 }
 
-export default PlaySidebarDesktop;
+export default memo(PlaySidebarDesktop);

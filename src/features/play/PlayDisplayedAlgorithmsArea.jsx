@@ -67,12 +67,12 @@ function PlayDisplayedAlgorithmsArea() {
 		<StyledPlayViewArea>
 			<DottedBackground
 				bg="var(--color-grey-100)"
-				color="var(--color-grey-200)"
+				color="var(--color-grey-300)"
 				size="2px"
-				space="0.5rem"
+				space=".5rem"
 			/>
 			<Grid num={activeAlgorithms.length} category={activeCategory}>
-				{activeAlgorithms.map((algo, index) => {
+				{activeAlgorithms.map(algo => {
 					const registry = registryApi.getAlgorithmRegistry(
 						activeCategory,
 						algo.id
@@ -80,7 +80,7 @@ function PlayDisplayedAlgorithmsArea() {
 					if (!registry) return <></>;
 					return (
 						<PlayAlgorithmWindow
-							key={`${index}-${algo.id}`}
+							key={algo.id}
 							registry={registry}
 							category={activeCategory}
 						/>

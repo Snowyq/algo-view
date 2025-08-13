@@ -10,6 +10,7 @@ const Flex = styled.div`
 const Progress = styled.span`
 	font-size: 1.4rem;
 	align-self: flex-start;
+	visibility: ${({ state }) => state};
 `;
 
 const ProgressBar = styled(Flex)`
@@ -30,7 +31,9 @@ function PlayProgressBar({ value, max, onChange, freeze, unfreeze }) {
 
 	return (
 		<ProgressBar>
-			<Progress>{`${value}/${max}`}</Progress>
+			<Progress
+				state={max > 0 ? "visible" : "hidden"}
+			>{`${value}/${max}`}</Progress>
 			<PlaySlider
 				onChange={handleChange}
 				onMouseUp={handleMouseUp}

@@ -1,6 +1,15 @@
-import { useCallback, useMemo, useState } from "react";
-import { StepContext } from "./PlayContext";
+import {
+	useCallback,
+	useContext,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
+import { PlayContext, StepContext } from "./PlayContext";
 import { clamp } from "../../utils/values";
+import PlayProvider from "./PlayProvider";
+import { prefetchDNS } from "react-dom";
 
 const DEFAULT_STEP_TYPES = [
 	"initial",
@@ -21,48 +30,53 @@ const DEFAULT_STEP_TYPES = [
 
 export function StepProvider({ children }) {
 	const [globalStep, setGlobalStep] = useState(0);
-	const [globalStepsLength, setGlobalStepsLength] = useState(0);
 	const [stepsLengths, setStepsLengths] = useState([]);
+
+	const globalStepsLength = useMemo(() => {
+		return Math.max(...stepsLengths.map(item => item.length), 0);
+	}, [stepsLengths]);
+	const globalStepsLengthRef = useRef(globalStepsLength);
+	useEffect(() => {
+		globalStepsLengthRef.current = globalStepsLength;
+	}, [globalStepsLength]);
+
 	const [stepTypes, setStepTypes] = useState(DEFAULT_STEP_TYPES);
 
-	const changeGlobalStep = useCallback(
-		step => {
-			setGlobalStep(clamp(step, 0, globalStepsLength - 1));
-		},
-		[globalStepsLength]
-	);
+	const changeGlobalStep = useCallback(step => {
+		setGlobalStep(clamp(step, 0, globalStepsLengthRef.current - 1));
+	}, []);
 
-	const increaseGlobalStep = useCallback(
-		val => {
-			setGlobalStep(prev => Math.min(prev + val, globalStepsLength - 1));
-		},
-		[globalStepsLength]
-	);
+	const increaseGlobalStep = useCallback(val => {
+		console.log(globalStepsLengthRef.current);
+		setGlobalStep(prev =>
+			Math.min(prev + val, globalStepsLengthRef.current - 1)
+		);
+	}, []);
 
 	const decreaseGlobalStep = useCallback(val => {
 		setGlobalStep(prev => Math.max(prev - val, 0));
 	}, []);
 
-	const changeGlobalStepsLength = useCallback((newLength, reset = false) => {
-		setGlobalStepsLength(length => {
-			const longest = reset ? 0 : length;
-			return newLength > longest ? newLength : longest;
+	const passStepsLength = useCallback((length, id) => {
+		setStepsLengths(lengths => {
+			const rest = lengths.filter(l => l.id !== id);
+			const newLengths = [...rest, { id, length }];
+
+			return newLengths;
 		});
 	}, []);
 
-	const passStepsLength = useCallback(
-		(length, id) => {
-			setStepsLengths(lengths => {
-				const rest = lengths.filter(l => l.id !== id);
-				const newLengths = [...rest, { id, length }];
-				setGlobalStepsLength(
-					Math.max(...newLengths.map(item => item.length))
-				);
-				return newLengths;
-			});
-		},
-		[setGlobalStepsLength]
-	);
+	const { activeAlgorithms } = useContext(PlayContext);
+
+	useEffect(() => {
+		if (!activeAlgorithms) return;
+
+		setStepsLengths(lengths => {
+			return lengths.filter(l =>
+				activeAlgorithms.find(item => item.id === l.id)
+			);
+		});
+	}, [activeAlgorithms]);
 
 	const stepContextValue = useMemo(
 		() => ({
@@ -70,7 +84,6 @@ export function StepProvider({ children }) {
 			changeGlobalStep,
 			decreaseGlobalStep,
 			increaseGlobalStep,
-			changeGlobalStepsLength,
 			passStepsLength,
 			globalStepsLength,
 			stepTypes,
@@ -82,7 +95,6 @@ export function StepProvider({ children }) {
 			increaseGlobalStep,
 			globalStepsLength,
 			passStepsLength,
-			changeGlobalStepsLength,
 			stepTypes,
 		]
 	);

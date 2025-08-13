@@ -13,7 +13,7 @@ const data = [
 				id: "bubbleSort",
 				Class: BubbleSort,
 				meta: {
-					name: "Bubble sort",
+					name: "Bubble",
 					description: "...",
 					timeComplexity: "O(n^2)",
 					auxiliarySpace: "O(1)",
@@ -24,7 +24,7 @@ const data = [
 				id: "selectionSort",
 				Class: SelectionSort,
 				meta: {
-					name: "Selection sort",
+					name: "Selection",
 					description: "...",
 					timeComplexity: "O(n^2)",
 					auxiliarySpace: "O(1)",
@@ -35,7 +35,7 @@ const data = [
 				id: "mergeSort",
 				Class: MergeSort,
 				meta: {
-					name: "Merge Sort",
+					name: "Merge",
 					description: "...",
 					timeComplexity: "O(n log n)",
 					auxiliarySpace: "O(n)",
@@ -46,7 +46,7 @@ const data = [
 				id: "insertionSort",
 				Class: InsertionSort,
 				meta: {
-					name: "Insertion Sort",
+					name: "Insertion",
 					description: "...",
 					timeComplexity: "O(n^2)",
 					auxiliarySpace: "O(1)",
@@ -57,7 +57,7 @@ const data = [
 				id: "shellSort",
 				Class: ShellSort,
 				meta: {
-					name: "Shell Sort",
+					name: "Shell",
 					description: "...",
 					timeComplexity: "O(n^2)",
 					auxiliarySpace: "O(1)",

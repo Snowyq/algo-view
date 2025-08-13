@@ -5,6 +5,7 @@ import {
 	useCallback,
 	useContext,
 	useEffect,
+	useMemo,
 	useRef,
 	useState,
 } from "react";
@@ -76,9 +77,15 @@ function PlayControls() {
 		globalStepsLength,
 		changeGlobalStep,
 	} = useContext(StepContext);
+
 	const { animationSpeeds, activeCategory, metricsToggleAll } =
 		useContext(PlayContext);
-	const speeds = animationSpeeds[activeCategory];
+
+	const speeds = useMemo(
+		() => animationSpeeds[activeCategory],
+		[activeCategory, animationSpeeds]
+	);
+
 	const globalStepRef = useRef(globalStep);
 	const animationIntervalRef = useRef(null);
 	const animationTimeoutRef = useRef(null);
@@ -111,7 +118,7 @@ function PlayControls() {
 
 	const startAnimation = useCallback(
 		interval => {
-			if (globalStep >= globalStepsLength - 1) return;
+			if (globalStepRef.current >= globalStepsLength - 1) return;
 			clearAnimationTimeout();
 			if (animationIntervalRef.current) return;
 			const id = setInterval(() => {
@@ -125,17 +132,17 @@ function PlayControls() {
 			animationIntervalRef.current = id;
 			setIsPlaying(true);
 		},
-		[globalStepsLength, increaseGlobalStep, globalStep, stopAnimation]
+		[globalStepsLength, increaseGlobalStep, stopAnimation]
 	);
 
-	const freezeAnimation = () => {
+	const freezeAnimation = useCallback(() => {
 		if (animationIntervalRef.current !== null) {
 			wasPlayingRef.current = true;
 		}
 		clearAnimationInterval();
-	};
+	}, []);
 
-	const unFreezeAnimation = () => {
+	const unFreezeAnimation = useCallback(() => {
 		clearAnimationTimeout();
 		if (wasPlayingRef.current) {
 			let id = setTimeout(
@@ -144,22 +151,18 @@ function PlayControls() {
 			);
 			animationTimeoutRef.current = id;
 		}
-	};
+	}, [startAnimation, animationIntervalValue]);
 
 	const changeProgress = value => {
 		changeGlobalStep(value);
 	};
 
 	const forward = useCallback(
-		steps => {
-			increaseGlobalStep(steps);
-		},
+		steps => increaseGlobalStep(steps),
 		[increaseGlobalStep]
 	);
 	const backward = useCallback(
-		steps => {
-			decreaseGlobalStep(steps);
-		},
+		steps => decreaseGlobalStep(steps),
 		[decreaseGlobalStep]
 	);
 
@@ -182,12 +185,23 @@ function PlayControls() {
 	);
 
 	useEffect(() => {
-		return () => clearAnimationInterval();
-	}, []);
-
-	useEffect(() => {
 		globalStepRef.current = globalStep;
 	}, [globalStep]);
+
+	useEffect(() => {
+		freezeAnimation();
+		unFreezeAnimation();
+	}, [globalStepsLength, freezeAnimation, unFreezeAnimation]);
+
+	useEffect(() => {
+		if (globalStepsLength - 1 > globalStepRef.current) {
+			stopAnimation();
+		}
+	}, [globalStepsLength, stopAnimation]);
+
+	useEffect(() => {
+		return () => clearAnimationInterval();
+	}, []);
 
 	return (
 		<StyledPlayControls>

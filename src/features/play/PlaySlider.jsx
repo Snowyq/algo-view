@@ -72,7 +72,7 @@ const Hover = styled.div`
 	border-radius: 15px;
 `;
 
-function PlaySlider({ max, min, onChange, value, onMouseUp }) {
+function PlaySlider({ max, min, onChange, value, onMouseUp, DotComponent }) {
 	return (
 		<SliderContainer>
 			<SliderOutput>
@@ -84,7 +84,7 @@ function PlaySlider({ max, min, onChange, value, onMouseUp }) {
 					onMouseUp={onMouseUp}
 				>
 					<Slider.Dot>
-						<Dot />
+						{DotComponent ? <DotComponent /> : <Dot />}
 					</Slider.Dot>
 					<Slider.Tooltip>
 						<Tooltip />

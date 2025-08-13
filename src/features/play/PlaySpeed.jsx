@@ -1,6 +1,6 @@
 import styled from "styled-components";
 import { BsSpeedometer, BsSpeedometer2 } from "react-icons/bs";
-import { useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import Selector from "../../ui/Selector";
 
 const Option = styled.div`
@@ -117,4 +117,4 @@ function PlaySpeed({ speed, onChange, speeds, freeze, unfreeze }) {
 	);
 }
 
-export default PlaySpeed;
+export default memo(PlaySpeed);

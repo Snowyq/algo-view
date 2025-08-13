@@ -254,8 +254,8 @@ function draw(stepIndex) {
 	const maxValue = AlgorithmInstance.getArrayMinMax().max;
 
 	if (doFirstRender) {
-		animateDrawArray(state, step, maxValue);
 		doFirstRender = false;
+		animateDrawArray(state, step, maxValue);
 	} else {
 		drawArray(state, step, maxValue);
 	}
