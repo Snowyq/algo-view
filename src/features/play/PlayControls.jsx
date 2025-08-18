@@ -16,6 +16,18 @@ import PlayProgressBar from "./PlayProgressBar";
 import PlayProgressControls from "./PlayProgressControls";
 import ButtonIcon from "../../ui/ButtonIcon";
 import { RiNumbersLine } from "react-icons/ri";
+import { useDispatch, useSelector } from "react-redux";
+import {
+	changeStep,
+	decreaseStep,
+	getActiveCategory,
+	getMaxStep,
+	getSpeeds,
+	getStep,
+	increaseStep,
+	toggleMetrics,
+} from "./playSlice";
+import PlayAnimation from "./PlayAnimation";
 
 const Flex = styled.div`
 	display: flex;
@@ -70,177 +82,29 @@ const Bar = styled(Flex)`
 `;
 
 function PlayControls() {
-	const {
-		decreaseGlobalStep,
-		globalStep,
-		increaseGlobalStep,
-		globalStepsLength,
-		changeGlobalStep,
-	} = useContext(StepContext);
-
-	const { animationSpeeds, activeCategory, metricsToggleAll } =
-		useContext(PlayContext);
-
-	const speeds = useMemo(
-		() => animationSpeeds[activeCategory],
-		[activeCategory, animationSpeeds]
-	);
-
-	const globalStepRef = useRef(globalStep);
-	const animationIntervalRef = useRef(null);
-	const animationTimeoutRef = useRef(null);
-	const wasPlayingRef = useRef(false);
-
-	const [isPlaying, setIsPlaying] = useState(false);
-	const [animationIntervalValue, setAnimationIntervalValue] = useState(
-		speeds[Math.round(speeds.length / 2)]
-	);
-
-	const clearAnimationTimeout = () => {
-		if (animationTimeoutRef.current) {
-			clearTimeout(animationTimeoutRef.current);
-			animationTimeoutRef.current = null;
-		}
-	};
-
-	const clearAnimationInterval = () => {
-		if (animationIntervalRef.current) {
-			clearInterval(animationIntervalRef.current);
-			animationIntervalRef.current = null;
-		}
-	};
-
-	const stopAnimation = useCallback(() => {
-		clearAnimationInterval();
-		wasPlayingRef.current = false;
-		setIsPlaying(false);
-	}, []);
-
-	const startAnimation = useCallback(
-		interval => {
-			if (globalStepRef.current >= globalStepsLength - 1) return;
-			clearAnimationTimeout();
-			if (animationIntervalRef.current) return;
-			const id = setInterval(() => {
-				const currentStep = globalStepRef.current;
-				if (currentStep >= globalStepsLength - 1) {
-					stopAnimation();
-				} else {
-					increaseGlobalStep(1);
-				}
-			}, interval);
-			animationIntervalRef.current = id;
-			setIsPlaying(true);
-		},
-		[globalStepsLength, increaseGlobalStep, stopAnimation]
-	);
-
-	const freezeAnimation = useCallback(() => {
-		if (animationIntervalRef.current !== null) {
-			wasPlayingRef.current = true;
-		}
-		clearAnimationInterval();
-	}, []);
-
-	const unFreezeAnimation = useCallback(() => {
-		clearAnimationTimeout();
-		if (wasPlayingRef.current) {
-			let id = setTimeout(
-				() => startAnimation(animationIntervalValue),
-				100
-			);
-			animationTimeoutRef.current = id;
-		}
-	}, [startAnimation, animationIntervalValue]);
-
-	const changeProgress = value => {
-		changeGlobalStep(value);
-	};
-
-	const forward = useCallback(
-		steps => increaseGlobalStep(steps),
-		[increaseGlobalStep]
-	);
-	const backward = useCallback(
-		steps => decreaseGlobalStep(steps),
-		[decreaseGlobalStep]
-	);
-
-	const start = useCallback(
-		() => startAnimation(animationIntervalValue),
-		[animationIntervalValue, startAnimation]
-	);
-	const stop = useCallback(stopAnimation, [stopAnimation]);
-	const changeSpeed = useCallback(
-		val => {
-			if (isPlaying) {
-				stopAnimation();
-				setAnimationIntervalValue(val);
-				startAnimation(val);
-			} else {
-				setAnimationIntervalValue(val);
-			}
-		},
-		[isPlaying, startAnimation, stopAnimation]
-	);
-
-	useEffect(() => {
-		globalStepRef.current = globalStep;
-	}, [globalStep]);
-
-	useEffect(() => {
-		freezeAnimation();
-		unFreezeAnimation();
-	}, [globalStepsLength, freezeAnimation, unFreezeAnimation]);
-
-	useEffect(() => {
-		if (globalStepsLength - 1 > globalStepRef.current) {
-			stopAnimation();
-		}
-	}, [globalStepsLength, stopAnimation]);
-
-	useEffect(() => {
-		return () => clearAnimationInterval();
-	}, []);
+	const dispatch = useDispatch();
 
 	return (
 		<StyledPlayControls>
 			<Container>
 				<Bar>
-					<PlayProgressBar
-						value={globalStep}
-						max={globalStepsLength - 1}
-						freeze={freezeAnimation}
-						unfreeze={unFreezeAnimation}
-						onChange={changeProgress}
-					/>
+					<PlayProgressBar />
 				</Bar>
 				<Controls>
 					<Left>
-						<PlaySpeed
-							speed={animationIntervalValue}
-							speeds={speeds}
-							onChange={changeSpeed}
-							freeze={freezeAnimation}
-							unfreeze={unFreezeAnimation}
-						/>
+						<PlaySpeed />
 					</Left>
 					<Center>
-						<PlayProgressControls
-							onBackward={backward}
-							onForward={forward}
-							onStart={start}
-							onStop={stop}
-							isPlaying={isPlaying}
-						/>
+						<PlayProgressControls />
 					</Center>
 					<Right>
-						<ButtonIcon onClick={metricsToggleAll}>
+						<ButtonIcon onClick={() => dispatch(toggleMetrics())}>
 							<RiNumbersLine />
 						</ButtonIcon>
 					</Right>
 				</Controls>
 			</Container>
+			<PlayAnimation />
 		</StyledPlayControls>
 	);
 }

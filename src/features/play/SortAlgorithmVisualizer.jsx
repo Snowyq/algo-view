@@ -1,4 +1,11 @@
-import { useContext, useEffect, useMemo, useRef, useState } from "react";
+import {
+	useCallback,
+	useContext,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 
 import styled from "styled-components";
 
@@ -6,6 +13,13 @@ import { PlayContext, StepContext } from "./PlayContext";
 import useSortCanvas from "../../hooks/useSortCanvas";
 import Loader from "../../ui/Loader";
 import useOnResize from "../../hooks/useOnResize";
+import { useDispatch, useSelector } from "react-redux";
+import {
+	getDefaultStepTypes,
+	getInput,
+	getStep,
+	passMaxStep,
+} from "./playSlice";
 
 const AlgorithmContainer = styled.div`
 	width: 100%;
@@ -29,12 +43,10 @@ function SortAlgorithmVisualizer({ registry, onStepUpdate }) {
 	//
 	/* -------------------------------- Contexts -------------------------------- */
 
-	const { algorithmInput: input } = useContext(PlayContext);
-	const {
-		stepTypes,
-		passStepsLength,
-		globalStep: stepIndex,
-	} = useContext(StepContext);
+	const dispatch = useDispatch();
+	const stepIndex = useSelector(getStep);
+	const stepTypes = useSelector(getDefaultStepTypes);
+	const input = useSelector(getInput);
 
 	/* ---------------------------------- Refs ---------------------------------- */
 
@@ -74,10 +86,13 @@ function SortAlgorithmVisualizer({ registry, onStepUpdate }) {
 		});
 		onStatusType("render-done", payload => {
 			const { stepsLength } = payload;
-			if (stepsLength) passStepsLength(stepsLength, registry.id);
+			if (stepsLength)
+				dispatch(
+					passMaxStep({ id: registry.id, value: stepsLength - 1 })
+				);
 			setIsLoading(false);
 		});
-	}, [onStatusType, onStepUpdate, passStepsLength, registry]);
+	}, [onStatusType, onStepUpdate, registry, dispatch]);
 
 	useEffect(() => {
 		drawCanvas(stepIndex);

@@ -2,6 +2,14 @@ import styled from "styled-components";
 import { BsSpeedometer, BsSpeedometer2 } from "react-icons/bs";
 import { memo, useCallback, useMemo, useState } from "react";
 import Selector from "../../ui/Selector";
+import { useDispatch, useSelector } from "react-redux";
+import {
+	changeSpeed,
+	freezeAnimation,
+	getCurrentSpeed,
+	getSpeeds,
+	startAnimation,
+} from "./playSlice";
 
 const Option = styled.div`
 	padding: 0.25rem 0.5rem;
@@ -59,19 +67,21 @@ const SelectorContainer = styled.div`
 	translate: 100% 0%;
 `;
 
-function PlaySpeed({ speed, onChange, speeds, freeze, unfreeze }) {
+function PlaySpeed() {
 	const [isHidden, setIsHidden] = useState(true);
+	const dispatch = useDispatch();
+	const speeds = useSelector(getSpeeds);
+	const speed = useSelector(getCurrentSpeed);
 
 	const handleOnChange = option => {
-		onChange?.(option);
-		unfreeze?.();
+		dispatch(changeSpeed(option));
 		setIsHidden(true);
+		dispatch(startAnimation());
 	};
 
 	const handleClick = () => {
+		dispatch(freezeAnimation());
 		setIsHidden(isHid => {
-			if (isHid) freeze?.();
-			else unfreeze?.();
 			return !isHid;
 		});
 	};

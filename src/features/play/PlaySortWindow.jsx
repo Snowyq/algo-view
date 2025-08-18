@@ -9,6 +9,8 @@ import { IoSettings } from "react-icons/io5";
 import { PlayContext, StepContext } from "./PlayContext";
 import PlaySlider from "./PlaySlider";
 import { IoIosArrowBack, IoIosArrowForward } from "react-icons/io";
+import { useDispatch, useSelector } from "react-redux";
+import { getAllMetricsVisible } from "./playSlice";
 
 const Header = styled.div`
 	display: flex;
@@ -62,11 +64,9 @@ function PlaySortWindow({ registry }) {
 	const [metrics, setMetrics] = useState({});
 	const [showMetrics, setShowMetrics] = useState(false);
 
-	const { allMetricsVisible } = useContext(PlayContext);
+	const allMetricsVisible = useSelector(getAllMetricsVisible);
 
 	const toggleDisplayMetrics = () => setShowMetrics(x => !x);
-	const hideDisplayMetrics = () => setShowMetrics(true);
-	const showDisplayMetrics = () => setShowMetrics(true);
 
 	const loadMetrics = metrics => {
 		setMetrics(metrics);

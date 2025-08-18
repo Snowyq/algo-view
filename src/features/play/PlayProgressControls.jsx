@@ -3,42 +3,60 @@ import PlayControlsButton from "./PlayControlsButton";
 import PlayStopButton from "../../ui/PlayStopButton";
 import styled from "styled-components";
 import { TbRewindBackward10, TbRewindForward10 } from "react-icons/tb";
-import { memo } from "react";
+import { memo, useCallback } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import {
+	decreaseStep,
+	getAnimationStatus,
+	getIsPlaying,
+	increaseStep,
+	startAnimation,
+	stopAnimation,
+} from "./playSlice";
 
 const Container = styled.div`
 	display: flex;
 	gap: 0.5rem;
 `;
 
-function PlayProgressControls({
-	onBackward,
-	onStart,
-	onStop,
-	isPlaying,
-	onForward,
-}) {
+function PlayProgressControls() {
+	const dispatch = useDispatch();
+
+	const forward = useCallback(
+		steps => dispatch(increaseStep(steps)),
+		[dispatch]
+	);
+	const backward = useCallback(
+		steps => dispatch(decreaseStep(steps)),
+		[dispatch]
+	);
+
+	const start = () => dispatch(startAnimation());
+	const stop = () => dispatch(stopAnimation());
+	const animationStatus = useSelector(getAnimationStatus);
+
 	return (
 		<Container>
 			<PlayControlsButton
 				icon={<TbRewindBackward10 />}
-				onClick={() => onBackward(10)}
+				onClick={() => backward(10)}
 			/>
 			<PlayControlsButton
 				icon={<FaBackward />}
-				onClick={() => onBackward(1)}
+				onClick={() => backward(1)}
 			/>
 			<PlayStopButton
-				onStart={onStart}
-				onStop={onStop}
-				isStopped={!isPlaying}
+				onStart={start}
+				onStop={stop}
+				isStopped={animationStatus === "stopped"}
 			/>
 			<PlayControlsButton
 				icon={<FaForward />}
-				onClick={() => onForward(1)}
+				onClick={() => forward(1)}
 			/>
 			<PlayControlsButton
 				icon={<TbRewindForward10 />}
-				onClick={() => onForward(10)}
+				onClick={() => forward(10)}
 			/>
 		</Container>
 	);

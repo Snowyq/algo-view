@@ -73,7 +73,7 @@ function PlayProvider({ children }) {
 	const allAlgorithmsReady = activeAlgorithms.every(algo => algo.isReady);
 
 	const categories = registryApi.getCategories();
-	const categoriesLogs = registryApi.getCategoriesLogs();
+	const categoriesLogs = registryApi.getCategoriesIds();
 	const algorithms = registryApi.getRegistriesByCategory(activeCategory);
 
 	const changeInput = useCallback(newInput => {

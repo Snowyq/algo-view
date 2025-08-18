@@ -1,7 +1,6 @@
 import { styled } from "styled-components";
 import MainNav from "./MainNav";
 import Logo from "./Logo";
-import algorithms from "../algorithms/algorithmsData";
 
 const StyledTopBar = styled.div`
 	background-color: var(--color-grey-200);

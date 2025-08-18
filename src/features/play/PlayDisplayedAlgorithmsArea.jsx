@@ -4,6 +4,8 @@ import { useContext } from "react";
 import { PlayContext } from "./PlayContext";
 import registryApi from "../../algorithms/algorithmsRegistryApi";
 import { DottedBackground } from "../../ui/DottedBackground";
+import { useSelector } from "react-redux";
+import { getActiveAlgorithms, getActiveCategory } from "./playSlice";
 
 const StyledPlayViewArea = styled.div`
 	height: 100%;
@@ -61,7 +63,8 @@ const Grid = styled.div`
 `;
 
 function PlayDisplayedAlgorithmsArea() {
-	const { activeAlgorithms, activeCategory } = useContext(PlayContext);
+	const activeAlgorithms = useSelector(getActiveAlgorithms);
+	const activeCategory = useSelector(getActiveCategory);
 
 	return (
 		<StyledPlayViewArea>
@@ -77,6 +80,7 @@ function PlayDisplayedAlgorithmsArea() {
 						activeCategory,
 						algo.id
 					);
+					console.log(registry);
 					if (!registry) return <></>;
 					return (
 						<PlayAlgorithmWindow

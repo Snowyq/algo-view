@@ -1,5 +1,18 @@
 import styled from "styled-components";
 import PlaySlider from "./PlaySlider";
+import { useDispatch, useSelector } from "react-redux";
+import {
+	changeStep,
+	freezeAnimation,
+	getAnimationStatus,
+	getIsPlaying,
+	getMaxStep,
+	getStep,
+	startAnimation,
+	stopAnimation,
+} from "./playSlice";
+import { useEffect, useRef, useState } from "react";
+import useRateLimit from "../../hooks/useRateLimit";
 
 const Flex = styled.div`
 	display: flex;
@@ -19,25 +32,37 @@ const ProgressBar = styled(Flex)`
 	flex-direction: column;
 `;
 
-function PlayProgressBar({ value, max, onChange, freeze, unfreeze }) {
+function PlayProgressBar() {
+	const step = useSelector(getStep);
+	const max = useSelector(getMaxStep);
+	const dispatch = useDispatch();
+	const animationStatus = useSelector(getAnimationStatus);
+
 	const handleChange = value => {
-		freeze();
-		onChange?.(value);
+		if (animationStatus === "playing") {
+			dispatch(freezeAnimation());
+		}
+		dispatch(changeStep(value));
 	};
 
+	// console.log(value);
+	const limitedChange = useRateLimit(handleChange, 16);
+
 	const handleMouseUp = () => {
-		unfreeze();
+		if (animationStatus === "freezed") {
+			dispatch(startAnimation());
+		}
 	};
 
 	return (
 		<ProgressBar>
 			<Progress
 				state={max > 0 ? "visible" : "hidden"}
-			>{`${value}/${max}`}</Progress>
+			>{`${step}/${max}`}</Progress>
 			<PlaySlider
-				onChange={handleChange}
+				onChange={limitedChange}
 				onMouseUp={handleMouseUp}
-				value={value}
+				value={step}
 				min={0}
 				max={max}
 			/>

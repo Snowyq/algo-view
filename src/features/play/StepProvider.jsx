@@ -8,8 +8,6 @@ import {
 } from "react";
 import { PlayContext, StepContext } from "./PlayContext";
 import { clamp } from "../../utils/values";
-import PlayProvider from "./PlayProvider";
-import { prefetchDNS } from "react-dom";
 
 const DEFAULT_STEP_TYPES = [
 	"initial",

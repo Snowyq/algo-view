@@ -1,13 +1,7 @@
 import styled from "styled-components";
-
-// import DottedBackground from "../../ui/DottedBackground";
 import PlayDisplayedAlgorithmsArea from "./PlayDisplayedAlgorithmsArea";
-import PlaySidebar from "./PlaySidebar";
 import PlayControls from "./PlayControls";
-import useWindowSize from "../../hooks/useWindowSize";
-import PlaySidebarDesktop from "./PlaySidebarDesktop";
-import PlaySidebarMobile from "./PlaySidebarMobile";
-import PlayInfo from "./PlayInfo";
+import PlaySidebar from "./PlaySidebar";
 
 const StyledPlayground = styled.div`
 	height: 100%;
@@ -37,10 +31,6 @@ const PlayGroup = styled.div`
 `;
 
 function PlayLayout() {
-	const { size } = useWindowSize();
-
-	const Sidebar = size.width > 640 ? PlaySidebarDesktop : PlaySidebarMobile;
-
 	return (
 		<StyledPlayground>
 			<Container>
@@ -50,7 +40,7 @@ function PlayLayout() {
 					</PlayGroup>
 					<PlayControls />
 				</PlayMain>
-				<Sidebar />
+				<PlaySidebar />
 			</Container>
 		</StyledPlayground>
 	);

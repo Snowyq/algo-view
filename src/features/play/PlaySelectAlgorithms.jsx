@@ -3,6 +3,13 @@ import styled, { css } from "styled-components";
 import { PlayContext } from "./PlayContext";
 import ButtonIcon from "../../ui/ButtonIcon";
 import { IoIosClose } from "react-icons/io";
+import { useDispatch, useSelector } from "react-redux";
+import {
+	closeAlgorithm,
+	getActiveAlgorithms,
+	getAlgorithms,
+	openAlgorithm,
+} from "./playSlice";
 
 const Algorithms = styled.div`
 	display: flex;
@@ -11,7 +18,7 @@ const Algorithms = styled.div`
 `;
 
 const ItemCloseButton = styled(ButtonIcon)`
-	background-color: var(--color-blue-400);
+	background-color: transparent;
 	padding: 0.2rem;
 	opacity: ${({ state }) => (state === "selected" ? 1 : 0)};
 	visibility: ${({ state }) => (state === "selected" ? "visible" : "hidden")};
@@ -74,8 +81,15 @@ const AlgorithmsList = styled.div`
 `;
 
 function PlaySelectAlgorithms() {
-	const { algorithms, openAlgorithm, closeAlgorithm, activeAlgorithms } =
-		useContext(PlayContext);
+	const activeAlgorithms = useSelector(getActiveAlgorithms);
+	const algorithms = useSelector(getAlgorithms);
+
+	const dispatch = useDispatch();
+
+	const handleClose = id => dispatch(closeAlgorithm(id));
+	const handleOpen = id => dispatch(openAlgorithm(id));
+
+	// const
 
 	return (
 		<Algorithms>
@@ -88,11 +102,11 @@ function PlaySelectAlgorithms() {
 					return (
 						<Item
 							key={algo.id}
-							name={algo.meta.name}
+							name={algo.name}
 							id={algo.id}
 							isSelected={isSelected}
-							onClose={closeAlgorithm}
-							onOpen={openAlgorithm}
+							onClose={handleClose}
+							onOpen={handleOpen}
 						/>
 					);
 				})}
