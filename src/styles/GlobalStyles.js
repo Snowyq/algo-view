@@ -30,6 +30,19 @@ const GlobalStyles = createGlobalStyle`
   --color-grey-900: #111827;
   --color-grey-950: #030712;
 
+  --color-grey-0-rgb: 255, 255, 255;
+  --color-grey-50-rgb: 249, 250, 251;
+  --color-grey-100-rgb: 243, 244, 246;
+  --color-grey-200-rgb: 229, 231, 235;
+  --color-grey-300-rgb: 209, 213, 219;
+  --color-grey-400-rgb: 156, 163, 175;
+  --color-grey-500-rgb: 107, 114, 128;
+  --color-grey-600-rgb: 75, 85, 99;
+  --color-grey-700-rgb: 55, 65, 81;
+  --color-grey-800-rgb: 31, 41, 55;
+  --color-grey-900-rgb: 17, 24, 39;
+  --color-grey-950-rgb: 3, 7, 18;
+  
   --color-cyan-0: #fff;
   --color-cyan-50: #ecfeff;
   --color-cyan-100: #cffafe;
@@ -158,12 +171,14 @@ const GlobalStyles = createGlobalStyle`
 
 html {
   font-size: 62.5%;
+  
 }
 
 body {
+  position: fixed;
   font-family: "Open Sans", sans-serif;
   color: var(--color-grey-700);
-
+/* overflow: hidden; */
   transition: color 0.3s, background-color 0.3s;
   min-height: 100vh;
   line-height: 1.5;

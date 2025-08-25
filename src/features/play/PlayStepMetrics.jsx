@@ -1,4 +1,7 @@
+import { useSelector } from "react-redux";
 import styled from "styled-components";
+import { getActiveAlgorithms, getStep } from "./playSlice";
+import { memo, useMemo } from "react";
 
 const Metrics = styled.div`
 	display: flex;
@@ -29,7 +32,25 @@ const Count = styled.span`
 	font-weight: bold;
 `;
 
-function PlayStepMetrics({ metrics }) {
+function PlayStepMetrics({ registry }) {
+	const activeAlgorithms = useSelector(getActiveAlgorithms);
+	const step = useSelector(getStep);
+	const algorithm = activeAlgorithms.find(algo => algo.id === registry.id);
+
+	const baseMetrics = useMemo(() => {
+		Object.keys(algorithm.metrics).reduce((acc, key) => {
+			acc[key] = { ...algorithm.metrics[key], count: 0 };
+			return acc;
+		}, {});
+	}, [algorithm.metrics]);
+
+	let metrics = baseMetrics;
+	if (algorithm.steps[step].metrics) {
+		metrics = { ...baseMetrics, ...algorithm.steps[step].metrics };
+	}
+
+	if (!metrics) return <></>;
+
 	return (
 		<Metrics>
 			{Object.keys(metrics).map(key => {

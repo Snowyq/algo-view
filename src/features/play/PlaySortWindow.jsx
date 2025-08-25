@@ -1,15 +1,11 @@
-import { useCallback, useContext, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import styled from "styled-components";
 import SortAlgorithmVisualizer from "./SortAlgorithmVisualizer";
 import PlayStepMetrics from "./PlayStepMetrics";
 import ButtonIcon from "../../ui/ButtonIcon";
-import { FiSettings } from "react-icons/fi";
-import { RiFileSettingsFill, RiNumbersLine } from "react-icons/ri";
+import { RiNumbersLine } from "react-icons/ri";
 import { IoSettings } from "react-icons/io5";
-import { PlayContext, StepContext } from "./PlayContext";
-import PlaySlider from "./PlaySlider";
-import { IoIosArrowBack, IoIosArrowForward } from "react-icons/io";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 import { getAllMetricsVisible } from "./playSlice";
 
 const Header = styled.div`
@@ -46,6 +42,11 @@ const Main = styled.div`
 	gap: 1rem;
 	height: 100%;
 	width: 100%;
+	padding: 1rem 0.5rem;
+
+	@media screen and (min-width: 640px) {
+		padding: 0rem;
+	}
 `;
 
 const Controls = styled.div`
@@ -61,34 +62,12 @@ const ControlsButtons = styled.div`
 `;
 
 function PlaySortWindow({ registry }) {
-	const [metrics, setMetrics] = useState({});
 	const [showMetrics, setShowMetrics] = useState(false);
 
 	const allMetricsVisible = useSelector(getAllMetricsVisible);
 
 	const toggleDisplayMetrics = () => setShowMetrics(x => !x);
-
-	const loadMetrics = metrics => {
-		setMetrics(metrics);
-	};
-
-	const handleUpdate = ({ step, metrics }) => {
-		if (metrics) {
-			const displayMetrics = {};
-			Object.keys(metrics).forEach(key => {
-				displayMetrics[key] = {
-					name: metrics[key].name,
-					id: key,
-					count: 0,
-				};
-				if (step.metrics[key]) {
-					displayMetrics[key].count = step.metrics[key].count;
-				}
-			});
-			loadMetrics(displayMetrics);
-		}
-	};
-
+	console.log(registry);
 	useEffect(() => {
 		setShowMetrics(allMetricsVisible);
 	}, [allMetricsVisible]);
@@ -107,13 +86,10 @@ function PlaySortWindow({ registry }) {
 						</ButtonIcon>
 					</Tools>
 				</Header>
-				{showMetrics && <PlayStepMetrics metrics={metrics} />}
+				{/* {showMetrics && <PlayStepMetrics registry={registry} />} */}
 			</Top>
 			<Main>
-				<SortAlgorithmVisualizer
-					registry={registry}
-					onStepUpdate={handleUpdate}
-				/>
+				<SortAlgorithmVisualizer registry={registry} />
 				{/* <Controls>
 					<PlaySlider />
 					<ControlsButtons>

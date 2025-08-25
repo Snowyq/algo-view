@@ -17,7 +17,9 @@ const sidebarStates = {
 const Sidebar = styled.div`
 	--sidebar-border-width: 3px;
 	position: absolute;
-	position: relative;
+	@media screen and (min-width: 640px) {
+		position: relative;
+	}
 	right: 0;
 	transition:
 		width 0.3s,
@@ -25,6 +27,7 @@ const Sidebar = styled.div`
 	height: 100%;
 	background-color: var(--color-grey-100);
 	border-left: var(--sidebar-border-width) solid var(--color-grey-300);
+	z-index: 100000;
 	${({ state }) => sidebarStates[state]}
 `;
 

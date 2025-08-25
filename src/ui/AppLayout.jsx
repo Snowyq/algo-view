@@ -12,6 +12,7 @@ const App = styled.div`
 	width: 100svw;
 	grid-template-rows: var(--nav-height) 1fr;
 	grid-template-columns: auto;
+	overflow: hidden;
 `;
 
 const Container = styled.div`

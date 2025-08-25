@@ -2,6 +2,7 @@ import { createSlice } from "@reduxjs/toolkit";
 import { generateRandomArray } from "../../utils/randoms";
 import registryApi from "../../algorithms/algorithmsRegistryApi";
 import { ANIMATION_SPEEDS, DEFAULT_STEP_TYPES } from "../../utils/constants";
+import { clamp } from "../../utils/values";
 
 function getInitialState() {
 	const defaultCategory = "sort";
@@ -24,7 +25,6 @@ function getInitialState() {
 		},
 		options: {
 			defaultStepTypes,
-			maxSteps: [],
 		},
 		animation: {
 			status: "stopped",
@@ -43,6 +43,26 @@ const playSlice = createSlice({
 	reducers: {
 		/* ------------------------ Handle Active Algorithms ------------------------ */
 
+		passAlgorithmInfo(state, action) {
+			const { steps, metrics, id: algoId } = action.payload;
+			if (!algoId) return;
+			const prevAlgorithmInfo = state.active.algorithms.find(
+				algo => algo.id === algoId
+			);
+			const restAlgorithms = state.active.algorithms.filter(
+				algo => algo.id !== algoId
+			);
+
+			const newAlgorithmInfo = {
+				...prevAlgorithmInfo,
+				steps,
+				metrics,
+			};
+
+			state.active.algorithms = [...restAlgorithms, newAlgorithmInfo];
+			state.animation.maxStep = findMaxStep(state.active.algorithms);
+		},
+
 		openAlgorithm(state, action) {
 			const algoId = action.payload;
 			if (!algoId) return;
@@ -58,17 +78,15 @@ const playSlice = createSlice({
 
 		closeAlgorithm(state, action) {
 			const algoId = action.payload;
+			if (!algoId) return;
+
 			state.active.algorithms = state.active.algorithms.filter(
 				algo => algo.id !== algoId
 			);
 
-			state.options.maxSteps = state.options.maxSteps.filter(
-				opt => opt.id !== algoId
-			);
-
-			const values = state.options.maxSteps.map(opt => opt.value);
-			state.animation.maxStep =
-				values.length > 0 ? Math.max(...values) : -1;
+			state.animation.maxStep = findMaxStep(state.active.algorithms);
+			const { step, maxStep } = state.animation;
+			state.animation.step = clamp(step, 0, maxStep);
 		},
 
 		/* ----------------------------- Handle Category ---------------------------- */
@@ -85,31 +103,21 @@ const playSlice = createSlice({
 
 		/* ---------------------------- Handle Step Value --------------------------- */
 
-		passMaxStep(state, action) {
-			const { id: algoId, value: maxStep } = action.payload;
-			if (!algoId || (!maxStep && maxStep !== 0)) return;
-
-			const rest = state.options.maxSteps.filter(
-				opt => opt.id !== algoId
-			);
-			const opt = { id: algoId, value: maxStep };
-			state.options.maxSteps = [...rest, opt];
-
-			const values = state.options.maxSteps.map(opt => opt.value);
-			state.animation.maxStep =
-				values.length > 0 ? Math.max(...values) : -1;
-		},
-
 		decreaseStep(state, action) {
-			state.animation.step = state.animation.step - action.payload;
+			const { step } = state.animation;
+			const newStep = step - action.payload;
+			state.animation.step = newStep <= 0 ? 0 : newStep;
 		},
 
 		increaseStep(state, action) {
-			state.animation.step = state.animation.step + action.payload;
+			const { step, maxStep } = state.animation;
+			const newStep = step + action.payload;
+			state.animation.step = newStep >= maxStep ? maxStep : newStep;
 		},
 
 		changeStep(state, action) {
-			state.animation.step = action.payload;
+			const newStep = action.payload;
+			state.animation.step = clamp(newStep, 0, state.animation.maxStep);
 		},
 
 		/* ------------------------ Handle All Metrics State ------------------------ */
@@ -129,7 +137,7 @@ const playSlice = createSlice({
 			state.animation.status = status;
 		},
 
-		freezeAnimation(state, action) {
+		freezeAnimation(state) {
 			console.log("freeze");
 			state.animation.status = "freezed";
 		},
@@ -156,10 +164,10 @@ export const {
 	increaseStep,
 	decreaseStep,
 	changeStep,
+	passAlgorithmInfo,
 	openAlgorithm,
 	changeCategory,
 	closeAlgorithm,
-	passMaxStep,
 	toggleMetrics,
 	stopAnimation,
 	changeSpeed,
@@ -182,4 +190,12 @@ export const getActiveAlgorithms = state => state.play.active.algorithms;
 export const getInput = state => state.play.input;
 export const getAllMetricsVisible = state => state.play.allMetricsVisible;
 
-// export const getExamples = state => state.examples
+/* -------------------------------------------------------------------------- */
+/*                                   Helpers                                  */
+/* -------------------------------------------------------------------------- */
+
+function findMaxStep(algorithms) {
+	const values = algorithms.map(algo => algo.steps.length - 1);
+	const max = values.length > 0 ? Math.max(...values) : -1;
+	return max;
+}

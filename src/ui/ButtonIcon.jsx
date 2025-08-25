@@ -34,10 +34,12 @@ const ButtonIcon = styled.button`
 	transition: all 0.2s;
 	background-color: ${({ background }) => background || "var(--background)"};
 
-	&:hover {
-		background-color: var(--hover-background);
-		svg {
-			color: var(--hover-color);
+	@media (hover: hover) and (pointer: fine) {
+		&:hover {
+			background-color: var(--hover-background);
+			svg {
+				color: var(--hover-color);
+			}
 		}
 	}
 

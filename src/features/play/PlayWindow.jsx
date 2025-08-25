@@ -9,10 +9,15 @@ const PlayWindow = styled.div`
 	position: relative;
 	height: 100%;
 	width: 100%;
-	background-color: var(--background-color);
-	box-shadow: 0.3rem 0.3rem 0px 3px var(--box-shadow-color);
-	/* border: 0.75rem solid var(--color-grey-300); */
-	border-radius: 2.5rem;
+	background-color: var(--color-grey-300);
+	/* border: 3px solid var(--color-grey-400); */
+
+	@media screen and (min-width: 640px) {
+		border: none;
+		border-radius: 2.5rem;
+		background-color: var(--background-color);
+		box-shadow: 0.3rem 0.3rem 0px 3px var(--box-shadow-color);
+	}
 `;
 
 export default PlayWindow;

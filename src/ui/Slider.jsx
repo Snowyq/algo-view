@@ -17,10 +17,11 @@ const SliderContainer = styled.div`
 	position: relative;
 	width: 100%;
 	height: 100%;
-
 	cursor: pointer;
-`;
 
+	/* 👇 Prevent mobile scrolling during drag */
+	touch-action: none;
+`;
 const DotContainer = styled.div`
 	position: absolute;
 	top: 50%;
@@ -28,6 +29,14 @@ const DotContainer = styled.div`
 	pointer-events: none;
 	translate: -50% -50%;
 	z-index: 1000;
+
+	user-select: none;
+	-webkit-touch-callout: none;
+	-webkit-user-callout: none;
+	-webkit-user-select: none;
+	-webkit-user-drag: none;
+	-webkit-user-modify: none;
+	-webkit-highlight: none;
 `;
 
 const HoverDotContainer = styled.div`
@@ -38,6 +47,14 @@ const HoverDotContainer = styled.div`
 	pointer-events: none;
 	translate: -50% -50%;
 	z-index: 500;
+
+	user-select: none;
+	-webkit-touch-callout: none;
+	-webkit-user-callout: none;
+	-webkit-user-select: none;
+	-webkit-user-drag: none;
+	-webkit-user-modify: none;
+	-webkit-highlight: none;
 `;
 
 const TooltipContainer = styled.div`
@@ -48,6 +65,14 @@ const TooltipContainer = styled.div`
 	height: 100%;
 	z-index: 750;
 	user-select: none;
+
+	user-select: none;
+	-webkit-touch-callout: none;
+	-webkit-user-callout: none;
+	-webkit-user-select: none;
+	-webkit-user-drag: none;
+	-webkit-user-modify: none;
+	-webkit-highlight: none;
 `;
 
 const ProgressContainer = styled.div`
@@ -80,7 +105,6 @@ function Slider({
 	const dotRef = useRef();
 	const hoverDotRef = useRef();
 	const progressFillRef = useRef();
-	const prevVal = useRef();
 
 	/* --------------------------------- States --------------------------------- */
 
@@ -91,10 +115,7 @@ function Slider({
 
 	const changeValue = useCallback(
 		value => {
-			if (!prevVal.current || prevVal.current !== value) {
-				prevVal.current = value;
-				onChange?.(value);
-			}
+			onChange?.(value);
 		},
 		[onChange]
 	);
@@ -145,8 +166,8 @@ function Slider({
 	);
 
 	const handleMouseMove = e => {
+		e.preventDefault();
 		const { progress, value } = getFinalProgressAndValue(e);
-
 		if (isDragging) {
 			hideHoverDot();
 		} else {
@@ -158,6 +179,7 @@ function Slider({
 	};
 
 	const handleMouseDown = e => {
+		e.preventDefault();
 		disableSelection();
 		const { value } = getFinalProgressAndValue(e);
 		changeValue(value);
@@ -166,6 +188,7 @@ function Slider({
 
 	const handleMouseUp = useCallback(
 		e => {
+			e.preventDefault();
 			enableSelection();
 			setIsDragging(false);
 			const rect = sliderRef.current.getBoundingClientRect();
@@ -192,15 +215,15 @@ function Slider({
 
 	useEffect(() => {
 		if (isDragging) {
-			document.addEventListener("mousemove", handleDotDrag);
-			document.addEventListener("mouseup", handleMouseUp);
+			document.addEventListener("pointermove", handleDotDrag);
+			document.addEventListener("pointerup", handleMouseUp);
 		} else {
-			document.removeEventListener("mousemove", handleDotDrag);
-			document.removeEventListener("mouseup", handleMouseUp);
+			document.removeEventListener("pointermove", handleDotDrag);
+			document.removeEventListener("pointerup", handleMouseUp);
 		}
 		return () => {
-			document.removeEventListener("mousemove", handleDotDrag);
-			document.removeEventListener("mouseup", handleMouseUp);
+			document.removeEventListener("pointermove", handleDotDrag);
+			document.removeEventListener("pointerup", handleMouseUp);
 		};
 	}, [handleDotDrag, handleMouseUp, isDragging]);
 
@@ -233,11 +256,11 @@ function Slider({
 		<SliderContext.Provider value={value}>
 			<SliderContainer
 				ref={sliderRef}
-				onMouseDown={handleMouseDown}
-				onMouseUp={handleMouseUp}
-				onMouseLeave={handleMouseLeave}
-				onMouseMove={handleMouseMove}
-				onMouseEnter={handleMouseEnter}
+				onPointerDown={handleMouseDown}
+				onPointerUp={handleMouseUp}
+				onPointerLeave={handleMouseLeave}
+				onPointerMove={handleMouseMove}
+				onPointerEnter={handleMouseEnter}
 			>
 				{children}
 			</SliderContainer>
@@ -338,7 +361,6 @@ function isMouseOverRect(mouseEvent, rect) {
 	const mouseX = mouseEvent.clientX;
 	const mouseY = mouseEvent.clientY;
 
-	// rect should be an object like: { x: number, y: number, width: number, height: number }
 	return (
 		mouseX >= rect.x &&
 		mouseX <= rect.x + rect.width &&

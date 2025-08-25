@@ -6,6 +6,7 @@ import { useDispatch, useSelector } from "react-redux";
 import {
 	changeSpeed,
 	freezeAnimation,
+	getAnimationStatus,
 	getCurrentSpeed,
 	getSpeeds,
 	startAnimation,
@@ -29,6 +30,7 @@ const Wrapper = styled.div`
 
 const StyledPlaySpeed = styled.div`
 	position: relative;
+	height: 100%;
 `;
 
 const SpeedButton = styled.button`
@@ -38,6 +40,7 @@ const SpeedButton = styled.button`
 	align-items: center;
 	justify-content: center;
 	height: auto;
+	width: 3.5rem;
 	background-color: var(--color-grey-100);
 	border-radius: 5px;
 	border: none;
@@ -46,16 +49,15 @@ const SpeedButton = styled.button`
 const SpeedButtonValue = styled.span`
 	display: block;
 	width: auto;
-	line-height: 1.4rem;
-	font-size: 1.4rem;
+	line-height: 1.2rem;
+	font-size: 1.2rem;
 	border-radius: 2.5px;
 
-	width: 4rem;
 	height: fit-content;
 `;
 
 const Icon = styled.span`
-	font-size: 2.2rem;
+	font-size: 2rem;
 `;
 
 const SelectorContainer = styled.div`
@@ -72,15 +74,22 @@ function PlaySpeed() {
 	const dispatch = useDispatch();
 	const speeds = useSelector(getSpeeds);
 	const speed = useSelector(getCurrentSpeed);
+	const animationStatus = useSelector(getAnimationStatus);
 
 	const handleOnChange = option => {
 		dispatch(changeSpeed(option));
 		setIsHidden(true);
-		dispatch(startAnimation());
+		if (animationStatus === "freezed") {
+			dispatch(startAnimation());
+		}
 	};
 
 	const handleClick = () => {
-		dispatch(freezeAnimation());
+		if (animationStatus === "playing") {
+			dispatch(freezeAnimation());
+		} else if (animationStatus === "freezed") {
+			dispatch(startAnimation());
+		}
 		setIsHidden(isHid => {
 			return !isHid;
 		});

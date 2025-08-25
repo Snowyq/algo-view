@@ -105,22 +105,6 @@ function useSortCanvas(canvasRef, id) {
 	/*                                 Callbacks                                  */
 	/* -------------------------------------------------------------------------- */
 
-	// const initCanvas = useCallback(
-	// 	canvasRef => {
-	// 		if (!offscreenRef.current && worker && canvasRef.current) {
-	// 			const canvas = canvasRef.current;
-	// 			const offscreen = canvas.transferControlToOffscreen();
-
-	// 			worker.postMessage({ type: "init-canvas", canvas: offscreen }, [
-	// 				offscreen,
-	// 			]);
-
-	// 			offscreenRef.current = offscreen;
-	// 		}
-	// 	},
-	// 	[offscreenRef, worker]
-	// );
-
 	/**
 	 * drawCanvas
 	 * trigger creation of algorithm display state based on given step index
@@ -227,32 +211,6 @@ function getStepColors() {
 		stepColors[type] = getCssVar(`--color-step-${type}`);
 	}
 	return stepColors;
-}
-
-function deepEqual(obj1, obj2) {
-	if (obj1 === obj2) return true;
-
-	if (
-		typeof obj1 !== "object" ||
-		obj1 === null ||
-		typeof obj2 !== "object" ||
-		obj2 === null
-	) {
-		return false;
-	}
-
-	const keys1 = Object.keys(obj1);
-	const keys2 = Object.keys(obj2);
-
-	if (keys1.length !== keys2.length) return false;
-
-	for (let key of keys1) {
-		if (!keys2.includes(key) || !deepEqual(obj1[key], obj2[key])) {
-			return false;
-		}
-	}
-
-	return true;
 }
 
 export default useSortCanvas;

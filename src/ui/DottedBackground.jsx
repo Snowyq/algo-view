@@ -22,6 +22,12 @@ export const DottedBackground = styled.div`
 	height: 100%;
 	width: 100%;
 	position: absolute;
+	display: none;
+
+	@media screen and (min-width: 640px) {
+		display: block;
+	}
+
 	left: 0;
 	top: 0;
 	/* background-color: yellow; */

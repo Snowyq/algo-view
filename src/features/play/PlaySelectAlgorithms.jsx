@@ -1,6 +1,5 @@
-import { useContext } from "react";
 import styled, { css } from "styled-components";
-import { PlayContext } from "./PlayContext";
+
 import ButtonIcon from "../../ui/ButtonIcon";
 import { IoIosClose } from "react-icons/io";
 import { useDispatch, useSelector } from "react-redux";
@@ -40,9 +39,11 @@ const ItemCloseButton = styled(ButtonIcon)`
 const itemStates = {
 	default: css`
 		box-shadow: 3px 3px 0px 1px var(--color-grey-300);
-		&:hover {
-			background-color: var(--color-blue-200);
-			box-shadow: 3px 3px 0px 1px var(--color-blue-300);
+		@media (hover: hover) and (pointer: fine) {
+			&:hover {
+				background-color: var(--color-blue-200);
+				box-shadow: 3px 3px 0px 1px var(--color-blue-300);
+			}
 		}
 	`,
 	selected: css`

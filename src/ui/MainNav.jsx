@@ -84,11 +84,15 @@ const StyledNavLink = styled(NavLink)`
 `;
 
 const Nav = styled.nav`
-	display: flex;
+	display: none;
 	gap: 2.4rem;
 	/* font-size: 1.6rem; */
 	justify-content: center;
 	align-items: center;
+
+	@media screen and (min-width: 640px) {
+		display: flex;
+	}
 `;
 
 function MainNav() {

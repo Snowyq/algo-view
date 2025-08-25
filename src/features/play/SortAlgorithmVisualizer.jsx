@@ -1,15 +1,7 @@
-import {
-	useCallback,
-	useContext,
-	useEffect,
-	useMemo,
-	useRef,
-	useState,
-} from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import styled from "styled-components";
 
-import { PlayContext, StepContext } from "./PlayContext";
 import useSortCanvas from "../../hooks/useSortCanvas";
 import Loader from "../../ui/Loader";
 import useOnResize from "../../hooks/useOnResize";
@@ -18,18 +10,21 @@ import {
 	getDefaultStepTypes,
 	getInput,
 	getStep,
-	passMaxStep,
+	passAlgorithmInfo,
 } from "./playSlice";
 
 const AlgorithmContainer = styled.div`
 	width: 100%;
 	height: 100%;
-	padding: 5rem;
 	display: flex;
 	gap: 2rem;
+	padding: 1rem;
 	background-color: var(--color-grey-50);
-	box-shadow: 0.2rem 0.2rem 0px 2px var(--color-grey-300);
 	border-radius: 15px;
+	@media screen and (min-width: 640px) {
+		padding: 5rem;
+		box-shadow: 0.2rem 0.2rem 0px 2px var(--color-grey-300);
+	}
 `;
 
 const Sizer = styled.div`
@@ -81,15 +76,13 @@ function SortAlgorithmVisualizer({ registry, onStepUpdate }) {
 	}, [algoOptions, renderAlgorithm, input]);
 
 	useEffect(() => {
-		onStatusType("draw-done", payload => {
-			onStepUpdate?.(payload);
-		});
 		onStatusType("render-done", payload => {
-			const { stepsLength } = payload;
-			if (stepsLength)
+			const { steps, metrics } = payload;
+			if (steps && metrics) {
 				dispatch(
-					passMaxStep({ id: registry.id, value: stepsLength - 1 })
+					passAlgorithmInfo({ id: registry.id, steps, metrics })
 				);
+			}
 			setIsLoading(false);
 		});
 	}, [onStatusType, onStepUpdate, registry, dispatch]);

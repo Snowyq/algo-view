@@ -139,9 +139,13 @@ self.onmessage = function (event) {
 		doFirstRender = true;
 		createAlgorithmInstance(input, options);
 		const stepsLength = getAlgorithmStepsLength();
+		const steps = AlgorithmInstance.getSteps();
 		const metrics = AlgorithmInstance.getMetrics();
 
-		postMessage({ type: "render-done", payload: { stepsLength, metrics } });
+		postMessage({
+			type: "render-done",
+			payload: { steps, stepsLength, metrics },
+		});
 	}
 
 	/* ----------------------------- Update Settings ---------------------------- */
@@ -383,8 +387,8 @@ function animateDrawArray(
 	state,
 	step,
 	maxValue,
-	duration = 1500,
-	appearStyle = "sequence" // 'sequence', 'atOnce',
+	duration = 500,
+	appearStyle = "atOnce" // 'sequence', 'atOnce',
 ) {
 	let output = [];
 	if (!state) return output;
