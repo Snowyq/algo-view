@@ -8,6 +8,7 @@ let dpr = null;
 let stepColors = null;
 let doFirstRender = true;
 let currentAnimationFrameId = null;
+let sharedIndex;
 
 let canvasHeight = 0;
 let canvasHeightDpr = 0;
@@ -23,6 +24,13 @@ let upperBlockMargin = 15; //
 let textDisplayThreshold = 10; // px
 let textAlign = "center"; // 'center', 'start', 'end'
 let labelFont = "10px sans-serif";
+
+const channel = new BroadcastChannel("animation-tick");
+
+channel.onmessage = event => {
+	const stepIndex = event.data.step;
+	draw(stepIndex); // existing function
+};
 
 self.onmessage = function (event) {
 	const { type, payload, canvas } = event.data;
@@ -41,7 +49,15 @@ self.onmessage = function (event) {
 	/* ------------------------------- Draw Canvas ------------------------------ */
 
 	if (type === "draw-canvas") {
-		const { stepIndex, devicePixelRatio } = payload;
+		const { devicePixelRatio } = payload;
+
+		let stepIndex = payload?.stepIndex;
+		console.log(sharedIndex);
+		if (sharedIndex) {
+			console.log(stepIndex);
+			console.log(sharedIndex);
+			stepIndex = Atomics.load(sharedIndex, 0);
+		}
 
 		if (!AlgorithmInstance) {
 			postError("Cannot draw canvas: Algorithm instance not initialized");
@@ -54,6 +70,7 @@ self.onmessage = function (event) {
 		}
 
 		adjustSize(null, null, devicePixelRatio);
+
 		draw(stepIndex);
 		const metrics = AlgorithmInstance.getMetrics();
 		const step = AlgorithmInstance.getStepByIndex(stepIndex);
@@ -104,8 +121,10 @@ self.onmessage = function (event) {
 	/* -------------------------- Find Algorithm Class -------------------------- */
 
 	if (type === "mount") {
-		const { id } = payload;
-
+		const { id, sharedBuffer } = payload;
+		if (sharedBuffer) {
+			sharedIndex = new Uint32Array(payload.sharedBuffer);
+		}
 		if (!id) {
 			postError("No Algorithm Id provided");
 			return;

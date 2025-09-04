@@ -80,7 +80,7 @@ const StyledNavLink = styled(NavLink)`
 		} */
 	}
 
-	${props => types[props.styleType] || types["default"]}
+	${({ $styleType }) => types[$styleType] || types["default"]};
 `;
 
 const Nav = styled.nav`
@@ -104,7 +104,7 @@ function MainNav() {
 			<StyledNavLink to="/algorithms">
 				<span>Algorithms</span>
 			</StyledNavLink>
-			<StyledNavLink to="/play" styleType="cta">
+			<StyledNavLink to="/play" $styleType="cta">
 				<span>Playground</span>
 			</StyledNavLink>
 		</Nav>

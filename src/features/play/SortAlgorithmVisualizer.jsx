@@ -6,12 +6,7 @@ import useSortCanvas from "../../hooks/useSortCanvas";
 import Loader from "../../ui/Loader";
 import useOnResize from "../../hooks/useOnResize";
 import { useDispatch, useSelector } from "react-redux";
-import {
-	getDefaultStepTypes,
-	getInput,
-	getStep,
-	passAlgorithmInfo,
-} from "./playSlice";
+import { getDefaultStepTypes, getInput, passAlgorithmInfo } from "./playSlice";
 
 const AlgorithmContainer = styled.div`
 	width: 100%;
@@ -39,7 +34,6 @@ function SortAlgorithmVisualizer({ registry, onStepUpdate }) {
 	/* -------------------------------- Contexts -------------------------------- */
 
 	const dispatch = useDispatch();
-	const stepIndex = useSelector(getStep);
 	const stepTypes = useSelector(getDefaultStepTypes);
 	const input = useSelector(getInput);
 
@@ -59,7 +53,7 @@ function SortAlgorithmVisualizer({ registry, onStepUpdate }) {
 	}, [stepTypes]);
 
 	const canvasApi = useSortCanvas(canvasRef, registry.id, input, algoOptions);
-	const { drawCanvas, changeSize, renderAlgorithm, onStatusType } = canvasApi;
+	const { changeSize, renderAlgorithm, onStatusType } = canvasApi;
 
 	const onResize = ref => {
 		if (!ref.current) return;
@@ -86,10 +80,6 @@ function SortAlgorithmVisualizer({ registry, onStepUpdate }) {
 			setIsLoading(false);
 		});
 	}, [onStatusType, onStepUpdate, registry, dispatch]);
-
-	useEffect(() => {
-		drawCanvas(stepIndex);
-	}, [drawCanvas, stepIndex]);
 
 	return (
 		<AlgorithmContainer>

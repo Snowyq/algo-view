@@ -1,42 +1,74 @@
-import { useDispatch, useSelector } from "react-redux";
+import { ReactReduxContext, useDispatch, useSelector } from "react-redux";
 import {
+	changeStep,
+	getActiveAlgorithms,
 	getAnimationStatus,
 	getCurrentSpeed,
 	getMaxStep,
 	getStep,
-	increaseStep,
 	stopAnimation,
 } from "./playSlice";
 import { useEffect, useRef } from "react";
+import useWorker from "../../hooks/useWorker";
+import { SharedBufferAPI } from "../../utils/sharedBufferAPI";
+import useRateLimit from "../../hooks/useRateLimit";
 
 function PlayAnimation() {
 	const dispatch = useDispatch();
 	const animationIntervalValue = useSelector(getCurrentSpeed);
+	const activeAlgorithms = useSelector(getActiveAlgorithms);
 	const animationStatus = useSelector(getAnimationStatus);
 	const maxStep = useSelector(getMaxStep);
-	const step = useSelector(getStep);
-	const intervalIdRef = useRef(null);
+	const { value: step, trigger } = useSelector(getStep);
+
 	const prevAnimationRef = useRef(null);
+
+	const changeStep1 = value =>
+		dispatch(changeStep({ value, trigger: "tick" }));
+	const limitedChangeStep = useRateLimit(changeStep1, 50);
+
+	const { worker, onMessageType } = useWorker("stepWorker.js");
+
+	useEffect(() => {
+		onMessageType("ticked", payload => {
+			limitedChangeStep(payload.step);
+		});
+	}, [onMessageType, limitedChangeStep]);
+
+	useEffect(() => {
+		if (trigger !== "tick") {
+			worker?.postMessage({ type: "change", payload: { step } });
+		}
+	}, [step, worker, activeAlgorithms, trigger]);
 
 	useEffect(() => {
 		if (prevAnimationRef.current === animationStatus) return;
-		// console.log("status:", animationStatus);
-
 		prevAnimationRef.current = animationStatus;
+
+		if (!SharedBufferAPI.find("step")) {
+			SharedBufferAPI.init("step", 4);
+			SharedBufferAPI.write("step", 0);
+		}
+
 		if (animationStatus === "playing") {
-			intervalIdRef.current = setInterval(() => {
-				dispatch(increaseStep(1));
-			}, animationIntervalValue);
+			worker?.postMessage({
+				type: "start",
+				payload: {
+					sharedBuffer: SharedBufferAPI.getBuffer("step"),
+					interval: animationIntervalValue,
+					maxStep,
+				},
+			});
 		}
 
 		if (animationStatus === "stopped") {
-			clearInterval(intervalIdRef.current);
+			worker?.postMessage({ type: "stop" });
 		}
 
 		if (animationStatus === "freezed") {
-			clearInterval(intervalIdRef.current);
+			worker?.postMessage({ type: "stop" });
 		}
-	}, [animationStatus, dispatch, animationIntervalValue]);
+	}, [animationStatus, dispatch, animationIntervalValue, worker, maxStep]);
 
 	useEffect(() => {
 		if (animationStatus === "playing") {

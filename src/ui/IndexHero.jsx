@@ -1,5 +1,6 @@
 import styled from "styled-components";
 import Button from "./Button";
+import { Navigate, useNavigate } from "react-router-dom";
 
 const StyledIndexHero = styled.div`
 	position: relative;
@@ -34,6 +35,7 @@ const ButtonsContainer = styled.div`
 `;
 
 function IndexHero() {
+	const navigate = useNavigate();
 	return (
 		<StyledIndexHero>
 			<H1>Explore world of algorithms</H1>
@@ -45,7 +47,11 @@ function IndexHero() {
 			</p>
 			<ButtonsContainer>
 				<Button size="xlarge">Learn</Button>
-				<Button variation="secondary" size="xlarge">
+				<Button
+					variation="secondary"
+					size="xlarge"
+					onClick={() => navigate("/play")}
+				>
 					Play
 				</Button>
 			</ButtonsContainer>

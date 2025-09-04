@@ -67,7 +67,6 @@ function PlaySortWindow({ registry }) {
 	const allMetricsVisible = useSelector(getAllMetricsVisible);
 
 	const toggleDisplayMetrics = () => setShowMetrics(x => !x);
-	console.log(registry);
 	useEffect(() => {
 		setShowMetrics(allMetricsVisible);
 	}, [allMetricsVisible]);

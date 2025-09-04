@@ -1,5 +1,5 @@
 export const ANIMATION_SPEEDS = {
-	sort: [16, 25, 50, 100, 500, 1000, 2000],
+	sort: [1, 5, 16, 25, 50, 100, 500, 1000, 2000],
 };
 
 export const DEFAULT_STEP_TYPES = {

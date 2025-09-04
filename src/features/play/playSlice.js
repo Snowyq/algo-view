@@ -29,7 +29,7 @@ function getInitialState() {
 		animation: {
 			status: "stopped",
 			speeds,
-			step: 0,
+			step: { value: 0, trigger: "init" },
 			maxStep: -1,
 			isPlaying: false,
 			speed: speeds[0] || 100,
@@ -86,7 +86,10 @@ const playSlice = createSlice({
 
 			state.animation.maxStep = findMaxStep(state.active.algorithms);
 			const { step, maxStep } = state.animation;
-			state.animation.step = clamp(step, 0, maxStep);
+			state.animation.step = {
+				value: clamp(step.value, 0, maxStep),
+				trigger: "closeAlgorithm",
+			};
 		},
 
 		/* ----------------------------- Handle Category ---------------------------- */
@@ -97,7 +100,8 @@ const playSlice = createSlice({
 			state.active.algorithms = [];
 			state.options.maxSteps = [];
 			state.animation.maxStep = -1;
-			state.animation.step = 0;
+			state.animation.step.value = 0;
+			state.animation.step.trigger = "changeCategory";
 			state.animation.isPlaying = false;
 		},
 
@@ -105,19 +109,30 @@ const playSlice = createSlice({
 
 		decreaseStep(state, action) {
 			const { step } = state.animation;
-			const newStep = step - action.payload;
-			state.animation.step = newStep <= 0 ? 0 : newStep;
+			const { value, trigger = "action" } = action.payload;
+			const newStep = step.value - value;
+			state.animation.step = {
+				value: newStep <= 0 ? 0 : newStep,
+				trigger,
+			};
 		},
 
 		increaseStep(state, action) {
 			const { step, maxStep } = state.animation;
-			const newStep = step + action.payload;
-			state.animation.step = newStep >= maxStep ? maxStep : newStep;
+			const { value, trigger = "action" } = action.payload;
+			const newStep = step.value + value;
+			state.animation.step = state.animation.step = {
+				value: newStep >= maxStep ? maxStep : newStep,
+				trigger,
+			};
 		},
 
 		changeStep(state, action) {
-			const newStep = action.payload;
-			state.animation.step = clamp(newStep, 0, state.animation.maxStep);
+			const { value, trigger = "action" } = action.payload;
+			state.animation.step = {
+				value: clamp(value, 0, state.animation.maxStep),
+				trigger,
+			};
 		},
 
 		/* ------------------------ Handle All Metrics State ------------------------ */

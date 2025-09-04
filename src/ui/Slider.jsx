@@ -182,8 +182,8 @@ function Slider({
 		e.preventDefault();
 		disableSelection();
 		const { value } = getFinalProgressAndValue(e);
-		changeValue(value);
 		setIsDragging(true);
+		changeValue(value);
 	};
 
 	const handleMouseUp = useCallback(

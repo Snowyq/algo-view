@@ -23,11 +23,11 @@ function PlayProgressControls() {
 	const dispatch = useDispatch();
 
 	const forward = useCallback(
-		steps => dispatch(increaseStep(steps)),
+		steps => dispatch(increaseStep({ value: steps })),
 		[dispatch]
 	);
 	const backward = useCallback(
-		steps => dispatch(decreaseStep(steps)),
+		steps => dispatch(decreaseStep({ value: steps })),
 		[dispatch]
 	);
 

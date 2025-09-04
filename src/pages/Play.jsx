@@ -1,7 +1,11 @@
 import PlayLayout from "../features/play/PlayLayout";
 
 function Play() {
-	return <PlayLayout />;
+	return (
+		<>
+			<PlayLayout />
+		</>
+	);
 }
 
 export default Play;

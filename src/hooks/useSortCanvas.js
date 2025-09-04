@@ -1,90 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { sortStepTypes } from "../algorithms/sort/SortAlgorithm";
-
-/**
- * useSortCanvas
- *
- * Custom React hook for initializing and managing an OffscreenCanvas via Web Worker
- * for a sorting algorithm visualization.
- *
- * Responsibilities:
- * - Mounts and initializes the algorithm in a Web Worker.
- * - Transfers control of a canvas element to OffscreenCanvas.
- * - Sends draw, resize, and settings events to the worker.
- * - Tracks loading and error states.
- *
- * @param {string} id - Identifier for the sorting algorithm
- * @param {number[]} input - Input array to be sorted
- * @param {object} canvasRef - Ref to the target <canvas> element
- *
- * @returns {{
- *   drawCanvas: (stepIndex: number) => void,
- *   changeSettings: (settings: object) => void,
- *   changeSize: (DOMRect) => void,
- *   isLoading: boolean,
- *   error: string
- * }}
- */
+import { SharedBufferAPI } from "../utils/sharedBufferAPI";
+import useWorker from "./useWorker";
 
 function useSortCanvas(canvasRef, id) {
-	const [worker, setWorker] = useState(null);
-	const [status, setStatus] = useState("unmounted"); // "mounted", "resized", "canvas-initialized", "colors-loaded", "settings-updated",  "draw-done", "render-done"
-	const [error, setError] = useState("");
-
+	const { worker, onMessageType } = useWorker("sortCanvasWorker.js");
 	const offscreenRef = useRef(null);
 
-	const callbacksRef = useRef({});
-
-	const setOnStatusType = useCallback((type, cb) => {
-		callbacksRef.current[type] = typeof cb === "function" ? cb : undefined;
-	}, []);
-	/* -------------------------------------------------------------------------- */
-	/*                                   Effects                                  */
-	/* -------------------------------------------------------------------------- */
-
-	/* -------------------------- Initialize Web Worker ------------------------- */
 	useEffect(() => {
-		// creating Web Worker Instance
-		const myWorker = new Worker(
-			new URL("../workers/sortCanvasWorker.js", import.meta.url),
-			{ type: "module" }
-		);
-
-		// handling responses from Worker
-		myWorker.onmessage = function (event) {
-			const { type, message, payload } = event.data;
-
-			function executeCallback(type) {
-				const fn = callbacksRef.current[type];
-				if (typeof fn === "function") {
-					fn?.(payload);
-				}
-			}
-
-			// after first drawing disabling loading state
-			setStatus(type);
-
-			executeCallback(type);
-
-			if (type === "error") {
-				setError(message);
-			}
-		};
-
-		// Initialize Algorithm
-		myWorker.postMessage({ type: "mount", payload: { id } });
-		myWorker.postMessage({
+		if (!worker) return;
+		const sharedBuffer = SharedBufferAPI.getBuffer("step");
+		worker.postMessage({ type: "mount", payload: { id, sharedBuffer } });
+		worker.postMessage({
 			type: "load-step-colors",
 			payload: { stepColors: getStepColors() },
 		});
-
-		// saving worker in state
-		setWorker(myWorker);
-
-		return () => {
-			myWorker.terminate();
-		};
-	}, [id]);
+	}, [worker, id]);
 
 	/* ----------------------- Initialize Offscreen Canvas ---------------------- */
 	useEffect(() => {
@@ -104,22 +35,6 @@ function useSortCanvas(canvasRef, id) {
 	/* -------------------------------------------------------------------------- */
 	/*                                 Callbacks                                  */
 	/* -------------------------------------------------------------------------- */
-
-	/**
-	 * drawCanvas
-	 * trigger creation of algorithm display state based on given step index
-	 */
-	const drawCanvas = useCallback(
-		stepIndex => {
-			if (!worker) return;
-			const devicePixelRatio = getDevicePixelRatio();
-			worker.postMessage({
-				type: "draw-canvas",
-				payload: { stepIndex, devicePixelRatio },
-			});
-		},
-		[worker]
-	);
 
 	/**
 	 * changeSettings
@@ -179,13 +94,10 @@ function useSortCanvas(canvasRef, id) {
 
 	return {
 		renderAlgorithm,
-		drawCanvas,
 		changeSettings,
 		changeSize,
 		changeColors,
-		status,
-		error,
-		onStatusType: setOnStatusType,
+		onStatusType: onMessageType,
 	};
 }
 
