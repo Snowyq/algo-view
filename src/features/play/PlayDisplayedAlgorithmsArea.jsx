@@ -1,19 +1,36 @@
 import styled, { css } from "styled-components";
 import PlayAlgorithmWindow from "./PlayAlgorithmWindow";
-import { useContext } from "react";
-import { PlayContext } from "./PlayContext";
 import registryApi from "../../algorithms/algorithmsRegistryApi";
 import { DottedBackground } from "../../ui/DottedBackground";
+import { useSelector } from "react-redux";
+import { getActiveAlgorithms, getActiveCategory } from "./playSlice";
 
 const StyledPlayViewArea = styled.div`
 	height: 100%;
 	width: 100%;
-
+	background-color: var(--color-grey-400);
 	position: relative;
-	/* background-color: var(--color-grey-0);
-	box-shadow: 1px 1px 15px 5px var(--color-grey-200);
-	border: 5px solid var(--color-grey-200); */
-	/* border-radius: 2.5rem; */
+
+	@media screen and (min-width: 640px) {
+		--dot-bg: var(--color-grey-100);
+		--dot-color: var(--color-grey-300);
+		--dot-size: 2px;
+		--dot-space: 0.5rem;
+
+		background:
+			linear-gradient(
+					90deg,
+					var(--dot-bg) calc(var(--dot-space) - var(--dot-size)),
+					transparent 1%
+				)
+				center / var(--dot-space) var(--dot-space),
+			linear-gradient(
+					var(--dot-bg) calc(var(--dot-space) - var(--dot-size)),
+					transparent 1%
+				)
+				center / var(--dot-space) var(--dot-space),
+			var(--dot-color);
+	}
 `;
 
 const categories = {
@@ -49,9 +66,13 @@ const categories = {
 };
 
 const Grid = styled.div`
-	gap: 2rem;
 	display: grid;
-	padding: 5rem;
+	gap: 0.5rem;
+
+	@media screen and (min-width: 640px) {
+		gap: 2rem;
+		padding: 5rem;
+	}
 	/* grid-template-columns: 1fr 1fr; */
 	height: 100%;
 	width: 100%;
@@ -61,16 +82,11 @@ const Grid = styled.div`
 `;
 
 function PlayDisplayedAlgorithmsArea() {
-	const { activeAlgorithms, activeCategory } = useContext(PlayContext);
+	const activeAlgorithms = useSelector(getActiveAlgorithms);
+	const activeCategory = useSelector(getActiveCategory);
 
 	return (
 		<StyledPlayViewArea>
-			<DottedBackground
-				bg="var(--color-grey-100)"
-				color="var(--color-grey-300)"
-				size="2px"
-				space=".5rem"
-			/>
 			<Grid num={activeAlgorithms.length} category={activeCategory}>
 				{activeAlgorithms.map(algo => {
 					const registry = registryApi.getAlgorithmRegistry(

@@ -11,58 +11,68 @@ const data = [
 		items: [
 			{
 				id: "bubbleSort",
-				Class: BubbleSort,
 				meta: {
 					name: "Bubble",
 					description: "...",
 					timeComplexity: "O(n^2)",
 					auxiliarySpace: "O(1)",
 				},
-				instructions: BubbleSort.getInstructions(),
+				algorithm: {
+					Class: BubbleSort,
+					instructions: BubbleSort.getInstructions(),
+				},
 			},
 			{
 				id: "selectionSort",
-				Class: SelectionSort,
 				meta: {
 					name: "Selection",
 					description: "...",
 					timeComplexity: "O(n^2)",
 					auxiliarySpace: "O(1)",
 				},
-				instructions: SelectionSort.getInstructions(),
+				algorithm: {
+					Class: SelectionSort,
+					instructions: SelectionSort.getInstructions(),
+				},
 			},
 			{
 				id: "mergeSort",
-				Class: MergeSort,
 				meta: {
 					name: "Merge",
 					description: "...",
 					timeComplexity: "O(n log n)",
 					auxiliarySpace: "O(n)",
 				},
-				instructions: MergeSort.getInstructions(),
+				algorithm: {
+					Class: MergeSort,
+					instructions: MergeSort.getInstructions(),
+				},
 			},
 			{
 				id: "insertionSort",
-				Class: InsertionSort,
 				meta: {
 					name: "Insertion",
 					description: "...",
 					timeComplexity: "O(n^2)",
 					auxiliarySpace: "O(1)",
 				},
-				instructions: InsertionSort.getInstructions(),
+				algorithm: {
+					Class: InsertionSort,
+					instructions: InsertionSort.getInstructions(),
+				},
 			},
 			{
 				id: "shellSort",
-				Class: ShellSort,
 				meta: {
 					name: "Shell",
 					description: "...",
 					timeComplexity: "O(n^2)",
 					auxiliarySpace: "O(1)",
 				},
-				instructions: ShellSort.getInstructions(),
+				algorithm: {
+					Class: ShellSort,
+					instructions: ShellSort.getInstructions(),
+				},
 			},
 		],
 	},
@@ -70,7 +80,7 @@ const data = [
 	{ name: "Find", id: "find", items: [] },
 ];
 
-export const registryData = {
+export const registry = {
 	data,
 	categoriesLog: data.map(item => item.id),
 };

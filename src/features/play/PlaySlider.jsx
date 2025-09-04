@@ -11,24 +11,38 @@ const SliderContainer = styled(Flex)`
 	width: 100%;
 	height: 8px;
 	gap: 1.5rem;
-`;
-const SliderOutput = styled.div`
-	width: 100%;
-	height: 8px;
 	background-color: var(--color-grey-400);
 	border-radius: 15px;
-	transition: height 0.3s;
-	&:hover {
-		height: 8px;
+
+	-webkit-user-select: none; /* iOS Safari */
+	-ms-user-select: none; /* IE 10+ */
+	user-select: none; /* Modern browsers */
+
+	-webkit-touch-callout: none; /* iOS Safari long press menu */
+	-webkit-tap-highlight-color: transparent; /* remove highlight on tap */
+`;
+const SliderOutput = styled.div`
+	position: relative;
+	width: 100%;
+	height: 25px;
+
+	@media screen and (min-width: 640px) {
+		height: 12px;
 	}
+
+	transition: height 0.3s;
 `;
 
 const Dot = styled.div`
 	position: absolute;
 	background-color: var(--color-grey-50);
 	border-radius: 50%;
-	height: 125%;
+	height: 12px;
 	aspect-ratio: 1/1;
+
+	@media screen and (min-width: 640px) {
+		height: 100%;
+	}
 
 	top: 50%;
 	translate: -50% -50%;
@@ -60,7 +74,10 @@ const Tooltip = styled.div`
 
 const Fill = styled.div`
 	width: 100%;
-	height: 90%;
+	height: 8px;
+	position: absolute;
+	top: 50%;
+	translate: 0 -50%;
 	background-color: var(--color-grey-500);
 	border-radius: 15px;
 `;

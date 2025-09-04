@@ -1,15 +1,19 @@
 import { styled } from "styled-components";
 import MainNav from "./MainNav";
 import Logo from "./Logo";
-import algorithms from "../algorithms/algorithmsData";
 
 const StyledTopBar = styled.div`
 	background-color: var(--color-grey-200);
 	display: flex;
 	padding: 0 2.4rem;
-	box-shadow: 0 0 0px 0.5rem var(--color-grey-300);
+	border-bottom: 5px solid var(--color-grey-400);
 
 	z-index: 1000;
+
+	@media screen and (min-width: 640px) {
+		border-bottom: 5px solid var(--color-grey-300);
+		background-color: var(--color-grey-200);
+	}
 `;
 
 const Container = styled.div`

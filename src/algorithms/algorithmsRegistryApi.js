@@ -1,23 +1,27 @@
-import { registryData } from "./algorithmsRegistryData";
+import { registry } from "./algorithmsRegistryData";
 
 function getRegistriesByCategory(categoryId) {
-	if (!registryData.categoriesLog.includes(categoryId)) return [];
+	if (!registry.categoriesLog.includes(categoryId)) return [];
 
-	const registriesInCategory = registryData.data.find(
+	const registriesInCategory = registry.data.find(
 		category => category.id === categoryId
 	).items;
 
 	return registriesInCategory;
 }
 
-function getCategories() {
-	const categories = registryData.data;
-	return categories;
+function getCategoriesIds() {
+	const ids = registry.data.map(cat => cat.id);
+	return ids;
 }
 
-function getCategoriesLogs() {
-	const logs = registryData.categoriesLog;
-	return logs;
+function getCategory(category) {
+	return registry.data.find(cat => cat.id === category);
+}
+
+function getAlgorithmsInCategory(category) {
+	if (!category) return;
+	return getCategory(category).items;
 }
 
 function getAlgorithmRegistry(category, id) {
@@ -28,19 +32,41 @@ function getAlgorithmRegistry(category, id) {
 	return registry;
 }
 
+function getCategories() {
+	return registry.data;
+}
+
+function getAlgorithmInfo(category, id) {
+	const registry = getRegistriesByCategory(category).find(
+		reg => reg.id === id
+	);
+
+	return registry.meta;
+}
+
 function getAlgorithmClass(category, id) {
 	const registry = getAlgorithmRegistry(category, id);
 	if (!registry) return;
-	return registry.Class;
+	return registry.algorithm.Class;
+}
+
+function getAlgorithmInstructions(category, id) {
+	const registry = getAlgorithmRegistry(category, id);
+	if (!registry) return;
+	return registry.algorithm.instructions;
 }
 
 const registryApi = {
-	data: registryData,
-	getCategories,
+	registry,
 	getAlgorithmClass,
+	getCategory,
 	getRegistriesByCategory,
 	getAlgorithmRegistry,
-	getCategoriesLogs,
+	getCategories,
+	getCategoriesIds,
+	getAlgorithmsInCategory,
+	getAlgorithmInstructions,
+	getAlgorithmInfo,
 };
 
 export default registryApi;

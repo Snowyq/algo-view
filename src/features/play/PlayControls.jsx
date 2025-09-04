@@ -1,21 +1,14 @@
-import styled from "styled-components";
-import PlayWindow from "./PlayWindow";
-import {
-	memo,
-	useCallback,
-	useContext,
-	useEffect,
-	useMemo,
-	useRef,
-	useState,
-} from "react";
-import { PlayContext, StepContext } from "./PlayContext";
+import styled, { css } from "styled-components";
+import { memo } from "react";
 
 import PlaySpeed from "./PlaySpeed";
 import PlayProgressBar from "./PlayProgressBar";
 import PlayProgressControls from "./PlayProgressControls";
 import ButtonIcon from "../../ui/ButtonIcon";
 import { RiNumbersLine } from "react-icons/ri";
+import { useDispatch, useSelector } from "react-redux";
+import { getActiveAlgorithms, toggleMetrics } from "./playSlice";
+import PlayAnimation from "./PlayAnimation";
 
 const Flex = styled.div`
 	display: flex;
@@ -27,9 +20,13 @@ const Group = styled.div`
 	position: absolute;
 `;
 
-const Center = styled(Group)`
-	left: 50%;
-	translate: -50% 0;
+const Center = styled.div`
+	width: 100%;
+	height: 100%;
+
+	display: flex;
+	justify-content: center;
+	align-items: center;
 `;
 
 const Left = styled(Group)`
@@ -41,206 +38,130 @@ const Right = styled(Group)`
 `;
 
 const StyledPlayControls = styled(Flex)`
+	position: relative;
 	flex-direction: column;
-	border-top: 3px solid var(--color-grey-300);
+	border-top: 5px solid var(--color-grey-400);
 	/* background-color: yellow; */
 	background-color: var(--color-grey-200);
-	padding: 1rem 4rem 2rem 4rem;
+	padding: 0.5rem 3rem 0.5rem 3rem;
+	height: fit-content;
 	width: 100%;
+
+	touch-action: none;
+
+	-webkit-user-select: none; /* iOS Safari */
+	-ms-user-select: none; /* IE 10+ */
+	user-select: none; /* Modern browsers */
+
+	-webkit-touch-callout: none; /* iOS Safari long press menu */
+	-webkit-tap-highlight-color: transparent; /* remove highlight on tap */
+
+	-webkit-touch-callout: none;
+	-webkit-user-callout: none;
+	-webkit-user-select: none;
+	-webkit-user-drag: none;
+	-webkit-user-modify: none;
+	-webkit-highlight: none;
+
+	@media screen and (min-width: 640px) {
+		border-top: 5px solid var(--color-grey-300);
+		background-color: var(--color-grey-200);
+		padding: 1rem 4rem 1rem 4rem;
+	}
 `;
 
 const Container = styled(Flex)`
 	width: 100%;
 	max-width: 1200px;
-	height: 100%;
+	height: fit-content;
+	gap: 1rem;
 	flex-direction: column;
-	gap: 2rem;
 `;
 
 const Controls = styled(Flex)`
 	width: 100%;
-	height: 100%;
+	padding: 0.5rem 0;
+	height: fit-content;
 	justify-content: space-between;
 	position: relative;
 `;
 
 const Bar = styled(Flex)`
 	width: 100%;
-	height: 5rem;
+	height: 100%;
+`;
+
+const statusOverlayStates = {
+	active: css`
+		display: none;
+		background-color: none;
+	`,
+	disabled: css`
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		z-index: 10000;
+		background-color: rgba(var(--color-grey-300-rgb), 0.85);
+	`,
+};
+const StatusOverlay = styled.div`
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	top: 0;
+
+	span {
+		color: var(--color-grey-600);
+		padding: 0.5rem 1rem;
+		border-radius: 0.5rem;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		width: 100%;
+		height: 100%;
+		/* background: radial-gradient(
+			circle,
+			rgba(var(--color-grey-500-rgb), 0.4) 0%,
+			rgba(var(--color-grey-500-rgb), 0) 15rem,
+			rgba(0, 0, 0, 0) 100%
+		); */
+	}
+
+	${({ status }) => statusOverlayStates[status]};
 `;
 
 function PlayControls() {
-	const {
-		decreaseGlobalStep,
-		globalStep,
-		increaseGlobalStep,
-		globalStepsLength,
-		changeGlobalStep,
-	} = useContext(StepContext);
-
-	const { animationSpeeds, activeCategory, metricsToggleAll } =
-		useContext(PlayContext);
-
-	const speeds = useMemo(
-		() => animationSpeeds[activeCategory],
-		[activeCategory, animationSpeeds]
-	);
-
-	const globalStepRef = useRef(globalStep);
-	const animationIntervalRef = useRef(null);
-	const animationTimeoutRef = useRef(null);
-	const wasPlayingRef = useRef(false);
-
-	const [isPlaying, setIsPlaying] = useState(false);
-	const [animationIntervalValue, setAnimationIntervalValue] = useState(
-		speeds[Math.round(speeds.length / 2)]
-	);
-
-	const clearAnimationTimeout = () => {
-		if (animationTimeoutRef.current) {
-			clearTimeout(animationTimeoutRef.current);
-			animationTimeoutRef.current = null;
-		}
-	};
-
-	const clearAnimationInterval = () => {
-		if (animationIntervalRef.current) {
-			clearInterval(animationIntervalRef.current);
-			animationIntervalRef.current = null;
-		}
-	};
-
-	const stopAnimation = useCallback(() => {
-		clearAnimationInterval();
-		wasPlayingRef.current = false;
-		setIsPlaying(false);
-	}, []);
-
-	const startAnimation = useCallback(
-		interval => {
-			if (globalStepRef.current >= globalStepsLength - 1) return;
-			clearAnimationTimeout();
-			if (animationIntervalRef.current) return;
-			const id = setInterval(() => {
-				const currentStep = globalStepRef.current;
-				if (currentStep >= globalStepsLength - 1) {
-					stopAnimation();
-				} else {
-					increaseGlobalStep(1);
-				}
-			}, interval);
-			animationIntervalRef.current = id;
-			setIsPlaying(true);
-		},
-		[globalStepsLength, increaseGlobalStep, stopAnimation]
-	);
-
-	const freezeAnimation = useCallback(() => {
-		if (animationIntervalRef.current !== null) {
-			wasPlayingRef.current = true;
-		}
-		clearAnimationInterval();
-	}, []);
-
-	const unFreezeAnimation = useCallback(() => {
-		clearAnimationTimeout();
-		if (wasPlayingRef.current) {
-			let id = setTimeout(
-				() => startAnimation(animationIntervalValue),
-				100
-			);
-			animationTimeoutRef.current = id;
-		}
-	}, [startAnimation, animationIntervalValue]);
-
-	const changeProgress = value => {
-		changeGlobalStep(value);
-	};
-
-	const forward = useCallback(
-		steps => increaseGlobalStep(steps),
-		[increaseGlobalStep]
-	);
-	const backward = useCallback(
-		steps => decreaseGlobalStep(steps),
-		[decreaseGlobalStep]
-	);
-
-	const start = useCallback(
-		() => startAnimation(animationIntervalValue),
-		[animationIntervalValue, startAnimation]
-	);
-	const stop = useCallback(stopAnimation, [stopAnimation]);
-	const changeSpeed = useCallback(
-		val => {
-			if (isPlaying) {
-				stopAnimation();
-				setAnimationIntervalValue(val);
-				startAnimation(val);
-			} else {
-				setAnimationIntervalValue(val);
-			}
-		},
-		[isPlaying, startAnimation, stopAnimation]
-	);
-
-	useEffect(() => {
-		globalStepRef.current = globalStep;
-	}, [globalStep]);
-
-	useEffect(() => {
-		freezeAnimation();
-		unFreezeAnimation();
-	}, [globalStepsLength, freezeAnimation, unFreezeAnimation]);
-
-	useEffect(() => {
-		if (globalStepsLength - 1 > globalStepRef.current) {
-			stopAnimation();
-		}
-	}, [globalStepsLength, stopAnimation]);
-
-	useEffect(() => {
-		return () => clearAnimationInterval();
-	}, []);
+	const dispatch = useDispatch();
+	const activeAlgorithms = useSelector(getActiveAlgorithms);
+	const isActive = activeAlgorithms.length > 0;
+	const status = isActive ? "active" : "disabled";
 
 	return (
 		<StyledPlayControls>
+			<StatusOverlay status={status}>
+				<span>select algorithm</span>
+			</StatusOverlay>
 			<Container>
 				<Bar>
-					<PlayProgressBar
-						value={globalStep}
-						max={globalStepsLength - 1}
-						freeze={freezeAnimation}
-						unfreeze={unFreezeAnimation}
-						onChange={changeProgress}
-					/>
+					<PlayProgressBar />
 				</Bar>
 				<Controls>
 					<Left>
-						<PlaySpeed
-							speed={animationIntervalValue}
-							speeds={speeds}
-							onChange={changeSpeed}
-							freeze={freezeAnimation}
-							unfreeze={unFreezeAnimation}
-						/>
+						<PlaySpeed />
 					</Left>
 					<Center>
-						<PlayProgressControls
-							onBackward={backward}
-							onForward={forward}
-							onStart={start}
-							onStop={stop}
-							isPlaying={isPlaying}
-						/>
+						<PlayProgressControls />
 					</Center>
 					<Right>
-						<ButtonIcon onClick={metricsToggleAll}>
+						<ButtonIcon onClick={() => dispatch(toggleMetrics())}>
 							<RiNumbersLine />
 						</ButtonIcon>
 					</Right>
 				</Controls>
 			</Container>
+
+			<PlayAnimation />
 		</StyledPlayControls>
 	);
 }

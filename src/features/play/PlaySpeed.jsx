@@ -2,6 +2,15 @@ import styled from "styled-components";
 import { BsSpeedometer, BsSpeedometer2 } from "react-icons/bs";
 import { memo, useCallback, useMemo, useState } from "react";
 import Selector from "../../ui/Selector";
+import { useDispatch, useSelector } from "react-redux";
+import {
+	changeSpeed,
+	freezeAnimation,
+	getAnimationStatus,
+	getCurrentSpeed,
+	getSpeeds,
+	startAnimation,
+} from "./playSlice";
 
 const Option = styled.div`
 	padding: 0.25rem 0.5rem;
@@ -21,6 +30,7 @@ const Wrapper = styled.div`
 
 const StyledPlaySpeed = styled.div`
 	position: relative;
+	height: 100%;
 `;
 
 const SpeedButton = styled.button`
@@ -30,6 +40,7 @@ const SpeedButton = styled.button`
 	align-items: center;
 	justify-content: center;
 	height: auto;
+	width: 3.5rem;
 	background-color: var(--color-grey-100);
 	border-radius: 5px;
 	border: none;
@@ -38,16 +49,15 @@ const SpeedButton = styled.button`
 const SpeedButtonValue = styled.span`
 	display: block;
 	width: auto;
-	line-height: 1.4rem;
-	font-size: 1.4rem;
+	line-height: 1.2rem;
+	font-size: 1.2rem;
 	border-radius: 2.5px;
 
-	width: 4rem;
 	height: fit-content;
 `;
 
 const Icon = styled.span`
-	font-size: 2.2rem;
+	font-size: 2rem;
 `;
 
 const SelectorContainer = styled.div`
@@ -59,19 +69,28 @@ const SelectorContainer = styled.div`
 	translate: 100% 0%;
 `;
 
-function PlaySpeed({ speed, onChange, speeds, freeze, unfreeze }) {
+function PlaySpeed() {
 	const [isHidden, setIsHidden] = useState(true);
+	const dispatch = useDispatch();
+	const speeds = useSelector(getSpeeds);
+	const speed = useSelector(getCurrentSpeed);
+	const animationStatus = useSelector(getAnimationStatus);
 
 	const handleOnChange = option => {
-		onChange?.(option);
-		unfreeze?.();
+		dispatch(changeSpeed(option));
 		setIsHidden(true);
+		if (animationStatus === "freezed") {
+			dispatch(startAnimation());
+		}
 	};
 
 	const handleClick = () => {
+		if (animationStatus === "playing") {
+			dispatch(freezeAnimation());
+		} else if (animationStatus === "freezed") {
+			dispatch(startAnimation());
+		}
 		setIsHidden(isHid => {
-			if (isHid) freeze?.();
-			else unfreeze?.();
 			return !isHid;
 		});
 	};

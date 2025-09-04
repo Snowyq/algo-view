@@ -1,21 +1,25 @@
-import { useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import styled from "styled-components";
 
-import { PlayContext, StepContext } from "./PlayContext";
 import useSortCanvas from "../../hooks/useSortCanvas";
 import Loader from "../../ui/Loader";
 import useOnResize from "../../hooks/useOnResize";
+import { useDispatch, useSelector } from "react-redux";
+import { getDefaultStepTypes, getInput, passAlgorithmInfo } from "./playSlice";
 
 const AlgorithmContainer = styled.div`
 	width: 100%;
 	height: 100%;
-	padding: 5rem;
 	display: flex;
 	gap: 2rem;
+	padding: 1rem;
 	background-color: var(--color-grey-50);
-	box-shadow: 0.2rem 0.2rem 0px 2px var(--color-grey-300);
 	border-radius: 15px;
+	@media screen and (min-width: 640px) {
+		padding: 5rem;
+		box-shadow: 0.2rem 0.2rem 0px 2px var(--color-grey-300);
+	}
 `;
 
 const Sizer = styled.div`
@@ -29,12 +33,9 @@ function SortAlgorithmVisualizer({ registry, onStepUpdate }) {
 	//
 	/* -------------------------------- Contexts -------------------------------- */
 
-	const { algorithmInput: input } = useContext(PlayContext);
-	const {
-		stepTypes,
-		passStepsLength,
-		globalStep: stepIndex,
-	} = useContext(StepContext);
+	const dispatch = useDispatch();
+	const stepTypes = useSelector(getDefaultStepTypes);
+	const input = useSelector(getInput);
 
 	/* ---------------------------------- Refs ---------------------------------- */
 
@@ -52,7 +53,7 @@ function SortAlgorithmVisualizer({ registry, onStepUpdate }) {
 	}, [stepTypes]);
 
 	const canvasApi = useSortCanvas(canvasRef, registry.id, input, algoOptions);
-	const { drawCanvas, changeSize, renderAlgorithm, onStatusType } = canvasApi;
+	const { changeSize, renderAlgorithm, onStatusType } = canvasApi;
 
 	const onResize = ref => {
 		if (!ref.current) return;
@@ -69,19 +70,16 @@ function SortAlgorithmVisualizer({ registry, onStepUpdate }) {
 	}, [algoOptions, renderAlgorithm, input]);
 
 	useEffect(() => {
-		onStatusType("draw-done", payload => {
-			onStepUpdate?.(payload);
-		});
 		onStatusType("render-done", payload => {
-			const { stepsLength } = payload;
-			if (stepsLength) passStepsLength(stepsLength, registry.id);
+			const { steps, metrics } = payload;
+			if (steps && metrics) {
+				dispatch(
+					passAlgorithmInfo({ id: registry.id, steps, metrics })
+				);
+			}
 			setIsLoading(false);
 		});
-	}, [onStatusType, onStepUpdate, passStepsLength, registry]);
-
-	useEffect(() => {
-		drawCanvas(stepIndex);
-	}, [drawCanvas, stepIndex]);
+	}, [onStatusType, onStepUpdate, registry, dispatch]);
 
 	return (
 		<AlgorithmContainer>

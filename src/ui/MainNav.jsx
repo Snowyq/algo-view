@@ -80,15 +80,19 @@ const StyledNavLink = styled(NavLink)`
 		} */
 	}
 
-	${props => types[props.styleType] || types["default"]}
+	${({ $styleType }) => types[$styleType] || types["default"]};
 `;
 
 const Nav = styled.nav`
-	display: flex;
+	display: none;
 	gap: 2.4rem;
 	/* font-size: 1.6rem; */
 	justify-content: center;
 	align-items: center;
+
+	@media screen and (min-width: 640px) {
+		display: flex;
+	}
 `;
 
 function MainNav() {
@@ -100,7 +104,7 @@ function MainNav() {
 			<StyledNavLink to="/algorithms">
 				<span>Algorithms</span>
 			</StyledNavLink>
-			<StyledNavLink to="/play" styleType="cta">
+			<StyledNavLink to="/play" $styleType="cta">
 				<span>Playground</span>
 			</StyledNavLink>
 		</Nav>
