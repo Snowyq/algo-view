@@ -46,6 +46,7 @@ const playSlice = createSlice({
 		passAlgorithmInfo(state, action) {
 			const { steps, metrics, id: algoId } = action.payload;
 			if (!algoId) return;
+
 			const prevAlgorithmInfo = state.active.algorithms.find(
 				algo => algo.id === algoId
 			);
@@ -210,7 +211,7 @@ export const getAllMetricsVisible = state => state.play.allMetricsVisible;
 /* -------------------------------------------------------------------------- */
 
 function findMaxStep(algorithms) {
-	const values = algorithms.map(algo => algo.steps.length - 1);
+	const values = algorithms.map(algo => algo.steps.length - 1 || 0);
 	const max = values.length > 0 ? Math.max(...values) : -1;
 	return max;
 }

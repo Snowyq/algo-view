@@ -7,6 +7,9 @@ import { RiNumbersLine } from "react-icons/ri";
 import { IoSettings } from "react-icons/io5";
 import { useSelector } from "react-redux";
 import { getAllMetricsVisible } from "./playSlice";
+import PlaySlider from "./PlaySlider";
+import { IoIosArrowBack, IoIosArrowForward } from "react-icons/io";
+import PlayWindowControls from "./PlayWindowControls";
 
 const Header = styled.div`
 	display: flex;
@@ -49,18 +52,6 @@ const Main = styled.div`
 	}
 `;
 
-const Controls = styled.div`
-	display: flex;
-	padding: 0 1rem;
-	align-items: center;
-	gap: 1rem;
-`;
-
-const ControlsButtons = styled.div`
-	display: flex;
-	gap: 0.2rem;
-`;
-
 function PlaySortWindow({ registry }) {
 	const [showMetrics, setShowMetrics] = useState(false);
 
@@ -85,17 +76,11 @@ function PlaySortWindow({ registry }) {
 						</ButtonIcon>
 					</Tools>
 				</Header>
-				{/* {showMetrics && <PlayStepMetrics registry={registry} />} */}
+				{showMetrics && <PlayStepMetrics registry={registry} />}
 			</Top>
 			<Main>
 				<SortAlgorithmVisualizer registry={registry} />
-				{/* <Controls>
-					<PlaySlider />
-					<ControlsButtons>
-						<IoIosArrowBack />
-						<IoIosArrowForward />
-					</ControlsButtons>
-				</Controls> */}
+				{/* <PlayWindowControls registry={registry} /> */}
 			</Main>
 		</Container>
 	);

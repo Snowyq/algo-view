@@ -1,7 +1,8 @@
 import { useSelector } from "react-redux";
 import styled from "styled-components";
 import { getActiveAlgorithms, getStep } from "./playSlice";
-import { memo, useMemo } from "react";
+import { useMemo } from "react";
+import { clamp } from "../../utils/values";
 
 const Metrics = styled.div`
 	display: flex;
@@ -38,15 +39,25 @@ function PlayStepMetrics({ registry }) {
 	const algorithm = activeAlgorithms.find(algo => algo.id === registry.id);
 
 	const baseMetrics = useMemo(() => {
-		Object.keys(algorithm.metrics).reduce((acc, key) => {
+		if (!algorithm.metrics) return {};
+		console.log(algorithm);
+		return Object.keys(algorithm.metrics).reduce((acc, key) => {
 			acc[key] = { ...algorithm.metrics[key], count: 0 };
 			return acc;
 		}, {});
-	}, [algorithm.metrics]);
+	}, [algorithm]);
+
+	if (!algorithm.steps) return <></>;
 
 	let metrics = baseMetrics;
-	if (algorithm.steps[step].metrics) {
-		metrics = { ...baseMetrics, ...algorithm.steps[step].metrics };
+
+	const stepIndex = step.value;
+	const maxStepIndex = algorithm.steps.length;
+	const clampedStepIndex = clamp(stepIndex, 0, maxStepIndex - 1);
+	const currentStep = algorithm.steps[clampedStepIndex];
+
+	if (currentStep && currentStep.metrics) {
+		metrics = { ...baseMetrics, ...currentStep.metrics };
 	}
 
 	if (!metrics) return <></>;

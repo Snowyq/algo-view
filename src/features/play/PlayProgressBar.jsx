@@ -5,11 +5,9 @@ import {
 	changeStep,
 	freezeAnimation,
 	getAnimationStatus,
-	getIsPlaying,
 	getMaxStep,
 	getStep,
 	startAnimation,
-	stopAnimation,
 } from "./playSlice";
 import useRateLimit from "../../hooks/useRateLimit";
 import { useRef } from "react";
@@ -32,9 +30,10 @@ const ProgressBar = styled(Flex)`
 	flex-direction: column;
 `;
 
-function PlayProgressBar() {
+function PlayProgressBar({ max, showStep = true }) {
 	const { value: step } = useSelector(getStep);
-	const max = useSelector(getMaxStep);
+	const globalMaxStep = useSelector(getMaxStep);
+	const maxStep = max || globalMaxStep;
 	const dispatch = useDispatch();
 	const animationStatus = useSelector(getAnimationStatus);
 
@@ -64,15 +63,17 @@ function PlayProgressBar() {
 
 	return (
 		<ProgressBar>
-			<Progress
-				state={max > 0 ? "visible" : "hidden"}
-			>{`${step}/${max}`}</Progress>
+			{showStep && (
+				<Progress
+					state={maxStep > 0 ? "visible" : "hidden"}
+				>{`${step}/${maxStep}`}</Progress>
+			)}
 			<PlaySlider
 				onChange={limitedChange}
 				onMouseUp={handleMouseUp}
 				value={step}
 				min={0}
-				max={max}
+				max={maxStep}
 			/>
 		</ProgressBar>
 	);

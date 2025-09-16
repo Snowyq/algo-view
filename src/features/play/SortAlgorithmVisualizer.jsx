@@ -16,6 +16,7 @@ const AlgorithmContainer = styled.div`
 	padding: 1rem;
 	background-color: var(--color-grey-50);
 	border-radius: 15px;
+
 	@media screen and (min-width: 640px) {
 		padding: 5rem;
 		box-shadow: 0.2rem 0.2rem 0px 2px var(--color-grey-300);
@@ -30,7 +31,6 @@ const Sizer = styled.div`
 `;
 
 function SortAlgorithmVisualizer({ registry, onStepUpdate }) {
-	//
 	/* -------------------------------- Contexts -------------------------------- */
 
 	const dispatch = useDispatch();
@@ -60,6 +60,7 @@ function SortAlgorithmVisualizer({ registry, onStepUpdate }) {
 		const rect = ref.current.getBoundingClientRect();
 		changeSize(rect);
 	};
+
 	useOnResize(onResize, sizerRef);
 
 	useEffect(() => {

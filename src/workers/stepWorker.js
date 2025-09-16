@@ -55,6 +55,5 @@ function tick(self) {
 
 	const step = Atomics.load(sharedIndex, 0);
 	channel.postMessage({ step });
-	console.log(channel);
 	self.postMessage({ type: "ticked", payload: { step } });
 }
