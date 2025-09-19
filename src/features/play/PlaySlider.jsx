@@ -1,5 +1,6 @@
 import styled from "styled-components";
 import Slider from "../../ui/Slider";
+import { useMemo } from "react";
 
 const Flex = styled.div`
 	display: flex;
@@ -29,8 +30,6 @@ const SliderOutput = styled.div`
 	@media screen and (min-width: 640px) {
 		height: 12px;
 	}
-
-	transition: height 0.3s;
 `;
 
 const Dot = styled.div`
@@ -89,7 +88,41 @@ const Hover = styled.div`
 	border-radius: 15px;
 `;
 
-function PlaySlider({ max, min, onChange, value, onMouseUp, DotComponent }) {
+const Point = styled.div`
+	position: absolute;
+	top: 50%;
+	left: ${({ left }) => left};
+	translate: -50% -50%;
+	height: 100%;
+	width: 5px;
+	border-radius: 15px;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	background-color: black;
+	pointer-events: none;
+	display: none;
+
+	@media screen and (min-width: 640px) {
+		display: block;
+	}
+`;
+
+const PointContent = styled.div`
+	position: absolute;
+	translate: 0 0;
+	pointer-events: none;
+`;
+
+function PlaySlider({
+	max,
+	min,
+	onChange,
+	value,
+	onMouseUp,
+	DotComponent,
+	points = [],
+}) {
 	return (
 		<SliderContainer>
 			<SliderOutput>
@@ -113,9 +146,38 @@ function PlaySlider({ max, min, onChange, value, onMouseUp, DotComponent }) {
 						<Hover />
 					</Slider.HoverDot>
 				</Slider>
+				<Points points={points} max={max} min={min} />
 			</SliderOutput>
 		</SliderContainer>
 	);
+}
+
+function Points({ points, min, max }) {
+	const pointComponents = useMemo(() => {
+		return points.map((point, index) => {
+			if (!point) return null;
+			const { value, Component, progress } = point;
+
+			let left = 0;
+			if (progress != null) {
+				left = progress;
+			} else if (value != null) {
+				left = (value - min) / max;
+			} else {
+				return null;
+			}
+
+			left *= 100;
+
+			return (
+				<Point key={index} left={left + "%"}>
+					<PointContent>{Component ? Component : null}</PointContent>
+				</Point>
+			);
+		});
+	}, [points, min, max]);
+
+	return <>{pointComponents}</>;
 }
 
 export default PlaySlider;

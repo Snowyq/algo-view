@@ -73,7 +73,12 @@ const playSlice = createSlice({
 			);
 			if (isAdded) return;
 
-			const algo = { id: algoId };
+			const registry = registryApi.getAlgorithmRegistry(
+				state.active.category,
+				algoId
+			);
+
+			const algo = { id: algoId, info: registry.meta };
 			state.active.algorithms = [...state.active.algorithms, algo];
 		},
 
@@ -96,7 +101,7 @@ const playSlice = createSlice({
 		/* ----------------------------- Handle Category ---------------------------- */
 
 		changeCategory(state, action) {
-			if (!state.registry.logs.includes(action.payload)) return;
+			// if (!state.registry.logs.includes(action.payload)) return;
 			state.active.category = action.payload;
 			state.active.algorithms = [];
 			state.options.maxSteps = [];

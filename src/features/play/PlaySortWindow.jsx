@@ -19,10 +19,12 @@ const Header = styled.div`
 `;
 
 const Heading = styled.h2``;
+
 const Tools = styled.div`
 	display: flex;
 	gap: 0.25rem;
 `;
+
 const Container = styled.div`
 	width: 100%;
 	height: 100%;

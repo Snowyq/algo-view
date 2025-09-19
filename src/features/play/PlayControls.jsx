@@ -74,7 +74,7 @@ const Container = styled(Flex)`
 	width: 100%;
 	max-width: 1200px;
 	height: fit-content;
-	gap: 1rem;
+	gap: 0rem;
 	flex-direction: column;
 `;
 
