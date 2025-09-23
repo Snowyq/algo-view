@@ -11,7 +11,8 @@ import {
 	startAnimation,
 } from "./playSlice";
 import useRateLimit from "../../hooks/useRateLimit";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useMemo, useRef } from "react";
+import AnimatedText from "../../ui/AnimatedText";
 
 const Flex = styled.div`
 	display: flex;
@@ -36,7 +37,10 @@ const PointHint = styled.div`
 	translate: 0 -100%;
 	pointer-events: none;
 	/* background-color: yellow; */
-	opacity: ${({ show }) => (show === "show" ? 1 : 0)};
+	/* height: 100px; */
+	/* width: 100px; */
+	/* opacity: ${({ show }) => (show === "show" ? 1 : 0)}; */
+	opacity: 1;
 	transition: opacity 0.1s;
 `;
 
@@ -54,7 +58,9 @@ const Container = styled.div`
 	padding: 1rem 0;
 `;
 
-function PlayProgressBar({ max, showStep = true }) {
+const MemoSlider = memo(PlaySlider);
+
+function PlayProgressBar({ max, showStep = true, showHint }) {
 	const dispatch = useDispatch();
 	const { value: step } = useSelector(getStep);
 	const globalMaxStep = useSelector(getMaxStep);
@@ -63,8 +69,6 @@ function PlayProgressBar({ max, showStep = true }) {
 
 	const maxStep = max || globalMaxStep;
 
-	const [isHovered, setIsHovered] = useState(false);
-
 	const points = useMemo(() => {
 		return activeAlgorithms.map(algo => {
 			const { steps, info } = algo;
@@ -72,15 +76,18 @@ function PlayProgressBar({ max, showStep = true }) {
 			return {
 				value: steps.length - 1,
 				Component: (
-					<PointHint show={isHovered ? "show" : "hide"}>
+					<PointHint>
 						{/* <PointHintNum>{index + 1}</PointHintNum> */}
-
-						<PointHintLabel>{info.name}</PointHintLabel>
+						<PointHintLabel>
+							<AnimatedText show={showHint}>
+								{info.name}
+							</AnimatedText>
+						</PointHintLabel>
 					</PointHint>
 				),
 			};
 		});
-	}, [activeAlgorithms, isHovered]);
+	}, [activeAlgorithms, showHint]);
 
 	const timeoutRef = useRef(null);
 
@@ -105,18 +112,6 @@ function PlayProgressBar({ max, showStep = true }) {
 		}
 	};
 
-	const handleMouseEnter = e => {
-		setIsHovered(true);
-	};
-
-	const handleMouseLeave = e => {
-		setIsHovered(false);
-	};
-
-	const handleMouseMove = e => {
-		setIsHovered(true);
-	};
-
 	return (
 		<ProgressBar>
 			{showStep && (
@@ -124,12 +119,8 @@ function PlayProgressBar({ max, showStep = true }) {
 					state={maxStep > 0 ? "visible" : "hidden"}
 				>{`${step}/${maxStep}`}</Progress>
 			)}
-			<Container
-				onMouseEnter={handleMouseEnter}
-				onMouseMove={handleMouseMove}
-				onMouseLeave={handleMouseLeave}
-			>
-				<PlaySlider
+			<Container>
+				<MemoSlider
 					onChange={limitedChange}
 					onMouseUp={handleMouseUp}
 					value={step}

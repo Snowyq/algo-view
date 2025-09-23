@@ -1,6 +1,6 @@
 import styled from "styled-components";
 import Slider from "../../ui/Slider";
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 
 const Flex = styled.div`
 	display: flex;
@@ -114,6 +114,8 @@ const PointContent = styled.div`
 	pointer-events: none;
 `;
 
+const MemoMain = memo(Main);
+
 function PlaySlider({
 	max,
 	min,
@@ -126,29 +128,44 @@ function PlaySlider({
 	return (
 		<SliderContainer>
 			<SliderOutput>
-				<Slider
-					maxValue={max}
-					minValue={min}
+				<MemoMain
+					max={max}
+					min={min}
 					value={value}
 					onChange={onChange}
 					onMouseUp={onMouseUp}
-				>
-					<Slider.Dot>
-						{DotComponent ? <DotComponent /> : <Dot />}
-					</Slider.Dot>
-					<Slider.Tooltip>
-						<Tooltip />
-					</Slider.Tooltip>
-					<Slider.ProgressFill>
-						<Fill />
-					</Slider.ProgressFill>
-					<Slider.HoverDot>
-						<Hover />
-					</Slider.HoverDot>
-				</Slider>
+					DotComponent={DotComponent}
+				/>
 				<Points points={points} max={max} min={min} />
 			</SliderOutput>
 		</SliderContainer>
+	);
+}
+
+function Main({ max, min, value, onChange, onMouseUp, DotComponent }) {
+	return (
+		<>
+			<Slider
+				maxValue={max}
+				minValue={min}
+				value={value}
+				onChange={onChange}
+				onMouseUp={onMouseUp}
+			>
+				<Slider.Dot>
+					{DotComponent ? <DotComponent /> : <Dot />}
+				</Slider.Dot>
+				<Slider.Tooltip>
+					<Tooltip />
+				</Slider.Tooltip>
+				<Slider.ProgressFill>
+					<Fill />
+				</Slider.ProgressFill>
+				<Slider.HoverDot>
+					<Hover />
+				</Slider.HoverDot>
+			</Slider>
+		</>
 	);
 }
 

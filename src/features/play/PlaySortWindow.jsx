@@ -10,6 +10,7 @@ import { getAllMetricsVisible } from "./playSlice";
 import PlaySlider from "./PlaySlider";
 import { IoIosArrowBack, IoIosArrowForward } from "react-icons/io";
 import PlayWindowControls from "./PlayWindowControls";
+import { FaCode, FaInfo } from "react-icons/fa6";
 
 const Header = styled.div`
 	display: flex;
@@ -70,6 +71,9 @@ function PlaySortWindow({ registry }) {
 				<Header>
 					<Heading>{registry.meta.name}</Heading>
 					<Tools>
+						<ButtonIcon>
+							<FaCode />
+						</ButtonIcon>
 						<ButtonIcon onClick={toggleDisplayMetrics}>
 							<RiNumbersLine />
 						</ButtonIcon>
@@ -78,10 +82,13 @@ function PlaySortWindow({ registry }) {
 						</ButtonIcon>
 					</Tools>
 				</Header>
-				{showMetrics && <PlayStepMetrics registry={registry} />}
+				{/* {showMetrics && <PlayStepMetrics registry={registry} />} */}
 			</Top>
 			<Main>
-				<SortAlgorithmVisualizer registry={registry} />
+				<SortAlgorithmVisualizer
+					registry={registry}
+					showMetrics={showMetrics}
+				/>
 				{/* <PlayWindowControls registry={registry} /> */}
 			</Main>
 		</Container>

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { BsLayoutSidebarReverse } from "react-icons/bs";
 import { IoIosArrowBack } from "react-icons/io";
 import PlaySelectAlgorithms from "./PlaySelectAlgorithms";
+import PlayConfigInput from "./PlayConfigInput";
 
 const sidebarStates = {
 	hidden: css`
@@ -125,6 +126,7 @@ function PlaySidebar() {
 						<h3>Visualizer Config</h3>
 					</Header>
 
+					<PlayConfigInput />
 					<PlaySelectAlgorithms />
 				</Container>
 			</SidebarOutlet>

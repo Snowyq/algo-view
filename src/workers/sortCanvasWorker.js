@@ -25,12 +25,8 @@ let textDisplayThreshold = 10; // px
 let textAlign = "center"; // 'center', 'start', 'end'
 let labelFont = "10px sans-serif";
 
-const channel = new BroadcastChannel("animation-tick");
-
-channel.onmessage = event => {
-	const stepIndex = event.data.step;
-	draw(stepIndex); // existing function
-};
+let tabId;
+let channel;
 
 self.onmessage = function (event) {
 	const { type, payload, canvas } = event.data;
@@ -45,6 +41,15 @@ self.onmessage = function (event) {
 	/* -------------------------------------------------------------------------- */
 	/*                                 Event Types                                */
 	/* -------------------------------------------------------------------------- */
+
+	if (type === "tab") {
+		tabId = payload;
+		channel = new BroadcastChannel(`animation-tick:${tabId}`);
+		channel.onmessage = event => {
+			const stepIndex = event.data.step;
+			draw(stepIndex); // existing function
+		};
+	}
 
 	/* ------------------------------- Draw Canvas ------------------------------ */
 
