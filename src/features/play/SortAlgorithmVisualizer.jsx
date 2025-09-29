@@ -80,6 +80,7 @@ function SortAlgorithmVisualizer({ registry, onStepUpdate, showMetrics }) {
 
 	useEffect(() => {
 		onStatusType("render-done", payload => {
+			console.log("rendered");
 			const { steps, metrics } = payload;
 			if (steps && metrics) {
 				dispatch(

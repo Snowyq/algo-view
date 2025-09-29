@@ -30,7 +30,7 @@ let channel;
 
 self.onmessage = function (event) {
 	const { type, payload, canvas } = event.data;
-
+	console.log(type);
 	function postError(message) {
 		postMessage({
 			type: "error",

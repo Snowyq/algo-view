@@ -1,9 +1,10 @@
 import styled, { css } from "styled-components";
 import { useState } from "react";
-import { BsLayoutSidebarReverse } from "react-icons/bs";
-import { IoIosArrowBack } from "react-icons/io";
+
 import PlaySelectAlgorithms from "./PlaySelectAlgorithms";
-import PlayConfigInput from "./PlayConfigInput";
+import PlayConfigSortInput from "./PlayConfigInput";
+import PlaySidebarCollapseButton from "./PlaySidebarCollapseButton";
+import PlaySidebarItem from "./PlaySidebarItem";
 
 const sidebarStates = {
 	hidden: css`
@@ -64,43 +65,6 @@ const CollapseButtonHolder = styled.div`
 	top: var(--margin-top);
 `;
 
-const CollapseButton = styled.button`
-	--border-color: var(--color-grey-300);
-	--border-radius: 2rem;
-
-	border: none;
-	background-color: var(--color-grey-50);
-	font-size: ${({ $fontSize = "2rem" }) => $fontSize};
-	padding: 0.2em 0.2em;
-	position: absolute;
-	right: 0;
-
-	box-shadow: 1px 4px 0px -1px var(--color-grey-400);
-
-	border-top-left-radius: var(--border-radius);
-	border-bottom-left-radius: var(--border-radius);
-	border-top: 3px solid var(--border-color);
-	border-bottom: 3px solid var(--border-color);
-	border-left: 3px solid var(--border-color);
-`;
-
-const arrowStates = {
-	hidden: css``,
-	visible: css`
-		rotate: 180deg;
-	`,
-};
-const ArrowCollapse = styled.div`
-	position: absolute;
-	font-size: 2rem;
-	top: 50%;
-	left: 10%;
-	translate: 0 -50%;
-	transition: rotate 0.5s;
-
-	${({ state }) => arrowStates[state]}
-`;
-
 function PlaySidebar() {
 	const [isOpen, setIsOpen] = useState(false);
 	const state = isOpen ? "visible" : "hidden";
@@ -112,12 +76,7 @@ function PlaySidebar() {
 	return (
 		<Sidebar state={state}>
 			<CollapseButtonHolder state={state}>
-				<CollapseButton onClick={toggleOpen} $fontSize={"2.6rem"}>
-					<ArrowCollapse state={state}>
-						<IoIosArrowBack />
-					</ArrowCollapse>
-					<BsLayoutSidebarReverse />
-				</CollapseButton>
+				<PlaySidebarCollapseButton onClick={toggleOpen} state={state} />
 			</CollapseButtonHolder>
 
 			<SidebarOutlet state={state}>
@@ -125,9 +84,12 @@ function PlaySidebar() {
 					<Header>
 						<h3>Visualizer Config</h3>
 					</Header>
-
-					<PlayConfigInput />
-					<PlaySelectAlgorithms />
+					<PlaySidebarItem title="Configure input">
+						<PlayConfigSortInput />
+					</PlaySidebarItem>
+					<PlaySidebarItem title="Select Algorithms">
+						<PlaySelectAlgorithms />
+					</PlaySidebarItem>
 				</Container>
 			</SidebarOutlet>
 		</Sidebar>

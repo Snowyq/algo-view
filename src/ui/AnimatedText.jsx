@@ -1,11 +1,11 @@
-import { memo, useEffect } from "react";
+import { memo } from "react";
 import styled, { css } from "styled-components";
 
-const Placeholder = styled.p`
+const Placeholder = styled.span`
 	opacity: 0;
 `;
 
-const Text = styled.p`
+const Text = styled.span`
 	display: ${({ show }) => (show === "show" ? "block" : "none")};
 	position: absolute;
 	left: 0;
@@ -26,7 +26,8 @@ const Letter = styled.span`
 	${({ name }) => initStates[name]}
 `;
 
-const Container = styled.div`
+const Container = styled.span`
+	position: relative;
 	@keyframes appear {
 		0% {
 			opacity: 0;

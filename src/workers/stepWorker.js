@@ -7,7 +7,7 @@ let tabId;
 
 onmessage = event => {
 	const { type, payload } = event.data;
-
+	console.log("step: ", type);
 	if (type === "tab") {
 		tabId = payload;
 		channel = new BroadcastChannel(`animation-tick:${tabId}`);

@@ -2,135 +2,124 @@ import styled from "styled-components";
 import Slider from "../../ui/Slider";
 import { useState } from "react";
 import Button from "../../ui/Button";
+import DefaultSlider from "../../ui/DefaultSlider";
+import { useDispatch, useSelector } from "react-redux";
+import { changeInput, getActiveCategory } from "./playSlice";
+import { MAX_INPUT_LENGTH, MIN_INPUT_LENGTH } from "../../constants/constants";
+import Input from "../../ui/Input";
+import {
+	SORT_MAX_INPUT_LENGTH,
+	SORT_MIN_INPUT_LENGTH,
+} from "../../constants/sort";
+import {
+	DEFAULT_SORT_INPUT_LENGTH,
+	DEFAULT_SORT_INPUT_VALUE_RANGE,
+} from "../../config/sort";
 
 const Container = styled.div``;
 
-const SliderOutput = styled.div`
-	background-color: var(--color-grey-400);
-	height: 5px;
-`;
-
-const Dot = styled.div`
-	position: absolute;
-	background-color: var(--color-grey-50);
-	border-radius: 50%;
-	height: 12px;
-	aspect-ratio: 1/1;
-
-	@media screen and (min-width: 640px) {
-		height: 100%;
-	}
-
-	top: 50%;
-	translate: -50% -50%;
-	box-shadow: 1px 1px 0px 1px var(--color-grey-400);
-
-	&::before {
-		content: "";
-		position: absolute;
-		height: 50%;
-		width: 50%;
-		top: 50%;
-		left: 50%;
-		translate: -50% -50%;
-		z-index: -10;
-		border-radius: 50%;
-		background-color: var(--color-grey-500);
-	}
-`;
-
-const Tooltip = styled.div`
-	position: absolute;
-	translate: -50% calc(-100% - 0.75rem);
-	background-color: var(--color-grey-100);
-	border-radius: 5px;
-	line-height: 1;
-	padding: 0.1rem 0.2rem;
-	pointer-events: none;
-`;
-
-const Fill = styled.div`
-	width: 100%;
-	height: 8px;
-	position: absolute;
-	top: 50%;
-	translate: 0 -50%;
-	background-color: var(--color-grey-500);
-	border-radius: 15px;
-`;
-
-const Hover = styled.div`
-	width: 5px;
-	height: 100%;
-	background-color: var(--color-grey-600);
-	border-radius: 15px;
-`;
-
-const Config = styled.div`
-	gap: 1.5rem;
-	padding: 1rem 1rem;
-	border-radius: 15px;
-	background-color: var(--color-grey-200);
-`;
-
 const Item = styled.div``;
 
-function PlayConfigInput() {
-	const [length, setLength] = useState(100);
+const LengthContainer = styled.div`
+	display: flex;
+	gap: 1rem;
+	width: 100%;
+`;
+
+const RangeContainer = styled.div`
+	display: flex;
+	width: 100%;
+`;
+
+function PlayConfigSortInput() {
+	const dispatch = useDispatch();
+	const [length, setLength] = useState(DEFAULT_SORT_INPUT_LENGTH);
+	const [minValue, setMinValue] = useState(DEFAULT_SORT_INPUT_VALUE_RANGE[0]);
+	const [maxValue, setMaxValue] = useState(DEFAULT_SORT_INPUT_VALUE_RANGE[1]);
+
+	const handleLengthChangeBySlider = val => {
+		changeLength(val);
+	};
 
 	const changeLength = val => {
-		console.log(val);
 		setLength(val);
 	};
 
+	const handleMinValueChange = e => {
+		const value = Number(e.target.value);
+	};
+
+	const handleInputLengthChange = e => {
+		const value = Number(e.target.value);
+		changeLength(value);
+	};
+
+	const handleChangeInput = e => {
+		dispatch(changeInput({ length, min: minValue, max: maxValue }));
+	};
+	const handleRandomInput = e => {};
+
 	return (
 		<Container>
-			<p>Input</p>
-			<Config>
-				<Item>
-					<p>Values number</p>
-					<LengthSlider value={length} onChange={changeLength} />
-				</Item>
-				<Item>
-					<p>Values range</p>
+			<Item>
+				<p>Values number</p>
+				<LengthContainer>
+					<PlaySidebarInput
+						type="number"
+						value={length}
+						min={SORT_MIN_INPUT_LENGTH}
+						max={SORT_MAX_INPUT_LENGTH}
+						onChange={handleInputLengthChange}
+					/>
+					<DefaultSlider
+						min={SORT_MIN_INPUT_LENGTH}
+						max={SORT_MAX_INPUT_LENGTH}
+						value={length}
+						onChange={handleLengthChangeBySlider}
+					/>
+				</LengthContainer>
+			</Item>
+			<Item>
+				<p>Values range</p>
+
+				<RangeContainer>
 					<div>
 						<span>min</span>
-						<input type="number" placeholder="1" />
+						<PlaySidebarInput
+							type="number"
+							placeholder="1"
+							onChange={handleMinValueChange}
+						/>
 					</div>
 					<div>
 						<span>max</span>
-						<input type="number" placeholder="30" />
+						<PlaySidebarInput type="number" placeholder="30" />
 					</div>
-				</Item>
+				</RangeContainer>
+			</Item>
 
-				<Button>
-					<span>Apply</span>
-				</Button>
-			</Config>
+			<Button onClick={handleChangeInput}>
+				<span>Apply</span>
+			</Button>
+			<Button>
+				<span>Random</span>
+			</Button>
 		</Container>
 	);
 }
 
-function LengthSlider({ value, onChange }) {
+const InputContainer = styled.div`
+	margin: 0.2rem 0;
+	height: 3rem;
+	width: 10rem;
+`;
+
+function PlaySidebarInput({ ...props }) {
 	return (
-		<>
-			<SliderOutput>
-				<Slider
-					maxValue={1000}
-					minValue={10}
-					value={value}
-					onChange={onChange}
-				>
-					<Slider.Dot>
-						<Dot />
-					</Slider.Dot>
-					<Slider.Tooltip>{<></>}</Slider.Tooltip>
-					<Slider.ProgressFill>{/* <Fill /> */}</Slider.ProgressFill>
-					<Slider.HoverDot>{/* <Hover /> */}</Slider.HoverDot>
-				</Slider>
-			</SliderOutput>
-		</>
+		<InputContainer>
+			<Input {...props} />
+		</InputContainer>
 	);
 }
 
-export default PlayConfigInput;
+export default PlayConfigSortInput;

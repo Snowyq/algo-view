@@ -20,3 +20,15 @@ export const DEFAULT_STEP_TYPES = {
 		"assign",
 	],
 };
+
+export const MIN_INPUT_LENGTH = {
+	sort: 10,
+};
+
+export const MAX_INPUT_LENGTH = {
+	sort: 1000,
+};
+
+export const INPUT_VALUES_RANGES = {
+	sort: [0, 100],
+};
