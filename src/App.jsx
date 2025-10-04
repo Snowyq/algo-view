@@ -2,7 +2,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import GlobalStyles from "./styles/GlobalStyles";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { BrowserRouter, Outlet, Route, Routes } from "react-router-dom";
-import styled from "styled-components";
+import AppLayout from "./ui/AppLayout";
+import Index from "./pages/Index";
+import Play from "./pages/Play";
 
 const queryClient = new QueryClient({
 	defaultOptions: {
@@ -11,22 +13,6 @@ const queryClient = new QueryClient({
 		},
 	},
 });
-const H1 = styled.h1`
-	background-color: black;
-`;
-
-function Index() {
-	return <H1>Home</H1>;
-}
-
-function AppLayout() {
-	return (
-		<>
-			<Outlet />
-			<p>AppLayout</p>
-		</>
-	);
-}
 
 function App() {
 	return (
@@ -38,7 +24,7 @@ function App() {
 				<Routes>
 					<Route element={<AppLayout />}>
 						<Route index element={<Index />} />
-						<Route path="play/:id" element={<p>play</p>} />
+						<Route path="play/:type?/:id?" element={<Play />} />
 						<Route path="algorithms">
 							<Route path="sort/:id" />
 							<Route path="graph/:id" />

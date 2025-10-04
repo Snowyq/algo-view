@@ -2,15 +2,19 @@ import { createGlobalStyle } from "styled-components";
 
 const GlobalStyles = createGlobalStyle`
 :root {
-  /* Indigo */
-  --color-brand-50: #eef2ff;
-  --color-brand-100: #e0e7ff;
-  --color-brand-200: #c7d2fe;
-  --color-brand-500: #6366f1;
-  --color-brand-600: #4f46e5;
-  --color-brand-700: #4338ca;
-  --color-brand-800: #3730a3;
-  --color-brand-900: #312e81;
+
+  --color-brand-0: var(--color-cyan-0);
+  --color-brand-50: var(--color-cyan-50);
+  --color-brand-100: var(--color-cyan-100);
+  --color-brand-200: var(--color-cyan-200);
+  --color-brand-300: var(--color-cyan-300);
+  --color-brand-400: var(--color-cyan-400);
+  --color-brand-500: var(--color-cyan-500);
+  --color-brand-600: var(--color-cyan-600);
+  --color-brand-700: var(--color-cyan-700);
+  --color-brand-800: var(--color-cyan-800);
+  --color-brand-900: var(--color-cyan-900);
+  --color-brand-950: var(--color-cyan-950);
 
   /* Grey */
   --color-grey-0: #fff;
@@ -24,17 +28,97 @@ const GlobalStyles = createGlobalStyle`
   --color-grey-700: #374151;
   --color-grey-800: #1f2937;
   --color-grey-900: #111827;
+  --color-grey-950: #030712;
 
-  --color-blue-100: #e0f2fe;
-  --color-blue-700: #0369a1;
-  --color-green-100: #dcfce7;
-  --color-green-700: #15803d;
-  --color-yellow-100: #fef9c3;
-  --color-yellow-700: #a16207;
-  --color-silver-100: #e5e7eb;
-  --color-silver-700: #374151;
-  --color-indigo-100: #e0e7ff;
-  --color-indigo-700: #4338ca;
+  --color-grey-0-rgb: 255, 255, 255;
+  --color-grey-50-rgb: 249, 250, 251;
+  --color-grey-100-rgb: 243, 244, 246;
+  --color-grey-200-rgb: 229, 231, 235;
+  --color-grey-300-rgb: 209, 213, 219;
+  --color-grey-400-rgb: 156, 163, 175;
+  --color-grey-500-rgb: 107, 114, 128;
+  --color-grey-600-rgb: 75, 85, 99;
+  --color-grey-700-rgb: 55, 65, 81;
+  --color-grey-800-rgb: 31, 41, 55;
+  --color-grey-900-rgb: 17, 24, 39;
+  --color-grey-950-rgb: 3, 7, 18;
+  
+  --color-cyan-0: #fff;
+  --color-cyan-50: #ecfeff;
+  --color-cyan-100: #cffafe;
+  --color-cyan-200: #a5f3fc;
+  --color-cyan-300: #67e8f9;
+  --color-cyan-400: #22d3ee;
+  --color-cyan-500: #06b6d4;
+  --color-cyan-600: #0891b2;
+  --color-cyan-700: #0e7490;
+  --color-cyan-800: #155e75;
+  --color-cyan-900: #164e63;
+  --color-cyan-950: #083344;
+
+ --color-yellow-0:  #fff;
+--color-yellow-50: #fefce8;
+--color-yellow-100:#fef9c3;
+--color-yellow-200:#fef08a;
+--color-yellow-300:#fde047;
+--color-yellow-400:#facc15;
+--color-yellow-500:#eab308;
+--color-yellow-600:#ca8a04;
+--color-yellow-700:#a16207;
+--color-yellow-800:#854d0e;
+--color-yellow-900:#713f12;
+--color-yellow-950:#422006;
+--color-blue-0:    #fff;
+--color-blue-50:   #eff6ff;
+--color-blue-100:  #dbeafe;
+--color-blue-200:  #bfdbfe;
+--color-blue-300:  #93c5fd;
+--color-blue-400:  #60a5fa;
+--color-blue-500:  #3b82f6;
+--color-blue-600:  #2563eb;
+--color-blue-700:  #1d4ed8;
+--color-blue-800:  #1e40af;
+--color-blue-900:  #1e3a8a;
+--color-blue-950:  #172554;
+--color-red-0:     #fff;
+--color-red-50:    #fef2f2;
+--color-red-100:   #fee2e2;
+--color-red-200:   #fecaca;
+--color-red-300:   #fca5a5;
+--color-red-400:   #f87171;
+--color-red-500:   #ef4444;
+--color-red-600:   #dc2626;
+--color-red-700:   #b91c1c;
+--color-red-800:   #991b1b;
+--color-red-900:   #7f1d1d;
+--color-red-950:   #450a0a;
+--color-green-0:    #fff;
+--color-green-50:   #f0fdf4;
+--color-green-100:  #dcfce7;
+--color-green-200:  #bbf7d0;
+--color-green-300:  #86efac;
+--color-green-400:  #4ade80;
+--color-green-500:  #22c55e;
+--color-green-600:  #16a34a;
+--color-green-700:  #15803d;
+--color-green-800:  #166534;
+--color-green-900:  #14532d;
+--color-green-950:  #052e16;
+--color-pink-0:    #fff;
+--color-pink-50:   #fdf2f8;
+--color-pink-100:  #fce7f3;
+--color-pink-200:  #fbcfe8;
+--color-pink-300:  #f9a8d4;
+--color-pink-400:  #f472b6;
+--color-pink-500:  #ec4899;
+--color-pink-600:  #db2777;
+--color-pink-700:  #be185d;
+--color-pink-800:  #9d174d;
+--color-pink-900:  #831843;
+--color-pink-950:  #500724;
+
+
+
 
   --color-red-100: #fee2e2;
   --color-red-700: #b91c1c;
@@ -54,6 +138,24 @@ const GlobalStyles = createGlobalStyle`
   /* For dark mode */
   --image-grayscale: 0;
   --image-opacity: 100%;
+
+
+  --nav-height: 5rem;
+  
+
+    /* Step colors for canvas or animation types */
+  --color-step-swap: var(--color-blue-400);         /* #60a5fa */
+  --color-step-select: var(--color-pink-400);       /* #f472b6 */
+  --color-step-check: var(--color-yellow-400);      /* #facc15 */
+  --color-step-check-true: var(--color-green-400);  /* #4ade80 */
+  --color-step-check-false: var(--color-red-400);   /* #f87171 */
+  --color-step-check-value: var(--color-yellow-400);      /* same as --check */
+  --color-step-check-value-true: var(--color-green-400);  /* same as --check:true */
+  --color-step-check-value-false: var(--color-red-400);   /* same as --check:false */
+  --color-step-assign: #000;
+  --color-step-copy: #888;
+  --color-step-copy-to: #444;
+  --color-step-finish: var(--color-cyan-400);       /* #22d3ee */
 }
 
 *,
@@ -64,17 +166,19 @@ const GlobalStyles = createGlobalStyle`
   margin: 0;
 
   /* Creating animations for dark mode */
-  transition: background-color 0.3s, border 0.3s;
+  /* transition: background-color 0.3s, border 0.3s; */
 }
 
 html {
   font-size: 62.5%;
+  
 }
 
 body {
-  font-family: "Poppins", sans-serif;
+  position: fixed;
+  font-family: "Open Sans", sans-serif;
   color: var(--color-grey-700);
-
+/* overflow: hidden; */
   transition: color 0.3s, background-color 0.3s;
   min-height: 100vh;
   line-height: 1.5;
