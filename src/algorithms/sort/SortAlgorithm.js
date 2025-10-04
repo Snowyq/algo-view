@@ -52,10 +52,8 @@ export class SortAlgorithm extends Algorithm {
 
 	constructor(array, options) {
 		super();
-
 		this.array = array;
 		this.options = options;
-
 		this.init();
 	}
 
@@ -76,17 +74,18 @@ export class SortAlgorithm extends Algorithm {
 	 * reset
 	 * algorithm states are reset
 	 */
-	reset() {
+	reset(options) {
 		this.selected = [];
 		this.operations = [];
 		this.steps = [];
+		if (options) {
+			this.options = { ...this.options, ...options };
+		}
 	}
 
 	update(array, options) {
 		this.array = array;
-		if (options) this.options = { ...this.options, ...options };
-
-		this.reset();
+		this.reset(options);
 		this.init();
 	}
 
@@ -129,11 +128,14 @@ export class SortAlgorithm extends Algorithm {
 			type: "initial",
 			activeItems: [],
 		});
+		
 		this.sort(arr, dir);
+
 		this.createStep({
 			type: "finish",
 			activeItems: Array.from({ length: arr.length }, (_, i) => i),
 		});
+
 		this.cacheManager
 			.initGroup("state")
 			.createPersistentCache(
@@ -161,7 +163,7 @@ export class SortAlgorithm extends Algorithm {
 
 	createStepMetrics() {
 		const metrics = {};
-		for (const key in this.metrics) {
+		for (const key  in this.metrics) {
 			metrics[key] = {
 				count: this.metrics[key].count,
 				name: this.metrics[key].name,
@@ -336,6 +338,7 @@ export class SortAlgorithm extends Algorithm {
 		if (steps[stepIndex].prevOperationId) {
 			return steps[stepIndex].prevOperationId;
 		}
+
 
 		for (let i = stepIndex; i > 0; i--) {
 			const step = steps[i];
