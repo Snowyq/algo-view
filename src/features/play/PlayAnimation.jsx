@@ -25,8 +25,10 @@ function PlayAnimation() {
 	const { worker, onMessageType } = useWorker("stepWorker.js");
 
 	// limiting dispatch function
-	const updateStep = value =>
+	const updateStep = value => {
+		console.log(value);
 		dispatch(changeStep({ value, trigger: "tick" }));
+	};
 	const limitedChangeStep = useRateLimit(updateStep, 50);
 
 	// limited stepIndex update in UI

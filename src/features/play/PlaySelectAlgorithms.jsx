@@ -10,12 +10,6 @@ import {
 	openAlgorithm,
 } from "./playSlice";
 
-const Algorithms = styled.div`
-	display: flex;
-	flex-direction: column;
-	gap: 1rem;
-`;
-
 const ItemCloseButton = styled(ButtonIcon)`
 	background-color: transparent;
 	padding: 0.2rem;
@@ -82,37 +76,30 @@ const AlgorithmsList = styled.div`
 `;
 
 function PlaySelectAlgorithms() {
+	const dispatch = useDispatch();
+
 	const activeAlgorithms = useSelector(getActiveAlgorithms);
 	const algorithms = useSelector(getAlgorithms);
-
-	const dispatch = useDispatch();
 
 	const handleClose = id => dispatch(closeAlgorithm(id));
 	const handleOpen = id => dispatch(openAlgorithm(id));
 
-	// const
-
 	return (
-		<Algorithms>
-			<p>Select Algorithms</p>
-			<AlgorithmsList>
-				{algorithms.map(algo => {
-					const isSelected = activeAlgorithms.some(
-						x => x.id === algo.id
-					);
-					return (
-						<Item
-							key={algo.id}
-							name={algo.name}
-							id={algo.id}
-							isSelected={isSelected}
-							onClose={handleClose}
-							onOpen={handleOpen}
-						/>
-					);
-				})}
-			</AlgorithmsList>
-		</Algorithms>
+		<AlgorithmsList>
+			{algorithms.map(algo => {
+				const isSelected = activeAlgorithms.some(x => x.id === algo.id);
+				return (
+					<Item
+						key={algo.id}
+						name={algo.name}
+						id={algo.id}
+						isSelected={isSelected}
+						onClose={handleClose}
+						onOpen={handleOpen}
+					/>
+				);
+			})}
+		</AlgorithmsList>
 	);
 }
 

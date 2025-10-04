@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import StepWorker from "../workers/stepWorker.js?worker";
 import SortCanvasWorker from "../workers/sortCanvasWorker.js?worker";
+import { tabId } from "../tab";
 const workers = {
 	"stepWorker.js": StepWorker,
 	"sortCanvasWorker.js": SortCanvasWorker,
@@ -30,6 +31,8 @@ function useWorker(workerName, workerType = "module") {
 		// const worker = new Worker(new URL(path, import.meta.url), options);
 		const worker = new workers[workerName]();
 		setWorker(worker);
+
+		worker.postMessage({ type: "tab", payload: tabId });
 
 		worker.onmessage = function (event) {
 			const { type, payload } = event.data;

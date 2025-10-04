@@ -3,10 +3,15 @@ let interval = 100; // default ms
 let maxStep = 100;
 let timerId = null;
 const channel = new BroadcastChannel("animation-tick");
+let tabId;
 
 onmessage = event => {
 	console.log(location.origin);
 	const { type, payload } = event.data;
+
+	if (type === "tab") {
+		tabId === payload;
+	}
 
 	if (type === "start") {
 		const {

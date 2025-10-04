@@ -1,5 +1,5 @@
 import styled, { css } from "styled-components";
-import { memo } from "react";
+import { memo, useRef } from "react";
 
 import PlaySpeed from "./PlaySpeed";
 import PlayProgressBar from "./PlayProgressBar";
@@ -9,7 +9,9 @@ import { RiNumbersLine } from "react-icons/ri";
 import { useDispatch, useSelector } from "react-redux";
 import { getActiveAlgorithms, toggleMetrics } from "./playSlice";
 import PlayAnimation from "./PlayAnimation";
-
+import useHovered from "../../hooks/useHovered";
+import { FaCode } from "react-icons/fa6";
+import { FaInfo } from "react-icons/fa";
 const Flex = styled.div`
 	display: flex;
 	justify-content: center;
@@ -91,12 +93,12 @@ const Bar = styled(Flex)`
 	height: 100%;
 `;
 
-const statusOverlayStates = {
-	active: css`
+const disabledOverlayStates = {
+	hide: css`
 		display: none;
 		background-color: none;
 	`,
-	disabled: css`
+	show: css`
 		display: flex;
 		justify-content: center;
 		align-items: center;
@@ -104,6 +106,7 @@ const statusOverlayStates = {
 		background-color: rgba(var(--color-grey-300-rgb), 0.85);
 	`,
 };
+
 const StatusOverlay = styled.div`
 	position: absolute;
 	left: 0;
@@ -120,31 +123,29 @@ const StatusOverlay = styled.div`
 		align-items: center;
 		width: 100%;
 		height: 100%;
-		/* background: radial-gradient(
-			circle,
-			rgba(var(--color-grey-500-rgb), 0.4) 0%,
-			rgba(var(--color-grey-500-rgb), 0) 15rem,
-			rgba(0, 0, 0, 0) 100%
-		); */
 	}
+`;
 
-	${({ status }) => statusOverlayStates[status]};
+const DisabledOverlay = styled(StatusOverlay)`
+	${({ status }) => disabledOverlayStates[status]};
 `;
 
 function PlayControls() {
 	const dispatch = useDispatch();
+	const ref = useRef(null);
+	const { isHovered } = useHovered(ref);
 	const activeAlgorithms = useSelector(getActiveAlgorithms);
 	const isActive = activeAlgorithms.length > 0;
 	const status = isActive ? "active" : "disabled";
 
 	return (
-		<StyledPlayControls>
-			<StatusOverlay status={status}>
+		<StyledPlayControls ref={ref}>
+			<DisabledOverlay status={status === "disabled" ? "show" : "hide"}>
 				<span>select algorithm</span>
-			</StatusOverlay>
+			</DisabledOverlay>
 			<Container>
 				<Bar>
-					<PlayProgressBar />
+					<PlayProgressBar showHint={isHovered} />
 				</Bar>
 				<Controls>
 					<Left>
@@ -154,6 +155,12 @@ function PlayControls() {
 						<PlayProgressControls />
 					</Center>
 					<Right>
+						<ButtonIcon>
+							<FaInfo />
+						</ButtonIcon>
+						<ButtonIcon>
+							<FaCode />
+						</ButtonIcon>
 						<ButtonIcon onClick={() => dispatch(toggleMetrics())}>
 							<RiNumbersLine />
 						</ButtonIcon>

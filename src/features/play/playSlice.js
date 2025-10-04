@@ -1,7 +1,10 @@
 import { createSlice } from "@reduxjs/toolkit";
 import { generateRandomArray } from "../../utils/randoms";
 import registryApi from "../../algorithms/algorithmsRegistryApi";
-import { ANIMATION_SPEEDS, DEFAULT_STEP_TYPES } from "../../utils/constants";
+import {
+	ANIMATION_SPEEDS,
+	DEFAULT_STEP_TYPES,
+} from "../../constants/constants";
 import { clamp } from "../../utils/values";
 
 function getInitialState() {
@@ -15,7 +18,7 @@ function getInitialState() {
 			category: defaultCategory,
 			algorithms: [],
 		},
-		input: generateRandomArray(50, 0, 30),
+		input: [],
 		allMetricsVisible: false,
 		registry: {
 			categories,
@@ -41,6 +44,14 @@ const playSlice = createSlice({
 	name: "play",
 	initialState: getInitialState(),
 	reducers: {
+		changeInput(state, action) {
+			const { length, min, max } = action.payload;
+
+			const newInput = generateRandomArray(length, min, max);
+
+			state.input = newInput;
+		},
+
 		/* ------------------------ Handle Active Algorithms ------------------------ */
 
 		passAlgorithmInfo(state, action) {
@@ -194,6 +205,7 @@ export const {
 	changeSpeed,
 	startAnimation,
 	freezeAnimation,
+	changeInput,
 } = playSlice.actions;
 
 export default playSlice.reducer;

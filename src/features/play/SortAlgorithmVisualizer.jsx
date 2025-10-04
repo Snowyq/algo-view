@@ -7,8 +7,10 @@ import Loader from "../../ui/Loader";
 import useOnResize from "../../hooks/useOnResize";
 import { useDispatch, useSelector } from "react-redux";
 import { getDefaultStepTypes, getInput, passAlgorithmInfo } from "./playSlice";
+import PlayStepMetrics from "./PlayStepMetrics";
 
 const AlgorithmContainer = styled.div`
+	position: relative;
 	width: 100%;
 	height: 100%;
 	display: flex;
@@ -30,7 +32,13 @@ const Sizer = styled.div`
 	overflow: hidden;
 `;
 
-function SortAlgorithmVisualizer({ registry, onStepUpdate }) {
+const Metrics = styled.div`
+	position: absolute;
+	left: 0;
+	top: 0;
+`;
+
+function SortAlgorithmVisualizer({ registry, onStepUpdate, showMetrics }) {
 	/* -------------------------------- Contexts -------------------------------- */
 
 	const dispatch = useDispatch();
@@ -52,7 +60,7 @@ function SortAlgorithmVisualizer({ registry, onStepUpdate }) {
 		return { stepTypes };
 	}, [stepTypes]);
 
-	const canvasApi = useSortCanvas(canvasRef, registry.id, input, algoOptions);
+	const canvasApi = useSortCanvas(canvasRef, registry.id);
 	const { changeSize, renderAlgorithm, onStatusType } = canvasApi;
 
 	const onResize = ref => {
@@ -72,6 +80,7 @@ function SortAlgorithmVisualizer({ registry, onStepUpdate }) {
 
 	useEffect(() => {
 		onStatusType("render-done", payload => {
+			console.log("rendered");
 			const { steps, metrics } = payload;
 			if (steps && metrics) {
 				dispatch(
@@ -84,6 +93,11 @@ function SortAlgorithmVisualizer({ registry, onStepUpdate }) {
 
 	return (
 		<AlgorithmContainer>
+			{showMetrics && (
+				<Metrics>
+					<PlayStepMetrics registry={registry} />
+				</Metrics>
+			)}
 			<Sizer ref={sizerRef}>
 				{isLoading && <Loader />}
 				<canvas
