@@ -92,7 +92,7 @@ const playSlice = createSlice({
             state.animation.isPlaying = false;
         },
 
-        /* ------------------------ Handle Active Algorithms ------------------------ */
+        // Handle active algorithms
 
         passAlgorithmInfo(state, action) {
             const { stepsLength, metrics, id: algoId } = action.payload;
@@ -154,7 +154,7 @@ const playSlice = createSlice({
             };
         },
 
-        /* ----------------------------- Handle Category ---------------------------- */
+        // Handle category
 
         changeCategory(state, action) {
             // if (!state.registry.logs.includes(action.payload)) return;
@@ -167,7 +167,7 @@ const playSlice = createSlice({
             state.animation.isPlaying = false;
         },
 
-        /* ---------------------------- Handle Step Value --------------------------- */
+        // Handle step value
 
         decreaseStep(state, action) {
             const { step } = state.animation;
@@ -197,13 +197,13 @@ const playSlice = createSlice({
             };
         },
 
-        /* ------------------------ Handle All Metrics State ------------------------ */
+        // Handle all metrics state
 
         toggleMetrics(state) {
             state.allMetricsVisible = !state.allMetricsVisible;
         },
 
-        /* ------------------------------- UI State ------------------------------- */
+        // UI state
 
         toggleSidebar(state) {
             state.ui.sidebarOpen = !state.ui.sidebarOpen;
@@ -232,7 +232,7 @@ const playSlice = createSlice({
             );
         },
 
-        /* -------------------------------- Animation ------------------------------- */
+        // Animation
 
         toggleAnimation(state) {
             state.animation.isPlaying = !state.animation.isPlaying;
@@ -309,9 +309,7 @@ export const getSortWorkerReady = (state) => state.play.ui.sortWorkerReady;
 export const getSortWorkerLoading = (state) =>
     state.play.ui.sortWorkerLoadingCount > 0;
 
-/* -------------------------------------------------------------------------- */
-/*                                   Helpers                                  */
-/* -------------------------------------------------------------------------- */
+// Helpers
 
 function findMaxStep(algorithms) {
     const values = algorithms.map((algo) => {

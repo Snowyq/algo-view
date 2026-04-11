@@ -9,9 +9,7 @@ import React, {
 } from "react";
 import styled from "styled-components";
 
-/* -------------------------------------------------------------------------- */
-/*                              Styled Components                             */
-/* -------------------------------------------------------------------------- */
+// Styled components
 
 const SliderContainer = styled.div`
     position: relative;
@@ -83,9 +81,7 @@ const ProgressContainer = styled.div`
     transition: width ${({ transition = 0 }) => transition + "s"};
 `;
 
-/* -------------------------------------------------------------------------- */
-/*                               Compound Parent                              */
-/* -------------------------------------------------------------------------- */
+// Compound parent
 
 const SliderContext = createContext();
 
@@ -98,7 +94,7 @@ function Slider({
     onChange,
     onMouseUp,
 }) {
-    /* ---------------------------------- Refs ---------------------------------- */
+    // Refs
 
     const tooltipRef = useRef();
     const sliderRef = useRef();
@@ -106,12 +102,12 @@ function Slider({
     const hoverDotRef = useRef();
     const progressFillRef = useRef();
 
-    /* --------------------------------- States --------------------------------- */
+    // States
 
     const [isDragging, setIsDragging] = useState(false);
     const [tooltipValue, setTooltipValue] = useState(0);
 
-    /* --------------------------------- Helpers -------------------------------- */
+    // Helpers
 
     const changeValue = useCallback(
         (value) => {
@@ -156,7 +152,7 @@ function Slider({
         [sliderRef, maxValue, minValue, snapToValue]
     );
 
-    /* ----------------------------- Event Listeners ---------------------------- */
+    // Event listeners
 
     const handleDotDrag = useCallback(
         (e) => {
@@ -212,7 +208,7 @@ function Slider({
         }
     };
 
-    /* --------------------------------- Effects -------------------------------- */
+    // Effects
 
     useEffect(() => {
         if (isDragging) {
@@ -238,7 +234,7 @@ function Slider({
         }
     }, [stateValue, minValue, maxValue, isDragging, setTooltipValue]);
 
-    /* ------------------------- Context Provider Value ------------------------- */
+    // Context provider value
 
     const value = useMemo(
         () => ({
@@ -251,7 +247,7 @@ function Slider({
         [dotRef, hoverDotRef, tooltipRef, progressFillRef, tooltipValue]
     );
 
-    /* --------------------------------- Render --------------------------------- */
+    // Render
 
     return (
         <SliderContext.Provider value={value}>
@@ -269,9 +265,7 @@ function Slider({
     );
 }
 
-/* -------------------------------------------------------------------------- */
-/*                               Compound Children                            */
-/* -------------------------------------------------------------------------- */
+// Compound children
 
 function Dot({ children }) {
     const { dotRef } = useContext(SliderContext);
@@ -311,9 +305,7 @@ function ProgressFill({ children, transition = 0 }) {
     );
 }
 
-/* -------------------------------------------------------------------------- */
-/*                                   Helpers                                  */
-/* -------------------------------------------------------------------------- */
+// Helpers
 
 const calcProgress = (mouseX, parentX, parentWidth) => {
     const x = mouseX - parentX;

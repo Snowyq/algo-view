@@ -20,9 +20,7 @@ export const sortStepTypes = [
     "assign",
 ];
 
-/* -------------------------------------------------------------------------- */
-/*                                    Class                                   */
-/* -------------------------------------------------------------------------- */
+// Class
 
 export class SortAlgorithm extends Algorithm {
     // support instances
@@ -122,9 +120,7 @@ export class SortAlgorithm extends Algorithm {
         return this.use();
     }
 
-    /* -------------------------------------------------------------------------- */
-    /*                                Steps Creation                              */
-    /* -------------------------------------------------------------------------- */
+    // Steps creation
 
     createSteps() {
         const dir = this.direction;
@@ -179,7 +175,7 @@ export class SortAlgorithm extends Algorithm {
         return metrics;
     }
 
-    /* --------------------------- Handling step types -------------------------- */
+    // Handling step types
 
     setEnabledStepTypes(types, shouldReset = false) {
         if (Array.isArray(types)) {
@@ -211,9 +207,7 @@ export class SortAlgorithm extends Algorithm {
         }
     }
 
-    /* -------------------------------------------------------------------------- */
-    /*                                 Operations                                 */
-    /* -------------------------------------------------------------------------- */
+    // Operations
 
     createOperation(type, elements, payload?) {
         this.operations.push({ type, elements, payload });
@@ -236,9 +230,7 @@ export class SortAlgorithm extends Algorithm {
         }
     }
 
-    /* -------------------------------------------------------------------------- */
-    /*                                   Metrics                                  */
-    /* -------------------------------------------------------------------------- */
+    // Metrics
 
     countArrayAccess(count = 1) {
         this.count("arrayAccess", "Reads", count);
@@ -273,9 +265,7 @@ export class SortAlgorithm extends Algorithm {
         return this.metricsItemList;
     }
 
-    /* -------------------------------------------------------------------------- */
-    /*                         Querying Algorithm states                          */
-    /* -------------------------------------------------------------------------- */
+    // Querying algorithm states
 
     getSteps() {
         return this.steps.slice();
@@ -296,7 +286,7 @@ export class SortAlgorithm extends Algorithm {
         return { min: this.minValue, max: this.maxValue };
     }
 
-    /* -------------------------------- Query By -------------------------------- */
+    // Query by
 
     getStateByOperationId(operationId) {
         let state = this.getArray();
@@ -360,9 +350,7 @@ export class SortAlgorithm extends Algorithm {
         return step;
     }
 
-    /* -------------------------------------------------------------------------- */
-    /*                                    Utils                                   */
-    /* -------------------------------------------------------------------------- */
+    // Utils
 
     #calcArrayMinMax() {
         const arr = this.getArray();
@@ -370,20 +358,16 @@ export class SortAlgorithm extends Algorithm {
         this.maxValue = Math.max(...arr);
     }
 
-    /* -------------------------------------------------------------------------- */
-    /*                      To implemented in child instance                      */
-    /* -------------------------------------------------------------------------- */
+    // To implement in child instance
 
     sort(..._args: unknown[]) {}
     static getInstructions(): AlgorithmInstructions | undefined {
         return undefined;
     }
 
-    /* -------------------------------------------------------------------------- */
-    /*                                 Step Types                                 */
-    /* -------------------------------------------------------------------------- */
+    // Step types
 
-    /* --------------------------------- assign --------------------------------- */
+    // assign
 
     assign(targetIndex, item, arr, options?) {
         // operation details
@@ -407,7 +391,7 @@ export class SortAlgorithm extends Algorithm {
         });
     }
 
-    /* ---------------------------------- copy ---------------------------------- */
+    // copy
 
     copy(targetIndex, copiedIndex, arr, options?) {
         // operation details
@@ -436,7 +420,7 @@ export class SortAlgorithm extends Algorithm {
         });
     }
 
-    /* ---------------------------------- swap ---------------------------------- */
+    // swap
 
     swap(index1, index2, arr, options?) {
         // Operation Details
@@ -459,7 +443,7 @@ export class SortAlgorithm extends Algorithm {
         });
     }
 
-    /* --------------------------- check against value -------------------------- */
+    // check against value
 
     checkWithValue(index, operator, value, arr, options?) {
         // Operation Details
@@ -500,7 +484,7 @@ export class SortAlgorithm extends Algorithm {
         return result;
     }
 
-    /* ---------------------------------- check --------------------------------- */
+    // check
 
     check(index1, operator, index2, arr, options?) {
         // Operation Details
@@ -533,7 +517,7 @@ export class SortAlgorithm extends Algorithm {
         return result;
     }
 
-    /* --------------------------------- select --------------------------------- */
+    // select
 
     select(index, options?) {
         // Operation details
@@ -574,41 +558,3 @@ export class SortAlgorithm extends Algorithm {
         });
     }
 }
-
-// assignMany(assignArray, arr) {
-// 		const type = "assign";
-// 		let id;
-// 		let instructionId = [];
-// 		let finalActiveItems = [];
-// 		assignArray.forEach(assign => {
-// 			// operation details
-// 			const targetIndex = assign.targetIndex;
-// 			const itemType = assign.options?.itemType ?? "value"; // value or index
-// 			let instruction = assign.options?.instructionId;
-// 			if (instruction) instructionId.push(instruction);
-// 			// Handling item type
-// 			let payload, activeItems;
-// 			if (itemType === "index") {
-// 				payload = arr[assign.item];
-// 				activeItems = [targetIndex, assign.item];
-// 			} else if (itemType === "value") {
-// 				payload = assign.item;
-// 				activeItems = [targetIndex];
-// 			}
-
-// 			finalActiveItems = finalActiveItems.concat(
-// 				finalActiveItems,
-// 				activeItems
-// 			);
-// 			// Creates and executes an operation. Saves its id and assigns it to step
-// 			id = this.createOperation(type, activeItems, payload);
-// 			this.makeOperation({ type, elements: [targetIndex], payload }, arr);
-// 		});
-
-// 		this.createStep({
-// 			type,
-// 			activeItems: finalActiveItems,
-// 			instructionId,
-// 			operationId: id,
-// 		});
-// 	}

@@ -17,7 +17,7 @@ function useSortCanvas(canvasRef, id) {
         });
     }, [worker, id]);
 
-    /* ----------------------- Initialize Offscreen Canvas ---------------------- */
+    // Initialize offscreen canvas
     useEffect(() => {
         if (!offscreenRef.current && worker && canvasRef.current) {
             const canvas = canvasRef.current;
@@ -33,13 +33,8 @@ function useSortCanvas(canvasRef, id) {
         }
     }, [offscreenRef, canvasRef, worker]);
 
-    /* -------------------------------------------------------------------------- */
-    /*                                 Callbacks                                  */
-    /* -------------------------------------------------------------------------- */
+    // Callbacks
 
-    /**
-     * changeSettings
-     */
     const changeSettings = useCallback(
         (settings) => {
             if (!worker) return;
@@ -52,10 +47,6 @@ function useSortCanvas(canvasRef, id) {
         [worker]
     );
 
-    /**
-     * changeSize
-     * trigger Canvas resize to given width and height
-     */
     const changeSize = useCallback(
         (parentRect) => {
             if (!worker) return;
@@ -103,9 +94,7 @@ function useSortCanvas(canvasRef, id) {
     };
 }
 
-/* -------------------------------------------------------------------------- */
-/*                                    Utils                                   */
-/* -------------------------------------------------------------------------- */
+// Utils
 
 function getDevicePixelRatio() {
     const dpr = window.devicePixelRatio;

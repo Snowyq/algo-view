@@ -11,7 +11,6 @@ const AlgorithmPanelShell = styled.div`
     height: 100%;
     width: 100%;
     background-color: var(--color-grey-300);
-    /* border: 3px solid var(--color-grey-400); */
 
     @media screen and (min-width: ${PLAY_LAYOUT_BREAKPOINT}) {
         border: none;

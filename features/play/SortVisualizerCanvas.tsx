@@ -54,27 +54,26 @@ const Placeholder = styled.div`
 
 function SortVisualizerCanvas({
     registry,
-    onStepUpdate = undefined,
     onMetricsUpdate = undefined,
     onStepMetricsUpdate = undefined,
 }) {
-    /* -------------------------------- Contexts -------------------------------- */
+    // Contexts
 
     const dispatch = useDispatch();
     const stepTypes = useSelector(getDefaultStepTypes);
     const input = useSelector(getInput);
     const hasInput = Array.isArray(input) && input.length > 0;
 
-    /* ---------------------------------- Refs ---------------------------------- */
+    // Refs
 
     const canvasRef = useRef();
     const sizerRef = useRef();
 
-    /* --------------------------------- States --------------------------------- */
+    // States
 
     const [isLoading, setIsLoading] = useState(true);
     const pendingLoadsRef = useRef(0);
-    /* -------------------------------- CanvasApi ------------------------------- */
+    // Canvas API
 
     const algoOptions = useMemo(() => {
         return { stepTypes };
@@ -155,7 +154,6 @@ function SortVisualizerCanvas({
         });
     }, [
         onStatusType,
-        onStepUpdate,
         registry,
         dispatch,
         onMetricsUpdate,

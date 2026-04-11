@@ -39,9 +39,7 @@ self.onmessage = function (event) {
         });
     }
 
-    /* -------------------------------------------------------------------------- */
-    /*                                 Event Types                                */
-    /* -------------------------------------------------------------------------- */
+    // Event types
 
     if (type === "tab") {
         tabId = payload;
@@ -52,7 +50,7 @@ self.onmessage = function (event) {
         };
     }
 
-    /* ------------------------------- Draw Canvas ------------------------------ */
+    // Draw canvas
 
     if (type === "draw-canvas") {
         const { devicePixelRatio } = payload;
@@ -85,7 +83,7 @@ self.onmessage = function (event) {
         return;
     }
 
-    /* ------------------------------ Resize Canvas ----------------------------- */
+    // Resize canvas
 
     if (type === "resize") {
         const { width, height, devicePixelRatio } = payload;
@@ -97,7 +95,7 @@ self.onmessage = function (event) {
         return;
     }
 
-    /* ---------------------------- Initialize Canvas --------------------------- */
+    // Initialize canvas
 
     if (type === "init-canvas") {
         if (!canvas) {
@@ -115,7 +113,7 @@ self.onmessage = function (event) {
         return;
     }
 
-    /* ---------------------------- Load Step Colors ---------------------------- */
+    // Load step colors
 
     if (type === "load-step-colors") {
         const { stepColors: colors } = payload;
@@ -125,7 +123,7 @@ self.onmessage = function (event) {
         return;
     }
 
-    /* -------------------------- Find Algorithm Class -------------------------- */
+    // Find algorithm class
 
     if (type === "mount") {
         const { id, sharedBuffer } = payload;
@@ -150,7 +148,7 @@ self.onmessage = function (event) {
         return;
     }
 
-    /* ---------------------------- Render Algorithm ---------------------------- */
+    // Render algorithm
 
     if (type === "render-algorithm") {
         const { devicePixelRatio, input, options, rect } = payload;
@@ -180,7 +178,7 @@ self.onmessage = function (event) {
         }
     }
 
-    /* ----------------------------- Update Settings ---------------------------- */
+    // Update settings
 
     if (type === "settings") {
         const { settings, devicePixelRatio } = payload;
@@ -192,9 +190,7 @@ self.onmessage = function (event) {
     }
 };
 
-/* -------------------------------------------------------------------------- */
-/*                              Helper Functions                              */
-/* -------------------------------------------------------------------------- */
+// Helper functions
 
 function updateStepIndex(newIndex) {
     currStepIndex = newIndex;
@@ -233,7 +229,7 @@ function updateSettings(payload) {
         textDisplayThreshold = textDisplayThresholdValue;
 }
 
-/* ---------------------------- Size Adjustments ---------------------------- */
+// Size adjustments
 
 function adjustSize(width, height, devicePixelRatio) {
     let resized = false;
@@ -268,7 +264,7 @@ function resize(width, height, devicePixelRatio) {
     }
 }
 
-/* --------------------------------- Drawing -------------------------------- */
+// Drawing
 
 function redraw() {
     if (!isNaN(currStepIndex)) {
@@ -369,7 +365,7 @@ function drawArray(state, step, maxValue) {
     });
 }
 
-/* ----------------------------- Drawing Helpers ---------------------------- */
+// Drawing helpers
 
 function getColorByType(type) {
     if (stepColors) {
@@ -415,7 +411,7 @@ function getBlockDisplayType(step, index) {
     return type;
 }
 
-/* -------------------------------- Animating ------------------------------- */
+// Animating
 
 function handleAnimate(callback) {
     const startTime = performance.now();
