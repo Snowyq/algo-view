@@ -29,7 +29,6 @@ function useSortCanvas(canvasRef, id) {
                 offscreen,
             ]);
 
-            // Prevents ...
             offscreenRef.current = offscreen;
         }
     }, [offscreenRef, canvasRef, worker]);

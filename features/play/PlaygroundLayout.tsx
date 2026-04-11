@@ -4,45 +4,44 @@ import ConfigSidebar from "./ConfigSidebar";
 import PlaybackControls from "./PlaybackControls";
 
 const StyledPlayground = styled.div`
-	height: 100%;
-	width: 100%;
-	position: relative;
-	overflow: hidden;
-	/* padding: 1rem 2rem 1rem 1.5rem; */
+    height: 100%;
+    width: 100%;
+    position: relative;
+    overflow: hidden;
 `;
 
 const Container = styled.div`
-	height: 100%;
-	width: 100%;
-	display: flex;
+    height: 100%;
+    width: 100%;
+    display: flex;
 `;
 
 const PlayMain = styled.div`
-	flex-direction: column;
-	width: 100%;
-	height: 100%;
-	display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    display: flex;
 `;
 
 const PlayGroup = styled.div`
-	display: flex;
-	height: 100%;
+    display: flex;
+    height: 100%;
 `;
 
 function PlaygroundLayout() {
-	return (
-		<StyledPlayground>
-			<Container>
-				<PlayMain>
-					<PlayGroup>
-						<AlgorithmGrid />
-					</PlayGroup>
-					<PlaybackControls />
-				</PlayMain>
-				<ConfigSidebar />
-			</Container>
-		</StyledPlayground>
-	);
+    return (
+        <StyledPlayground>
+            <Container>
+                <PlayMain>
+                    <PlayGroup>
+                        <AlgorithmGrid />
+                    </PlayGroup>
+                    <PlaybackControls />
+                </PlayMain>
+                <ConfigSidebar />
+            </Container>
+        </StyledPlayground>
+    );
 }
 
 export default PlaygroundLayout;

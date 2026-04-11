@@ -1,30 +1,29 @@
 import { Geist_Mono, Inter } from "next/font/google";
 import AppLayout from "../ui/AppLayout";
 import AppClient from "./AppClient";
-import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 const fontMono = Geist_Mono({
-  subsets: ["latin"],
-  variable: "--font-mono",
+    subsets: ["latin"],
+    variable: "--font-mono",
 });
 
 export default function RootLayout({
-  children,
+    children,
 }: Readonly<{
-  children: React.ReactNode;
+    children: React.ReactNode;
 }>) {
-  return (
-    <html
-      lang="en"
-      className={`antialiased ${fontMono.variable} font-sans ${inter.variable}`}
-    >
-      <body>
-        <AppClient>
-          <AppLayout>{children}</AppLayout>
-        </AppClient>
-      </body>
-    </html>
-  );
+    return (
+        <html
+            lang="en"
+            className={`antialiased ${fontMono.variable} font-sans ${inter.variable}`}
+        >
+            <body>
+                <AppClient>
+                    <AppLayout>{children}</AppLayout>
+                </AppClient>
+            </body>
+        </html>
+    );
 }

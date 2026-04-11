@@ -38,9 +38,9 @@ export class MergeSort extends SortAlgorithm {
                 k = left;
 
             // Assign the smaller value for sorted output
-            this.countConditionChecks();
+            this.countConditionChecks(); //! off by one? 
             while (i < l1 && j < l2) {
-                this.countConditionChecks(2);
+                this.countConditionChecks(3);
                 if (arr1[i] < arr2[j]) {
                     // arr[k] = arr1[i];
                     this.assign(k, arr1[i], arr);

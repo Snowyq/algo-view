@@ -28,7 +28,6 @@ const types = {
             width: 2.4rem;
             height: 2.4rem;
             color: var(--color-grey-400);
-            /* transition: all 0.3s; */
         }
 
         &:hover svg,
@@ -61,32 +60,12 @@ const types = {
 };
 
 const StyledNavLink = styled(Link)`
-    /* transition:
-		background-color 0.2s,
-		box-shadow 0.2s; */
-
     &:link,
     &:visited {
         position: relative;
         padding: 0.2rem 1.2rem;
         border: 0.3rem solid transparent;
         border-radius: 3rem;
-    }
-
-    &:active,
-    &[data-active="true"],
-    &[data-active="true"]:link,
-    &[data-active="true"]:visited {
-        /* &::after {
-			content: "";
-			position: absolute;
-			left: -0.8rem;
-			top: -0.8rem;
-			bottom: -0.8rem;
-			right: -0.8rem;
-			border: 0.2rem solid black;
-			border-radius: 0.8rem;
-		} */
     }
 
     ${({ $styleType }) => types[$styleType] || types["default"]};
@@ -118,7 +97,6 @@ const MobileNav = styled.div`
 const Nav = styled.nav`
     display: none;
     gap: 2.4rem;
-    /* font-size: 1.6rem; */
     justify-content: center;
     align-items: center;
 

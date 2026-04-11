@@ -36,10 +36,6 @@ const PointHint = styled.div`
     z-index: -1;
     translate: 0 -100%;
     pointer-events: none;
-    /* background-color: yellow; */
-    /* height: 100px; */
-    /* width: 100px; */
-    /* opacity: ${({ show }) => (show === "show" ? 1 : 0)}; */
     opacity: 1;
     transition: opacity 0.1s;
 `;
@@ -47,9 +43,7 @@ const PointHint = styled.div`
 const PointHintLabel = styled.span`
     display: block;
     transform-origin: 0 50%;
-    /* rotate: 270deg; */
     rotate: 300deg;
-    /* background-color: green; */
     pointer-events: none;
 `;
 
@@ -81,7 +75,6 @@ function PlaybackTimeline({
                 value: stepsLength - 1,
                 Component: (
                     <PointHint>
-                        {/* <PointHintNum>{index + 1}</PointHintNum> */}
                         <PointHintLabel>
                             <AnimatedText show={showHint}>
                                 {info.name}

@@ -3,9 +3,6 @@ import styled from "styled-components";
 
 const Metrics = styled.div`
     display: flex;
-    /* grid-template-rows: repeat(2, minmax(2.4rem, auto));
-    grid-auto-flow: column;
-    grid-auto-columns: max-content; */
     gap: 0 1rem;
     width: 100%;
 `;
@@ -17,7 +14,6 @@ const MetricsItem = styled.div`
     white-space: nowrap;
     position: relative;
     align-items: start;
-    /* gap: 0.4rem; */
     font-size: 1.2rem;
     line-height: 1.4rem;
 `;

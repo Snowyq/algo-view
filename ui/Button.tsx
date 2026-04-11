@@ -29,15 +29,6 @@ const sizes = {
     `,
 };
 
-const shapes = {
-    rect: css`
-        border-radius: var(--border-radius-sm);
-    `,
-    circle: css`
-        border-radius: 50%;
-    `,
-};
-
 const variations = {
     primary: css`
         color: var(--color-brand-50);
@@ -72,10 +63,7 @@ const Button = styled.button`
     width: fit-content;
 
     ${({ size = "medium" }) => sizes[size]}
-    ${({ variation = "primary" }) => variations[variation]} /* ${({
-        shape = "rect",
-    }) => shapes[shape]} */
-
+    ${({ variation = "primary" }) => variations[variation]}
 	&:disabled {
         opacity: 0.6;
         cursor: not-allowed;

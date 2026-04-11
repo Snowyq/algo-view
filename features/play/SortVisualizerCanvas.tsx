@@ -101,7 +101,6 @@ function SortVisualizerCanvas({
         if (!sizerRef.current) return;
         const rect = sizerRef.current.getBoundingClientRect();
         pendingLoadsRef.current += 1;
-        setIsLoading(true);
         dispatch(incrementSortWorkerLoading());
         if (typeof onStepMetricsUpdate === "function") {
             onStepMetricsUpdate(null);

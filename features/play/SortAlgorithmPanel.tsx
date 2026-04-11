@@ -16,11 +16,6 @@ const Header = styled.div`
 
 const Heading = styled.h2``;
 
-const Tools = styled.div`
-    display: flex;
-    gap: 0.25rem;
-`;
-
 const Container = styled.div`
     width: 100%;
     height: 100%;
@@ -50,14 +45,7 @@ const Main = styled.div`
     }
 `;
 
-const VisualizerShell = styled.div`
-    position: relative;
-    width: 100%;
-    height: 100%;
-`;
-
 const MetricsOverlay = styled.div`
-    /* position: absolute; */
     left: 0;
     top: 0;
     z-index: 2;
@@ -72,7 +60,6 @@ function SortAlgorithmPanel({ registry }) {
     const input = useSelector(getInput);
     const hasInput = Array.isArray(input) && input.length > 0;
 
-    const toggleDisplayMetrics = () => setShowMetrics((x) => !x);
     useEffect(() => {
         setShowMetrics(allMetricsVisible);
     }, [allMetricsVisible]);
@@ -86,17 +73,6 @@ function SortAlgorithmPanel({ registry }) {
                             {registry.meta.name}
                         </AnimatedText>
                     </Heading>
-                    <Tools>
-                        {/* <ButtonIcon>
-                            <FaCode />
-                        </ButtonIcon> */}
-                        {/* <ButtonIcon onClick={toggleDisplayMetrics}>
-                            <RiNumbersLine />
-                        </ButtonIcon> */}
-                        {/* <ButtonIcon>
-                            <IoSettings />
-                        </ButtonIcon> */}
-                    </Tools>
                     {showMetrics && hasInput && (
                         <MetricsOverlay>
                             <StepMetricsPanel

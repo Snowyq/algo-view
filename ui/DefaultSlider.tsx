@@ -14,12 +14,12 @@ const SliderContainer = styled(Flex)`
     background-color: var(--color-grey-400);
     border-radius: 15px;
 
-    -webkit-user-select: none; /* iOS Safari */
-    -ms-user-select: none; /* IE 10+ */
-    user-select: none; /* Modern browsers */
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
 
-    -webkit-touch-callout: none; /* iOS Safari long press menu */
-    -webkit-tap-highlight-color: transparent; /* remove highlight on tap */
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
 `;
 
 const SliderOutput = styled.div`
@@ -38,7 +38,6 @@ const Dot = styled.div`
     background-color: var(--color-grey-600);
     border-radius: 50%;
     height: 100%;
-    /* height: 5px; */
     aspect-ratio: 1/1;
     box-shadow: 1px 1px 0px 1px var(--color-grey-400);
 `;

@@ -31,7 +31,7 @@ let channel;
 
 self.onmessage = function (event) {
     const { type, payload, canvas } = event.data;
-    console.log(type, AlgorithmClass);
+
     function postError(message) {
         postMessage({
             type: "error",
@@ -58,10 +58,7 @@ self.onmessage = function (event) {
         const { devicePixelRatio } = payload;
 
         let stepIndex = payload?.stepIndex;
-        console.log(sharedIndex);
         if (sharedIndex) {
-            console.log(stepIndex);
-            console.log(sharedIndex);
             stepIndex = Atomics.load(sharedIndex, 0);
         }
 

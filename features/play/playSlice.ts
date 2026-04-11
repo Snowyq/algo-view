@@ -87,6 +87,7 @@ const playSlice = createSlice({
 
             state.input = newInput;
             state.animation.step = { value: 0, trigger: "changeInput" };
+            state.animation.maxStep = 0;
             state.animation.status = "stopped";
             state.animation.isPlaying = false;
         },
@@ -103,7 +104,6 @@ const playSlice = createSlice({
 
             state.active.algorithms[algoIndex] = {
                 ...state.active.algorithms[algoIndex],
-                steps: undefined,
                 stepsLength,
                 metrics,
             };
