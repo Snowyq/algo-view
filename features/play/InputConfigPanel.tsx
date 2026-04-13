@@ -4,16 +4,14 @@ import { BsExclamationTriangle } from "react-icons/bs";
 import { useDispatch, useSelector } from "react-redux";
 import styled from "styled-components";
 import {
-    DEFAULT_SORT_INPUT_LENGTH,
-    DEFAULT_SORT_INPUT_VALUE_RANGE,
-} from "../../config/sort";
-import {
+    SORT_DEFAULT_INPUT_LENGTH,
+    SORT_DEFAULT_INPUT_VALUE_RANGE,
     SORT_DEFAULT_MAX_INPUT_LENGTH,
     SORT_INPUT_BLOCK_DELAY_MS,
     SORT_INPUT_VALUES_RANGES,
     SORT_MAX_INPUT_LENGTH,
     SORT_MIN_INPUT_LENGTH,
-} from "../../constants/sort";
+} from "../../config/sort";
 import type { AppDispatch, RootState } from "../../store";
 import Button from "../../ui/Button";
 import DefaultSlider from "../../ui/DefaultSlider";
@@ -112,13 +110,13 @@ function InputConfigPanel(): JSX.Element {
     const isBlocked: boolean = isBlockedRaw || isBlockedDelayed;
     const [allowLargeInput, setAllowLargeInput] = useState<boolean>(false);
     const [length, setLength] = useState<NumericState>(
-        DEFAULT_SORT_INPUT_LENGTH
+        SORT_DEFAULT_INPUT_LENGTH
     );
     const [minValue, setMinValue] = useState<NumericState>(
-        DEFAULT_SORT_INPUT_VALUE_RANGE[0]
+        SORT_DEFAULT_INPUT_VALUE_RANGE[0]
     );
     const [maxValue, setMaxValue] = useState<NumericState>(
-        DEFAULT_SORT_INPUT_VALUE_RANGE[1]
+        SORT_DEFAULT_INPUT_VALUE_RANGE[1]
     );
     const maxInputLength: number = allowLargeInput
         ? SORT_MAX_INPUT_LENGTH
@@ -126,7 +124,7 @@ function InputConfigPanel(): JSX.Element {
     const lengthValue: number =
         typeof length === "number" && Number.isFinite(length)
             ? Math.max(SORT_MIN_INPUT_LENGTH, Math.min(maxInputLength, length))
-            : DEFAULT_SORT_INPUT_LENGTH;
+            : SORT_DEFAULT_INPUT_LENGTH;
     const clampNumber = (value: number, min: number, max: number): number =>
         Math.max(min, Math.min(max, value));
     const normalizeRangeValue = (
@@ -224,7 +222,7 @@ function InputConfigPanel(): JSX.Element {
 
     const handleLengthBlur = (): void => {
         if (typeof length !== "number" || !Number.isFinite(length)) {
-            setLength(DEFAULT_SORT_INPUT_LENGTH);
+            setLength(SORT_DEFAULT_INPUT_LENGTH);
             return;
         }
         setLength(clampNumber(length, SORT_MIN_INPUT_LENGTH, maxInputLength));
@@ -233,7 +231,7 @@ function InputConfigPanel(): JSX.Element {
     const handleMinValueBlur = (): void => {
         const nextMin = normalizeRangeValue(
             minValue,
-            DEFAULT_SORT_INPUT_VALUE_RANGE[0]
+            SORT_DEFAULT_INPUT_VALUE_RANGE[0]
         );
         setMinValue(nextMin);
         if (
@@ -248,7 +246,7 @@ function InputConfigPanel(): JSX.Element {
     const handleMaxValueBlur = (): void => {
         const nextMax = normalizeRangeValue(
             maxValue,
-            DEFAULT_SORT_INPUT_VALUE_RANGE[1]
+            SORT_DEFAULT_INPUT_VALUE_RANGE[1]
         );
         setMaxValue(nextMax);
         if (
@@ -285,15 +283,15 @@ function InputConfigPanel(): JSX.Element {
         const safeLength =
             typeof length === "number" && Number.isFinite(length)
                 ? length
-                : DEFAULT_SORT_INPUT_LENGTH;
+                : SORT_DEFAULT_INPUT_LENGTH;
         const safeMin =
             typeof minValue === "number" && Number.isFinite(minValue)
                 ? minValue
-                : DEFAULT_SORT_INPUT_VALUE_RANGE[0];
+                : SORT_DEFAULT_INPUT_VALUE_RANGE[0];
         const safeMax =
             typeof maxValue === "number" && Number.isFinite(maxValue)
                 ? maxValue
-                : DEFAULT_SORT_INPUT_VALUE_RANGE[1];
+                : SORT_DEFAULT_INPUT_VALUE_RANGE[1];
 
         const finalLength = Math.max(
             SORT_MIN_INPUT_LENGTH,

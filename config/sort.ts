@@ -1,9 +1,13 @@
-import { SORT_ANIMATION_SPEEDS } from "../constants/sort";
-
-export const DEFAULT_SORT_INPUT_LENGTH = 50;
-export const DEFAULT_SORT_INPUT_VALUE_RANGE = [1, 30];
-export const DEFAULT_SORT_ANIMATION_SPEED = SORT_ANIMATION_SPEEDS[2];
-export const DEFAULT_SORT_STEP_TYPES = [
+export const SORT_MIN_INPUT_LENGTH = 10;
+export const SORT_DEFAULT_MAX_INPUT_LENGTH = 300;
+export const SORT_MAX_INPUT_LENGTH = 1000;
+export const SORT_DEFAULT_INPUT_LENGTH = 50;
+export const SORT_DEFAULT_INPUT_VALUE_RANGE = [1, 30];
+export const SORT_INPUT_VALUES_RANGES = [0, 100];
+export const SORT_INPUT_BLOCK_DELAY_MS = 300;
+export const SORT_ANIMATION_SPEEDS = [1, 5, 16, 25, 50, 100, 500, 1000, 2000];
+export const SORT_DEFAULT_ANIMATION_SPEED = SORT_ANIMATION_SPEEDS[2];
+export const SORT_STEP_TYPES = [
     "initial",
     "check",
     "check-true",
@@ -19,3 +23,4 @@ export const DEFAULT_SORT_STEP_TYPES = [
     "finish",
     "assign",
 ];
+export const SORT_DEFAULT_STEP_TYPES = [...SORT_STEP_TYPES];

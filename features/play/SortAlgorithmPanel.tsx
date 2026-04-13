@@ -27,6 +27,7 @@ const Container = styled.div`
     display: flex;
 
     flex-direction: column;
+    min-height: 0;
 `;
 
 const Top = styled.div`
@@ -41,7 +42,8 @@ const Main = styled.div`
     display: flex;
     flex-direction: column;
     gap: 1rem;
-    height: 100%;
+    flex: 1;
+    min-height: 0;
     width: 100%;
     padding: 0.25rem 0.5rem;
 
