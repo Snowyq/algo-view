@@ -149,7 +149,7 @@ function Index(): JSX.Element {
                             <Image
                                 src={heroImage}
                                 alt="Algorithm Visualizer"
-                                sizes="(max-width: 900px) 100vw, 100vw"
+                                sizes="(max-width: 900px) 100vw, 70vw"
                                 loading="eager"
                                 style={{
                                     width: "100%",
