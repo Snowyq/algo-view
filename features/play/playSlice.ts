@@ -1,5 +1,7 @@
 import { createSlice } from "@reduxjs/toolkit";
 import registryApi from "../../algorithms/algorithmsRegistryApi";
+import type { SortStepType } from "../../algorithms/sort/SortAlgorithm";
+import type { AlgorithmMeta, AlgorithmMetrics } from "../../algorithms/types";
 import {
     DEFAULT_SORT_ANIMATION_SPEED,
     DEFAULT_SORT_INPUT_LENGTH,
@@ -9,10 +11,53 @@ import {
     ANIMATION_SPEEDS,
     DEFAULT_STEP_TYPES,
 } from "../../constants/constants";
+import type { RootState } from "../../store";
 import { generateRandomArray } from "../../utils/randoms";
 import { clamp } from "../../utils/values";
 
-function getInitialState() {
+type AnimationStatus = "stopped" | "playing" | "freezed";
+
+export type ActiveAlgorithm = {
+    id: string;
+    info: AlgorithmMeta;
+    stepsLength: number;
+    metrics?: AlgorithmMetrics;
+};
+
+export type RegistryAlgorithm = AlgorithmMeta & { id: string };
+
+type PlayState = {
+    active: {
+        category: string;
+        algorithms: ActiveAlgorithm[];
+    };
+    input: number[];
+    allMetricsVisible: boolean;
+    registry: {
+        categories: string[];
+        algorithms: RegistryAlgorithm[];
+    };
+    options: {
+        defaultStepTypes: SortStepType[];
+        maxSteps: number[];
+    };
+    ui: {
+        sidebarOpen: boolean;
+        stepWorkerReady: boolean;
+        sortWorkerReady: boolean;
+        sortWorkerLoadingCount: number;
+    };
+    animation: {
+        status: AnimationStatus;
+        speeds: number[];
+        step: { value: number; trigger: string };
+        maxStep: number;
+        isPlaying: boolean;
+        speed: number;
+    };
+};
+
+function getInitialState(): PlayState {
     const defaultCategory = "sort";
     const defaultAlgorithmId = "selectionSort";
     const categories = registryApi.getCategoriesIds() || [];
@@ -20,7 +65,8 @@ function getInitialState() {
     const defaultSpeed = speeds.includes(DEFAULT_SORT_ANIMATION_SPEED)
         ? DEFAULT_SORT_ANIMATION_SPEED
         : speeds[0] || 100;
-    const defaultStepTypes = DEFAULT_STEP_TYPES[defaultCategory] || [];
+    const defaultStepTypes = (DEFAULT_STEP_TYPES[defaultCategory] ||
+        []) as SortStepType[];
     const initialInput = generateRandomArray(
         DEFAULT_SORT_INPUT_LENGTH,
         DEFAULT_SORT_INPUT_VALUE_RANGE[0],
@@ -30,6 +76,8 @@ function getInitialState() {
         defaultCategory,
         defaultAlgorithmId
     );
+    const algorithmsInCategory =
+        registryApi.getAlgorithmsInCategory(defaultCategory) ?? [];
     const initialAlgorithms = defaultRegistry
         ? [
               {
@@ -51,9 +99,10 @@ function getInitialState() {
         allMetricsVisible: false,
         registry: {
             categories,
-            algorithms: registryApi
-                .getAlgorithmsInCategory(defaultCategory)
-                .map((algo) => ({ ...algo.meta, id: algo.id })),
+            algorithms: algorithmsInCategory.map((algo) => ({
+                ...algo.meta,
+                id: algo.id,
+            })),
         },
         options: {
             defaultStepTypes,
@@ -80,7 +129,12 @@ const playSlice = createSlice({
     name: "play",
     initialState: getInitialState(),
     reducers: {
-        changeInput(state, action) {
+        changeInput(
+            state,
+            action: {
+                payload: { length: number; min: number; max: number };
+            }
+        ) {
             const { length, min, max } = action.payload;
 
             const newInput = generateRandomArray(length, min, max);
@@ -94,7 +148,16 @@ const playSlice = createSlice({
 
         // Handle active algorithms
 
-        passAlgorithmInfo(state, action) {
+        passAlgorithmInfo(
+            state,
+            action: {
+                payload: {
+                    stepsLength: number;
+                    metrics?: AlgorithmMetrics;
+                    id: string;
+                };
+            }
+        ) {
             const { stepsLength, metrics, id: algoId } = action.payload;
             if (!algoId) return;
             const algoIndex = state.active.algorithms.findIndex(
@@ -115,7 +178,7 @@ const playSlice = createSlice({
             };
         },
 
-        openAlgorithm(state, action) {
+        openAlgorithm(state, action: { payload: string }) {
             const algoId = action.payload;
             if (!algoId) return;
 
@@ -128,6 +191,7 @@ const playSlice = createSlice({
                 state.active.category,
                 algoId
             );
+            if (!registry) return;
 
             const algo = {
                 id: algoId,
@@ -138,7 +202,7 @@ const playSlice = createSlice({
             state.active.algorithms = [...state.active.algorithms, algo];
         },
 
-        closeAlgorithm(state, action) {
+        closeAlgorithm(state, action: { payload: string }) {
             const algoId = action.payload;
             if (!algoId) return;
 
@@ -156,7 +220,7 @@ const playSlice = createSlice({
 
         // Handle category
 
-        changeCategory(state, action) {
+        changeCategory(state, action: { payload: string }) {
             // if (!state.registry.logs.includes(action.payload)) return;
             state.active.category = action.payload;
             state.active.algorithms = [];
@@ -169,7 +233,10 @@ const playSlice = createSlice({
 
         // Handle step value
 
-        decreaseStep(state, action) {
+        decreaseStep(
+            state,
+            action: { payload: { value: number; trigger?: string } }
+        ) {
             const { step } = state.animation;
             const { value, trigger = "action" } = action.payload;
             const newStep = step.value - value;
@@ -179,7 +246,10 @@ const playSlice = createSlice({
             };
         },
 
-        increaseStep(state, action) {
+        increaseStep(
+            state,
+            action: { payload: { value: number; trigger?: string } }
+        ) {
             const { step, maxStep } = state.animation;
             const { value, trigger = "action" } = action.payload;
             const newStep = step.value + value;
@@ -189,7 +259,10 @@ const playSlice = createSlice({
             };
         },
 
-        changeStep(state, action) {
+        changeStep(
+            state,
+            action: { payload: { value: number; trigger?: string } }
+        ) {
             const { value, trigger = "action" } = action.payload;
             state.animation.step = {
                 value: clamp(value, 0, state.animation.maxStep),
@@ -209,15 +282,15 @@ const playSlice = createSlice({
             state.ui.sidebarOpen = !state.ui.sidebarOpen;
         },
 
-        setSidebarOpen(state, action) {
+        setSidebarOpen(state, action: { payload: boolean }) {
             state.ui.sidebarOpen = Boolean(action.payload);
         },
 
-        setStepWorkerReady(state, action) {
+        setStepWorkerReady(state, action: { payload: boolean }) {
             state.ui.stepWorkerReady = Boolean(action.payload);
         },
 
-        setSortWorkerReady(state, action) {
+        setSortWorkerReady(state, action: { payload: boolean }) {
             state.ui.sortWorkerReady = Boolean(action.payload);
         },
 
@@ -238,7 +311,7 @@ const playSlice = createSlice({
             state.animation.isPlaying = !state.animation.isPlaying;
         },
 
-        changeAnimationStatus(state, action) {
+        changeAnimationStatus(state, action: { payload: AnimationStatus }) {
             const status = action.payload;
             state.animation.status = status;
         },
@@ -258,7 +331,7 @@ const playSlice = createSlice({
             state.animation.status = "stopped";
         },
 
-        changeSpeed(state, action) {
+        changeSpeed(state, action: { payload: number }) {
             const speed = action.payload;
             if (!state.animation.speeds.includes(speed)) return;
             state.animation.speed = speed;
@@ -290,28 +363,41 @@ export const {
 
 export default playSlice.reducer;
 
-export const getAnimationStatus = (state) => state.play.animation.status;
-export const getAlgorithms = (state) => state.play.registry.algorithms;
-export const getIsPlaying = (state) => state.play.animation.isPlaying;
-export const getStep = (state) => state.play.animation.step;
-export const getMaxStep = (state) => state.play.animation.maxStep;
-export const getSpeeds = (state) => state.play.animation.speeds;
-export const getCurrentSpeed = (state) => state.play.animation.speed;
-export const getDefaultStepTypes = (state) =>
+export const getAnimationStatus = (state: RootState): AnimationStatus =>
+    state.play.animation.status;
+export const getAlgorithms = (state: RootState): RegistryAlgorithm[] =>
+    state.play.registry.algorithms;
+export const getIsPlaying = (state: RootState): boolean =>
+    state.play.animation.isPlaying;
+export const getStep = (state: RootState): { value: number; trigger: string } =>
+    state.play.animation.step;
+export const getMaxStep = (state: RootState): number =>
+    state.play.animation.maxStep;
+export const getSpeeds = (state: RootState): number[] =>
+    state.play.animation.speeds;
+export const getCurrentSpeed = (state: RootState): number =>
+    state.play.animation.speed;
+export const getDefaultStepTypes = (state: RootState) =>
     state.play.options.defaultStepTypes;
-export const getActiveCategory = (state) => state.play.active.category;
-export const getActiveAlgorithms = (state) => state.play.active.algorithms;
-export const getInput = (state) => state.play.input;
-export const getAllMetricsVisible = (state) => state.play.allMetricsVisible;
-export const getSidebarOpen = (state) => state.play.ui.sidebarOpen;
-export const getStepWorkerReady = (state) => state.play.ui.stepWorkerReady;
-export const getSortWorkerReady = (state) => state.play.ui.sortWorkerReady;
-export const getSortWorkerLoading = (state) =>
+export const getActiveCategory = (state: RootState): string =>
+    state.play.active.category;
+export const getActiveAlgorithms = (state: RootState): ActiveAlgorithm[] =>
+    state.play.active.algorithms;
+export const getInput = (state: RootState): number[] => state.play.input;
+export const getAllMetricsVisible = (state: RootState): boolean =>
+    state.play.allMetricsVisible;
+export const getSidebarOpen = (state: RootState): boolean =>
+    state.play.ui.sidebarOpen;
+export const getStepWorkerReady = (state: RootState): boolean =>
+    state.play.ui.stepWorkerReady;
+export const getSortWorkerReady = (state: RootState): boolean =>
+    state.play.ui.sortWorkerReady;
+export const getSortWorkerLoading = (state: RootState): boolean =>
     state.play.ui.sortWorkerLoadingCount > 0;
 
 // Helpers
 
-function findMaxStep(algorithms) {
+function findMaxStep(algorithms: ActiveAlgorithm[]): number {
     const values = algorithms.map((algo) => {
         const length =
             typeof algo.stepsLength === "number" ? algo.stepsLength : 0;

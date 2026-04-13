@@ -1,11 +1,13 @@
-import { useEffect } from "react";
-import styled, { css } from "styled-components";
-
+import type { MouseEvent } from "react";
+import { JSX, useEffect } from "react";
 import { IoIosClose } from "react-icons/io";
 import { useDispatch, useSelector } from "react-redux";
+import styled, { css } from "styled-components";
 import { PLAY_LAYOUT_BREAKPOINT } from "../../constants/breakpoints";
 import useWindowSize from "../../hooks/useWindowSize";
+import type { AppDispatch, RootState } from "../../store";
 import ButtonIcon from "../../ui/ButtonIcon";
+import type { ActiveAlgorithm, RegistryAlgorithm } from "./playSlice";
 import {
     closeAlgorithm,
     getActiveAlgorithms,
@@ -13,7 +15,9 @@ import {
     openAlgorithm,
 } from "./playSlice";
 
-const ItemCloseButton = styled(ButtonIcon)`
+type ItemState = "default" | "selected";
+
+const ItemCloseButton = styled(ButtonIcon)<{ state: ItemState }>`
     background-color: transparent;
     padding: 0.2rem;
     opacity: ${({ state }) => (state === "selected" ? 1 : 0)};
@@ -33,7 +37,7 @@ const ItemCloseButton = styled(ButtonIcon)`
     }
 `;
 
-const itemStates = {
+const itemStates: Record<ItemState, ReturnType<typeof css>> = {
     default: css`
         box-shadow: 3px 3px 0px 1px var(--color-grey-300);
         @media (hover: hover) and (pointer: fine) {
@@ -70,7 +74,7 @@ const disabledStyles = css`
     }
 `;
 
-const StyledItem = styled.div`
+const StyledItem = styled.div<{ state: ItemState; $isDisabled?: boolean }>`
     background-color: var(--color-grey-50);
     padding: 1rem 0.5rem 1rem 1.5rem;
     border-radius: 10px;
@@ -91,11 +95,15 @@ const AlgorithmsList = styled.div`
     background-color: var(--color-grey-200);
 `;
 
-function AlgorithmPicker() {
-    const dispatch = useDispatch();
+function AlgorithmPicker(): JSX.Element {
+    const dispatch = useDispatch<AppDispatch>();
 
-    const activeAlgorithms = useSelector(getActiveAlgorithms);
-    const algorithms = useSelector(getAlgorithms);
+    const activeAlgorithms = useSelector<RootState, ActiveAlgorithm[]>(
+        getActiveAlgorithms
+    );
+    const algorithms = useSelector<RootState, RegistryAlgorithm[]>(
+        getAlgorithms
+    );
     const { size } = useWindowSize();
     const breakpointValue = Number.parseInt(PLAY_LAYOUT_BREAKPOINT, 10);
     const isMobile =
@@ -113,14 +121,18 @@ function AlgorithmPicker() {
         idsToClose.forEach((id) => dispatch(closeAlgorithm(id)));
     }, [activeAlgorithms, dispatch, isMobile, maxVisibleAlgorithms]);
 
-    const handleClose = (id) => dispatch(closeAlgorithm(id));
-    const handleOpen = (id) => dispatch(openAlgorithm(id));
+    const handleClose = (id: string): void => {
+        dispatch(closeAlgorithm(id));
+    };
+    const handleOpen = (id: string): void => {
+        dispatch(openAlgorithm(id));
+    };
 
     return (
         <AlgorithmsList>
             {algorithms.map((algo) => {
                 const isSelected = activeAlgorithms.some(
-                    (x) => x.id === algo.id
+                    (x: ActiveAlgorithm) => x.id === algo.id
                 );
                 const isDisabled = !isSelected && isLimitReached;
                 return (
@@ -139,15 +151,31 @@ function AlgorithmPicker() {
     );
 }
 
-function Item({ name, onOpen, id, onClose, isSelected, isDisabled }) {
-    const state = isSelected ? "selected" : "default";
+type ItemProps = {
+    name: string;
+    id: string;
+    onOpen?: (id: string) => void;
+    onClose?: (id: string) => void;
+    isSelected: boolean;
+    isDisabled: boolean;
+};
 
-    const handleClose = (e) => {
+function Item({
+    name,
+    onOpen,
+    id,
+    onClose,
+    isSelected,
+    isDisabled,
+}: ItemProps): JSX.Element {
+    const state: ItemState = isSelected ? "selected" : "default";
+
+    const handleClose = (e: MouseEvent<HTMLButtonElement>): void => {
         e.stopPropagation();
         onClose?.(id);
     };
 
-    const handleOpen = () => {
+    const handleOpen = (): void => {
         if (isDisabled) return;
         onOpen?.(id);
     };

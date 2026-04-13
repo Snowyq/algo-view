@@ -1,39 +1,46 @@
 import type { Algorithm } from "./Algorithm";
 
 export type AlgorithmInstruction = {
-	line: string;
-	indent: number;
+    line: string;
+    indent: number;
 };
 
 export type AlgorithmInstructions = Record<string, AlgorithmInstruction>;
 
 export type AlgorithmMeta = {
-	name: string;
-	description: string;
-	timeComplexity: string;
-	auxiliarySpace: string;
+    name: string;
+    description: string;
+    timeComplexity: string;
+    auxiliarySpace: string;
 };
 
+export type AlgorithmMetric = {
+    count: number;
+    name: string;
+};
+
+export type AlgorithmMetrics = Record<string, AlgorithmMetric>;
+
 export type AlgorithmConstructor<T extends Algorithm = Algorithm> = new (
-	...args: unknown[]
+    ...args: unknown[]
 ) => T;
 
 export type AlgorithmRegistryItem = {
-	id: string;
-	meta: AlgorithmMeta;
-	algorithm: {
-		Class: AlgorithmConstructor;
-		instructions?: AlgorithmInstructions;
-	};
+    id: string;
+    meta: AlgorithmMeta;
+    algorithm: {
+        Class: AlgorithmConstructor;
+        instructions?: AlgorithmInstructions;
+    };
 };
 
 export type AlgorithmCategory = {
-	name: string;
-	id: string;
-	items: AlgorithmRegistryItem[];
+    name: string;
+    id: string;
+    items: AlgorithmRegistryItem[];
 };
 
 export type AlgorithmsRegistry = {
-	data: AlgorithmCategory[];
-	categoriesLog: string[];
+    data: AlgorithmCategory[];
+    categoriesLog: string[];
 };

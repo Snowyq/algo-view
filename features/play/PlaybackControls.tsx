@@ -1,15 +1,16 @@
-import { memo, useRef } from "react";
-import styled, { css } from "styled-components";
-
 import { PLAY_LAYOUT_BREAKPOINT } from "@/constants/breakpoints";
+import { JSX, memo, useRef } from "react";
 import { RiNumbersLine } from "react-icons/ri";
 import { useDispatch, useSelector } from "react-redux";
+import styled, { css } from "styled-components";
 import useHovered from "../../hooks/useHovered";
+import type { AppDispatch, RootState } from "../../store";
 import ButtonIcon from "../../ui/ButtonIcon";
 import PlaybackSpeed from "./PlaybackSpeed";
 import PlaybackTicker from "./PlaybackTicker";
 import PlaybackTimeline from "./PlaybackTimeline";
 import PlaybackTransport from "./PlaybackTransport";
+import type { ActiveAlgorithm } from "./playSlice";
 import { getActiveAlgorithms, toggleMetrics } from "./playSlice";
 const Flex = styled.div`
     display: flex;
@@ -92,7 +93,12 @@ const Bar = styled(Flex)`
     height: 100%;
 `;
 
-const disabledOverlayStates = {
+type DisabledOverlayState = "hide" | "show";
+
+const disabledOverlayStates: Record<
+    DisabledOverlayState,
+    ReturnType<typeof css>
+> = {
     hide: css`
         display: none;
         background-color: none;
@@ -125,17 +131,19 @@ const StatusOverlay = styled.div`
     }
 `;
 
-const DisabledOverlay = styled(StatusOverlay)`
+const DisabledOverlay = styled(StatusOverlay)<{ status: DisabledOverlayState }>`
     ${({ status }) => disabledOverlayStates[status]};
 `;
 
-function PlaybackControls() {
-    const dispatch = useDispatch();
-    const ref = useRef(null);
+function PlaybackControls(): JSX.Element {
+    const dispatch = useDispatch<AppDispatch>();
+    const ref = useRef<HTMLDivElement | null>(null);
     const { isHovered } = useHovered(ref);
-    const activeAlgorithms = useSelector(getActiveAlgorithms);
-    const isActive = activeAlgorithms.length > 0;
-    const status = isActive ? "active" : "disabled";
+    const activeAlgorithms = useSelector<RootState, ActiveAlgorithm[]>(
+        getActiveAlgorithms
+    );
+    const isActive: boolean = activeAlgorithms.length > 0;
+    const status: "active" | "disabled" = isActive ? "active" : "disabled";
 
     return (
         <StyledPlaybackControls ref={ref}>

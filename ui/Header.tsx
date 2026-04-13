@@ -1,6 +1,6 @@
+import { JSX } from "react";
 import MainNav from "./MainNav";
-
-function Header() {
+function Header(): JSX.Element {
     return <MainNav />;
 }
 

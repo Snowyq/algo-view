@@ -1,21 +1,26 @@
 import { useEffect, useState } from "react";
 
-export default function useWindowSize() {
-	const [size, setSize] = useState({ width: 0, height: 0 });
+type WindowSize = { width: number; height: number };
 
-	function handleUpdate() {
-		const newSize = {
-			height: window.innerHeight,
-			width: window.innerWidth,
-		};
-		setSize(newSize);
-	}
+export default function useWindowSize(): {
+    size: WindowSize;
+    update: () => void;
+} {
+    const [size, setSize] = useState<WindowSize>({ width: 0, height: 0 });
 
-	useEffect(() => {
-		const resizeObserver = new ResizeObserver(handleUpdate);
-		resizeObserver.observe(document.body);
-		return () => resizeObserver.disconnect();
-	}, []);
+    function handleUpdate(): void {
+        const newSize = {
+            height: window.innerHeight,
+            width: window.innerWidth,
+        };
+        setSize(newSize);
+    }
 
-	return { size, update: handleUpdate };
+    useEffect(() => {
+        const resizeObserver = new ResizeObserver(handleUpdate);
+        resizeObserver.observe(document.body);
+        return () => resizeObserver.disconnect();
+    }, []);
+
+    return { size, update: handleUpdate };
 }

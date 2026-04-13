@@ -1,6 +1,7 @@
 import styled, { css } from "styled-components";
-
-const sizes = {
+type ButtonSize = "small" | "medium" | "large" | "xlarge";
+type ButtonVariation = "primary" | "secondary" | "danger";
+const sizes: Record<ButtonSize, ReturnType<typeof css>> = {
     small: css`
         font-size: 1.4rem;
         padding: 0.4rem 0.8rem;
@@ -29,7 +30,7 @@ const sizes = {
     `,
 };
 
-const variations = {
+const variations: Record<ButtonVariation, ReturnType<typeof css>> = {
     primary: css`
         color: var(--color-brand-50);
         background-color: var(--color-brand-600);
@@ -57,7 +58,10 @@ const variations = {
     `,
 };
 
-const Button = styled.button`
+const Button = styled.button<{
+    size?: ButtonSize;
+    variation?: ButtonVariation;
+}>`
     border: none;
     box-shadow: var(--shadow-sm);
     width: fit-content;

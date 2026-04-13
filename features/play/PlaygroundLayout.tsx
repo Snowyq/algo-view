@@ -1,8 +1,8 @@
+import { JSX } from "react";
 import styled from "styled-components";
 import AlgorithmGrid from "./AlgorithmGrid";
 import ConfigSidebar from "./ConfigSidebar";
 import PlaybackControls from "./PlaybackControls";
-
 const StyledPlayground = styled.div`
     height: 100%;
     width: 100%;
@@ -28,7 +28,7 @@ const PlayGroup = styled.div`
     height: 100%;
 `;
 
-function PlaygroundLayout() {
+function PlaygroundLayout(): JSX.Element {
     return (
         <StyledPlayground>
             <Container>

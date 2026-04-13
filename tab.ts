@@ -1,4 +1,4 @@
-function createTabId() {
+function createTabId(): string {
     if (
         typeof crypto !== "undefined" &&
         typeof crypto.randomUUID === "function"
@@ -10,4 +10,4 @@ function createTabId() {
     return `tab-${fallback}`;
 }
 
-export const tabId = createTabId();
+export const tabId: string = createTabId();

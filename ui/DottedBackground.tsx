@@ -1,6 +1,10 @@
 import styled from "styled-components";
-
-export const DottedBackground = styled.div`
+export const DottedBackground = styled.div<{
+    bg?: string;
+    color?: string;
+    size?: string;
+    space?: string;
+}>`
     --dot-bg: ${({ bg }) => bg || "white"};
     --dot-color: ${({ color }) => color || "black"};
     --dot-size: ${({ size }) => size || "1px"};

@@ -1,7 +1,9 @@
-import { memo, useCallback, useState } from "react";
+import type { Key, ReactNode } from "react";
+import { JSX, memo, useCallback, useState } from "react";
 import { BsExclamationTriangle, BsSpeedometer2 } from "react-icons/bs";
 import { useDispatch, useSelector } from "react-redux";
 import styled from "styled-components";
+import type { AppDispatch, RootState } from "../../store";
 import Selector from "../../ui/Selector";
 import {
     changeSpeed,
@@ -50,7 +52,7 @@ const SpeedButton = styled.button`
     border: none;
 `;
 
-const SpeedButtonValue = styled.span`
+const SpeedButtonValue = styled.span<{ $isWarning: boolean }>`
     display: inline-flex;
     align-items: center;
     gap: 0.3rem;
@@ -86,23 +88,29 @@ const Icon = styled.span`
     font-size: 2rem;
 `;
 
-const SelectorContainer = styled.div`
+const SelectorContainer = styled.div<{ state: "hidden" | "visible" }>`
     display: ${({ state }) => (state === "hidden" ? "none" : "block")};
     position: absolute;
+    z-index: 2000;
 
     bottom: 0;
     right: -0.5rem;
     translate: 100% 0%;
 `;
 
-function PlaybackSpeed() {
-    const [isHidden, setIsHidden] = useState(true);
-    const dispatch = useDispatch();
-    const speeds = useSelector(getSpeeds);
-    const speed = useSelector(getCurrentSpeed);
-    const animationStatus = useSelector(getAnimationStatus);
+type AnimationStatus = "stopped" | "playing" | "freezed";
 
-    const handleOnChange = (option) => {
+function PlaybackSpeed(): JSX.Element {
+    const [isHidden, setIsHidden] = useState<boolean>(true);
+    const dispatch = useDispatch<AppDispatch>();
+    const speeds = useSelector<RootState, number[]>(getSpeeds);
+    const speed = useSelector<RootState, number>(getCurrentSpeed);
+    const animationStatus = useSelector<RootState, AnimationStatus>(
+        getAnimationStatus
+    );
+
+    const handleOnChange = (option: Key): void => {
+        if (typeof option !== "number") return;
         dispatch(changeSpeed(option));
         setIsHidden(true);
         if (animationStatus === "freezed") {
@@ -110,7 +118,7 @@ function PlaybackSpeed() {
         }
     };
 
-    const handleClick = () => {
+    const handleClick = (): void => {
         if (animationStatus === "playing") {
             dispatch(freezeAnimation());
         } else if (animationStatus === "freezed") {
@@ -121,19 +129,21 @@ function PlaybackSpeed() {
         });
     };
 
-    const displaySeconds = (ms) => {
+    const displaySeconds = (ms: number): string => {
         const sec = ms / 1000;
         const value = ms % 1000 === 0 ? sec : sec.toFixed(1);
         return value + "s";
     };
 
-    const display = useCallback((timeMs) => {
+    const display = useCallback((timeMs: number): string => {
         return timeMs >= 100 ? displaySeconds(timeMs) : timeMs + "ms";
     }, []);
 
-    const isUnstableSpeed = (timeMs) => timeMs === 1 || timeMs === 5;
+    const isUnstableSpeed = (timeMs: number): boolean =>
+        timeMs === 1 || timeMs === 5;
 
-    const renderOptions = (option) => {
+    const renderOptions = (option: Key): ReactNode => {
+        if (typeof option !== "number") return null;
         return (
             <Option>
                 <span>{display(option)}</span>
@@ -160,12 +170,7 @@ function PlaybackSpeed() {
             <SelectorContainer state={isHidden ? "hidden" : "visible"}>
                 {!isHidden && (
                     <Selector
-                        Wrapper={(props) => (
-                            <Wrapper
-                                {...props}
-                                state={isHidden ? "hidden" : "visible"}
-                            />
-                        )}
+                        Wrapper={(props) => <Wrapper {...props} />}
                         onChange={handleOnChange}
                         options={speeds}
                         render={renderOptions}

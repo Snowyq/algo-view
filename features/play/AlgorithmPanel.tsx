@@ -1,33 +1,48 @@
+import type { ComponentType } from "react";
+import { JSX } from "react";
 import styled from "styled-components";
+import type { AlgorithmRegistryItem } from "../../algorithms/types";
 import AlgorithmPanelShell from "./AlgorithmPanelShell";
 import SortAlgorithmPanel from "./SortAlgorithmPanel";
-
 const Container = styled.div`
-	display: flex;
-	height: 100%;
-	width: 100%;
-	justify-content: center;
-	align-items: center;
-	padding: 0;
-	margin: 0 auto;
+    display: flex;
+    height: 100%;
+    width: 100%;
+    justify-content: center;
+    align-items: center;
+    padding: 0;
+    margin: 0 auto;
 
-	padding: 1rem;
+    padding: 1rem;
 
-	/* max-width: 1200px; */
+    /* max-width: 1200px; */
 `;
 
-const WindowCategories = {
-	sort: SortAlgorithmPanel,
+type AlgorithmPanelProps = {
+    registry: AlgorithmRegistryItem;
+    category: string;
 };
 
-function AlgorithmPanel({ registry, category }) {
-	const Window = WindowCategories[category];
+type AlgorithmPanelComponent = ComponentType<{
+    registry: AlgorithmRegistryItem;
+}>;
 
-	return (
-		<AlgorithmPanelShell>
-			<Container>{Window && <Window registry={registry} />}</Container>
-		</AlgorithmPanelShell>
-	);
+const WindowCategories: Record<string, AlgorithmPanelComponent> = {
+    sort: SortAlgorithmPanel,
+};
+
+function AlgorithmPanel({
+    registry,
+    category,
+}: AlgorithmPanelProps): JSX.Element {
+    const Window: AlgorithmPanelComponent | undefined =
+        WindowCategories[category];
+
+    return (
+        <AlgorithmPanelShell>
+            <Container>{Window && <Window registry={registry} />}</Container>
+        </AlgorithmPanelShell>
+    );
 }
 
 export default AlgorithmPanel;

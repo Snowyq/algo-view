@@ -1,8 +1,15 @@
+import { JSX } from "react";
 import { useSelector } from "react-redux";
 import styled from "styled-components";
 import registryApi from "../../algorithms/algorithmsRegistryApi";
+import type {
+    AlgorithmMeta,
+    AlgorithmMetrics,
+    AlgorithmRegistryItem,
+} from "../../algorithms/types";
 import { PLAY_LAYOUT_BREAKPOINT } from "../../constants/breakpoints";
 import useWindowSize from "../../hooks/useWindowSize";
+import type { RootState } from "../../store";
 import AlgorithmPanel from "./AlgorithmPanel";
 import { getActiveAlgorithms, getActiveCategory } from "./playSlice";
 
@@ -53,12 +60,21 @@ const Grid = styled.div`
     }
 `;
 
-function AlgorithmGrid() {
-    const activeAlgorithms = useSelector(getActiveAlgorithms);
-    const activeCategory = useSelector(getActiveCategory);
+type ActiveAlgorithm = {
+    id: string;
+    info: AlgorithmMeta;
+    stepsLength: number;
+    metrics?: AlgorithmMetrics;
+};
+
+function AlgorithmGrid(): JSX.Element {
+    const activeAlgorithms = useSelector<RootState, ActiveAlgorithm[]>(
+        getActiveAlgorithms
+    );
+    const activeCategory = useSelector<RootState, string>(getActiveCategory);
     const { size } = useWindowSize();
     const breakpointValue = Number.parseInt(PLAY_LAYOUT_BREAKPOINT, 10);
-    const isMobile =
+    const isMobile: boolean =
         Number.isFinite(breakpointValue) && size.width < breakpointValue;
     const visibleAlgorithms = isMobile
         ? activeAlgorithms.slice(0, 3)
@@ -68,11 +84,12 @@ function AlgorithmGrid() {
     return (
         <StyledPlayViewArea>
             <Grid className={isTwoColumns ? "grid-two-columns" : ""}>
-                {visibleAlgorithms.map((algo) => {
-                    const registry = registryApi.getAlgorithmRegistry(
-                        activeCategory,
-                        algo.id
-                    );
+                {visibleAlgorithms.map((algo: ActiveAlgorithm) => {
+                    const registry: AlgorithmRegistryItem | undefined =
+                        registryApi.getAlgorithmRegistry(
+                            activeCategory,
+                            algo.id
+                        );
                     if (!registry) return <></>;
                     return (
                         <AlgorithmPanel

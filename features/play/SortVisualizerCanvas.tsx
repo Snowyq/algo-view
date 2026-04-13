@@ -1,11 +1,18 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 
 import styled from "styled-components";
 
+import { JSX } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import type { SortStepType } from "../../algorithms/sort/SortAlgorithm";
+import type {
+    AlgorithmMetrics,
+    AlgorithmRegistryItem,
+} from "../../algorithms/types";
 import { PLAY_LAYOUT_BREAKPOINT } from "../../constants/breakpoints";
 import useOnResize from "../../hooks/useOnResize";
 import useSortCanvas from "../../hooks/useSortCanvas";
+import type { AppDispatch, RootState } from "../../store";
 import Loader from "../../ui/Loader";
 import {
     decrementSortWorkerLoading,
@@ -52,37 +59,58 @@ const Placeholder = styled.div`
     z-index: 1;
 `;
 
+type SortVisualizerCanvasProps = {
+    registry: AlgorithmRegistryItem;
+    onMetricsUpdate?: (metrics: AlgorithmMetrics | null) => void;
+    onStepMetricsUpdate?: (metrics: AlgorithmMetrics | null) => void;
+};
+
+type AlgorithmOptions = {
+    stepTypes?: SortStepType[];
+};
+
+type RenderDonePayload = {
+    stepsLength?: number;
+    metrics?: AlgorithmMetrics;
+};
+
+type StepMetricsPayload = {
+    metrics?: AlgorithmMetrics;
+};
+
 function SortVisualizerCanvas({
     registry,
-    onMetricsUpdate = undefined,
-    onStepMetricsUpdate = undefined,
-}) {
+    onMetricsUpdate,
+    onStepMetricsUpdate,
+}: SortVisualizerCanvasProps): JSX.Element {
     // Contexts
 
-    const dispatch = useDispatch();
-    const stepTypes = useSelector(getDefaultStepTypes);
-    const input = useSelector(getInput);
-    const hasInput = Array.isArray(input) && input.length > 0;
+    const dispatch = useDispatch<AppDispatch>();
+    const stepTypes = useSelector<RootState, SortStepType[]>(
+        getDefaultStepTypes
+    );
+    const input = useSelector<RootState, number[]>(getInput);
+    const hasInput: boolean = Array.isArray(input) && input.length > 0;
 
     // Refs
 
-    const canvasRef = useRef();
-    const sizerRef = useRef();
+    const canvasRef = useRef<HTMLCanvasElement | null>(null);
+    const sizerRef = useRef<HTMLDivElement | null>(null);
 
     // States
 
-    const [isLoading, setIsLoading] = useState(true);
-    const pendingLoadsRef = useRef(0);
+    const [isLoading, setIsLoading] = useState<boolean>(true);
+    const pendingLoadsRef = useRef<number>(0);
     // Canvas API
 
-    const algoOptions = useMemo(() => {
+    const algoOptions = useMemo<AlgorithmOptions>(() => {
         return { stepTypes };
     }, [stepTypes]);
 
     const canvasApi = useSortCanvas(canvasRef, registry.id);
     const { worker, changeSize, renderAlgorithm, onStatusType } = canvasApi;
 
-    const onResize = (ref) => {
+    const onResize = (ref: RefObject<HTMLDivElement | null>): void => {
         if (!ref.current) return;
         const rect = ref.current.getBoundingClientRect();
         changeSize(rect);
@@ -90,11 +118,11 @@ function SortVisualizerCanvas({
 
     useOnResize(onResize, sizerRef);
 
-    useEffect(() => {
+    useEffect((): void => {
         dispatch(setSortWorkerReady(Boolean(worker)));
     }, [dispatch, worker]);
 
-    useEffect(() => {
+    useEffect((): void => {
         if (!hasInput) return;
         if (!worker) return;
         if (!sizerRef.current) return;
@@ -115,7 +143,7 @@ function SortVisualizerCanvas({
         onStepMetricsUpdate,
     ]);
 
-    useEffect(() => {
+    useEffect((): void => {
         onStatusType("mounted", () => {
             dispatch(setSortWorkerReady(true));
         });
@@ -127,7 +155,8 @@ function SortVisualizerCanvas({
         });
         onStatusType("render-done", (payload) => {
             console.log("rendered");
-            const { stepsLength, metrics } = payload || {};
+            const { stepsLength, metrics } = (payload ||
+                {}) as RenderDonePayload;
             if (typeof stepsLength === "number") {
                 dispatch(
                     passAlgorithmInfo({
@@ -148,8 +177,9 @@ function SortVisualizerCanvas({
         });
         onStatusType("step-metrics", (payload) => {
             if (!payload) return;
+            const { metrics } = payload as StepMetricsPayload;
             if (typeof onStepMetricsUpdate === "function") {
-                onStepMetricsUpdate(payload.metrics || null);
+                onStepMetricsUpdate(metrics || null);
             }
         });
     }, [
@@ -160,7 +190,7 @@ function SortVisualizerCanvas({
         onStepMetricsUpdate,
     ]);
 
-    useEffect(() => {
+    useEffect((): void | (() => void) => {
         return () => {
             if (pendingLoadsRef.current > 0) {
                 const pending = pendingLoadsRef.current;

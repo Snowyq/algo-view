@@ -1,5 +1,6 @@
+import type { ReactNode } from "react";
+import { JSX } from "react";
 import styled from "styled-components";
-
 const StyledBackgroundPattern = styled.div`
     background-color: yellow;
     position: relative;
@@ -27,7 +28,11 @@ const StyledBackgroundPattern = styled.div`
 
 const ChildContainer = styled.div``;
 
-function BackgroundPattern({ children }) {
+type BackgroundPatternProps = {
+    children?: ReactNode;
+};
+
+function BackgroundPattern({ children }: BackgroundPatternProps): JSX.Element {
     return (
         <StyledBackgroundPattern>
             <ChildContainer>{children}</ChildContainer>

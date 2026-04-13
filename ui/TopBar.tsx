@@ -1,8 +1,8 @@
+import { JSX } from "react";
 import { styled } from "styled-components";
 import { NAV_BREAKPOINT } from "../constants/breakpoints";
 import Logo from "./Logo";
 import MainNav from "./MainNav";
-
 const StyledTopBar = styled.div`
     background-color: var(--color-grey-200);
     display: flex;
@@ -24,7 +24,7 @@ const Container = styled.div`
     align-items: center;
 `;
 
-function TopBar() {
+function TopBar(): JSX.Element {
     return (
         <StyledTopBar>
             <Container>

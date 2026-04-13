@@ -1,7 +1,11 @@
+import { JSX } from "react";
 import { IoIosArrowBack, IoIosArrowForward } from "react-icons/io";
 import { useSelector } from "react-redux";
 import styled from "styled-components";
+import type { AlgorithmRegistryItem } from "../../algorithms/types";
+import type { RootState } from "../../store";
 import PlaybackTimeline from "./PlaybackTimeline";
+import type { ActiveAlgorithm } from "./playSlice";
 import { getActiveAlgorithms } from "./playSlice";
 
 const Controls = styled.div`
@@ -16,11 +20,21 @@ const ControlsButtons = styled.div`
     gap: 0.2rem;
 `;
 
-function PlayWindowControls({ registry }) {
-    const activeAlgorithms = useSelector(getActiveAlgorithms);
-    const algorithm = activeAlgorithms.find((algo) => algo.id === registry.id);
+type PlayWindowControlsProps = {
+    registry: AlgorithmRegistryItem;
+};
 
-    if (!algorithm || !algorithm.stepsLength) return <></>;
+function PlayWindowControls({
+    registry,
+}: PlayWindowControlsProps): JSX.Element | null {
+    const activeAlgorithms = useSelector<RootState, ActiveAlgorithm[]>(
+        getActiveAlgorithms
+    );
+    const algorithm: ActiveAlgorithm | undefined = activeAlgorithms.find(
+        (algo) => algo.id === registry.id
+    );
+
+    if (!algorithm || !algorithm.stepsLength) return null;
     const maxStep = algorithm.stepsLength - 1;
 
     return (

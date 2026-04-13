@@ -1,11 +1,41 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, type RefObject } from "react";
 import { sortStepTypes } from "../algorithms/sort/SortAlgorithm";
 import { SharedBufferAPI } from "../utils/sharedBufferAPI";
 import useWorker from "./useWorker";
 
-function useSortCanvas(canvasRef, id) {
+type SortCanvasSettings = {
+    blockProportion?: number;
+    upperBlockMargin?: number;
+    textDisplayThreshold?: number;
+};
+
+type SortCanvasRect = Pick<DOMRectReadOnly, "width" | "height">;
+
+type SortCanvasRenderOptions = {
+    stepTypes?: typeof sortStepTypes;
+};
+
+type StepColors = Record<string, string>;
+
+type SortCanvasApi = {
+    worker: Worker | null;
+    renderAlgorithm: (
+        input: number[],
+        options: SortCanvasRenderOptions,
+        rect: SortCanvasRect
+    ) => void;
+    changeSettings: (settings: SortCanvasSettings) => void;
+    changeSize: (parentRect: SortCanvasRect) => void;
+    changeColors: (colors: StepColors) => void;
+    onStatusType: (type: string, cb?: (payload: unknown) => void) => void;
+};
+
+function useSortCanvas(
+    canvasRef: RefObject<HTMLCanvasElement | null>,
+    id: string
+): SortCanvasApi {
     const { worker, onMessageType } = useWorker("sortCanvasWorker.ts");
-    const offscreenRef = useRef(null);
+    const offscreenRef = useRef<OffscreenCanvas | null>(null);
 
     useEffect(() => {
         if (!worker) return;
@@ -36,7 +66,7 @@ function useSortCanvas(canvasRef, id) {
     // Callbacks
 
     const changeSettings = useCallback(
-        (settings) => {
+        (settings: SortCanvasSettings) => {
             if (!worker) return;
             const devicePixelRatio = getDevicePixelRatio();
             worker.postMessage({
@@ -48,7 +78,7 @@ function useSortCanvas(canvasRef, id) {
     );
 
     const changeSize = useCallback(
-        (parentRect) => {
+        (parentRect: SortCanvasRect) => {
             if (!worker) return;
             const devicePixelRatio = getDevicePixelRatio();
             const { width, height } = parentRect;
@@ -61,7 +91,7 @@ function useSortCanvas(canvasRef, id) {
     );
 
     const changeColors = useCallback(
-        (colors) => {
+        (colors: StepColors) => {
             if (!worker) return;
             worker.postMessage({
                 type: "load-step-colors",
@@ -72,7 +102,11 @@ function useSortCanvas(canvasRef, id) {
     );
 
     const renderAlgorithm = useCallback(
-        (input, options, rect) => {
+        (
+            input: number[],
+            options: SortCanvasRenderOptions,
+            rect: SortCanvasRect
+        ): void => {
             if (!worker) return;
 
             const devicePixelRatio = getDevicePixelRatio();
@@ -96,21 +130,20 @@ function useSortCanvas(canvasRef, id) {
 
 // Utils
 
-function getDevicePixelRatio() {
+function getDevicePixelRatio(): number {
     const dpr = window.devicePixelRatio;
     return dpr || 1;
 }
 
-function getCssVar(name) {
+function getCssVar(name: string): string {
     return getComputedStyle(document.documentElement)
         .getPropertyValue(name)
         .trim();
 }
 
-function getStepColors() {
-    const stepColors = {};
-    for (const key in sortStepTypes) {
-        const type = sortStepTypes[key];
+function getStepColors(): StepColors {
+    const stepColors: StepColors = {};
+    for (const type of sortStepTypes) {
         stepColors[type] = getCssVar(`--color-step-${type}`);
     }
     return stepColors;

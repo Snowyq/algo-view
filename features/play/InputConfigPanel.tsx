@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import type { ChangeEvent, InputHTMLAttributes } from "react";
+import { JSX, useEffect, useRef, useState } from "react";
 import { BsExclamationTriangle } from "react-icons/bs";
 import { useDispatch, useSelector } from "react-redux";
 import styled from "styled-components";
@@ -13,16 +14,17 @@ import {
     SORT_MAX_INPUT_LENGTH,
     SORT_MIN_INPUT_LENGTH,
 } from "../../constants/sort";
+import type { AppDispatch, RootState } from "../../store";
 import Button from "../../ui/Button";
 import DefaultSlider from "../../ui/DefaultSlider";
 import Input from "../../ui/Input";
+import type { ActiveAlgorithm } from "./playSlice";
 import {
     changeInput,
     getActiveAlgorithms,
     getSortWorkerLoading,
     getStepWorkerReady,
 } from "./playSlice";
-
 const Container = styled.div`
     display: flex;
     flex-direction: column;
@@ -82,45 +84,55 @@ const WarningRow = styled.span`
     line-height: 1.1;
 `;
 
-const numericInputProps = {
+const numericInputProps: InputHTMLAttributes<HTMLInputElement> = {
     type: "text",
     inputMode: "numeric",
     pattern: "[0-9]*",
 };
 
-function InputConfigPanel() {
-    const dispatch = useDispatch();
-    const activeAlgorithms = useSelector(getActiveAlgorithms);
-    const stepWorkerReady = useSelector(getStepWorkerReady);
-    const sortWorkerLoading = useSelector(getSortWorkerLoading);
-    const needsSortWorker = activeAlgorithms.length > 0;
-    const isBlockedRaw =
+type NumericState = number | "";
+
+function InputConfigPanel(): JSX.Element {
+    const dispatch = useDispatch<AppDispatch>();
+    const activeAlgorithms = useSelector<RootState, ActiveAlgorithm[]>(
+        getActiveAlgorithms
+    );
+    const stepWorkerReady = useSelector<RootState, boolean>(getStepWorkerReady);
+    const sortWorkerLoading = useSelector<RootState, boolean>(
+        getSortWorkerLoading
+    );
+    const needsSortWorker: boolean = activeAlgorithms.length > 0;
+    const isBlockedRaw: boolean =
         !stepWorkerReady || (needsSortWorker && sortWorkerLoading);
-    const [isBlockedDelayed, setIsBlockedDelayed] = useState(isBlockedRaw);
+    const [isBlockedDelayed, setIsBlockedDelayed] =
+        useState<boolean>(isBlockedRaw);
     const unblockTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
         null
     );
-    const isBlocked = isBlockedRaw || isBlockedDelayed;
-    const [allowLargeInput, setAllowLargeInput] = useState(false);
-    const [length, setLength] = useState<number | "">(
+    const isBlocked: boolean = isBlockedRaw || isBlockedDelayed;
+    const [allowLargeInput, setAllowLargeInput] = useState<boolean>(false);
+    const [length, setLength] = useState<NumericState>(
         DEFAULT_SORT_INPUT_LENGTH
     );
-    const [minValue, setMinValue] = useState<number | "">(
+    const [minValue, setMinValue] = useState<NumericState>(
         DEFAULT_SORT_INPUT_VALUE_RANGE[0]
     );
-    const [maxValue, setMaxValue] = useState<number | "">(
+    const [maxValue, setMaxValue] = useState<NumericState>(
         DEFAULT_SORT_INPUT_VALUE_RANGE[1]
     );
-    const maxInputLength = allowLargeInput
+    const maxInputLength: number = allowLargeInput
         ? SORT_MAX_INPUT_LENGTH
         : SORT_DEFAULT_MAX_INPUT_LENGTH;
-    const lengthValue =
+    const lengthValue: number =
         typeof length === "number" && Number.isFinite(length)
             ? Math.max(SORT_MIN_INPUT_LENGTH, Math.min(maxInputLength, length))
             : DEFAULT_SORT_INPUT_LENGTH;
-    const clampNumber = (value, min, max) =>
+    const clampNumber = (value: number, min: number, max: number): number =>
         Math.max(min, Math.min(max, value));
-    const normalizeRangeValue = (value, fallback) => {
+    const normalizeRangeValue = (
+        value: NumericState,
+        fallback: number
+    ): number => {
         if (typeof value !== "number" || !Number.isFinite(value)) {
             return fallback;
         }
@@ -138,13 +150,17 @@ function InputConfigPanel() {
         }
 
         if (isBlockedRaw) {
-            setIsBlockedDelayed(true);
-            return;
+            const immediateId = setTimeout(() => {
+                setIsBlockedDelayed(true);
+            }, 0);
+            return () => clearTimeout(immediateId);
         }
 
         if (SORT_INPUT_BLOCK_DELAY_MS <= 0) {
-            setIsBlockedDelayed(false);
-            return;
+            const immediateId = setTimeout(() => {
+                setIsBlockedDelayed(false);
+            }, 0);
+            return () => clearTimeout(immediateId);
         }
 
         unblockTimeoutRef.current = setTimeout(() => {
@@ -160,20 +176,11 @@ function InputConfigPanel() {
         };
     }, [isBlockedRaw]);
 
-    useEffect(() => {
-        if (typeof length !== "number" || !Number.isFinite(length)) {
-            return;
-        }
-        if (length > maxInputLength) {
-            setLength(maxInputLength);
-        }
-    }, [length, maxInputLength]);
-
-    const handleLengthChangeBySlider = (val) => {
+    const handleLengthChangeBySlider = (val: number): void => {
         setLengthClamped(val);
     };
 
-    const setLengthClamped = (val) => {
+    const setLengthClamped = (val: number | string): void => {
         const numeric = Number(val);
         if (!Number.isFinite(numeric)) {
             setLength("");
@@ -187,7 +194,7 @@ function InputConfigPanel() {
         setLength(next);
     };
 
-    const handleMinValueChange = (e) => {
+    const handleMinValueChange = (e: ChangeEvent<HTMLInputElement>): void => {
         const raw = e.target.value;
         if (raw === "") {
             setMinValue("");
@@ -201,7 +208,7 @@ function InputConfigPanel() {
         setMinValue(value);
     };
 
-    const handleMaxValueChange = (e) => {
+    const handleMaxValueChange = (e: ChangeEvent<HTMLInputElement>): void => {
         const raw = e.target.value;
         if (raw === "") {
             setMaxValue("");
@@ -215,7 +222,7 @@ function InputConfigPanel() {
         setMaxValue(value);
     };
 
-    const handleLengthBlur = () => {
+    const handleLengthBlur = (): void => {
         if (typeof length !== "number" || !Number.isFinite(length)) {
             setLength(DEFAULT_SORT_INPUT_LENGTH);
             return;
@@ -223,7 +230,7 @@ function InputConfigPanel() {
         setLength(clampNumber(length, SORT_MIN_INPUT_LENGTH, maxInputLength));
     };
 
-    const handleMinValueBlur = () => {
+    const handleMinValueBlur = (): void => {
         const nextMin = normalizeRangeValue(
             minValue,
             DEFAULT_SORT_INPUT_VALUE_RANGE[0]
@@ -238,7 +245,7 @@ function InputConfigPanel() {
         }
     };
 
-    const handleMaxValueBlur = () => {
+    const handleMaxValueBlur = (): void => {
         const nextMax = normalizeRangeValue(
             maxValue,
             DEFAULT_SORT_INPUT_VALUE_RANGE[1]
@@ -253,7 +260,9 @@ function InputConfigPanel() {
         }
     };
 
-    const handleInputLengthChange = (e) => {
+    const handleInputLengthChange = (
+        e: ChangeEvent<HTMLInputElement>
+    ): void => {
         const raw = e.target.value;
         if (raw === "") {
             setLength("");
@@ -264,10 +273,14 @@ function InputConfigPanel() {
             setLength("");
             return;
         }
+        if (value > maxInputLength) {
+            setLength(maxInputLength);
+            return;
+        }
         setLength(value);
     };
 
-    const handleChangeInput = (e) => {
+    const handleChangeInput = (): void => {
         if (isBlocked) return;
         const safeLength =
             typeof length === "number" && Number.isFinite(length)
@@ -295,6 +308,22 @@ function InputConfigPanel() {
         );
     };
 
+    const handleAllowLargeInputChange = (
+        event: ChangeEvent<HTMLInputElement>
+    ): void => {
+        const nextAllowLargeInput = event.target.checked;
+        setAllowLargeInput(nextAllowLargeInput);
+        const nextMaxInputLength = nextAllowLargeInput
+            ? SORT_MAX_INPUT_LENGTH
+            : SORT_DEFAULT_MAX_INPUT_LENGTH;
+        setLength((prev) => {
+            if (typeof prev !== "number" || !Number.isFinite(prev)) {
+                return prev;
+            }
+            return Math.min(prev, nextMaxInputLength);
+        });
+    };
+
     return (
         <Container>
             <Item>
@@ -317,9 +346,7 @@ function InputConfigPanel() {
                     <ToggleInput
                         type="checkbox"
                         checked={allowLargeInput}
-                        onChange={(event) =>
-                            setAllowLargeInput(event.target.checked)
-                        }
+                        onChange={handleAllowLargeInputChange}
                     />
                     <ToggleLabel>
                         <span>Allow large arrays</span>
@@ -368,7 +395,9 @@ const InputContainer = styled.div`
     width: 10rem;
 `;
 
-function PlaySidebarInput({ ...props }) {
+function PlaySidebarInput(
+    props: InputHTMLAttributes<HTMLInputElement>
+): JSX.Element {
     return (
         <InputContainer>
             <Input {...props} />

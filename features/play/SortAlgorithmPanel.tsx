@@ -1,7 +1,12 @@
-import { useEffect, useState } from "react";
+import { JSX, useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import styled from "styled-components";
+import type {
+    AlgorithmMetrics,
+    AlgorithmRegistryItem,
+} from "../../algorithms/types";
 import { PLAY_LAYOUT_BREAKPOINT } from "../../constants/breakpoints";
+import type { RootState } from "../../store";
 import AnimatedText from "../../ui/AnimatedText";
 import { getAllMetricsVisible, getInput } from "./playSlice";
 import SortVisualizerCanvas from "./SortVisualizerCanvas";
@@ -51,16 +56,28 @@ const MetricsOverlay = styled.div`
     z-index: 2;
 `;
 
-function SortAlgorithmPanel({ registry }) {
-    const [showMetrics, setShowMetrics] = useState(false);
-    const [baseMetrics, setBaseMetrics] = useState(null);
-    const [stepMetrics, setStepMetrics] = useState(null);
+type SortAlgorithmPanelProps = {
+    registry: AlgorithmRegistryItem;
+};
 
-    const allMetricsVisible = useSelector(getAllMetricsVisible);
-    const input = useSelector(getInput);
+function SortAlgorithmPanel({
+    registry,
+}: SortAlgorithmPanelProps): JSX.Element {
+    const [showMetrics, setShowMetrics] = useState<boolean>(false);
+    const [baseMetrics, setBaseMetrics] = useState<AlgorithmMetrics | null>(
+        null
+    );
+    const [stepMetrics, setStepMetrics] = useState<AlgorithmMetrics | null>(
+        null
+    );
+
+    const allMetricsVisible = useSelector<RootState, boolean>(
+        getAllMetricsVisible
+    );
+    const input = useSelector<RootState, number[]>(getInput);
     const hasInput = Array.isArray(input) && input.length > 0;
 
-    useEffect(() => {
+    useEffect((): void => {
         setShowMetrics(allMetricsVisible);
     }, [allMetricsVisible]);
 

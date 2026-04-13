@@ -1,7 +1,9 @@
 import styled from "styled-components";
 import { PLAY_LAYOUT_BREAKPOINT } from "../../constants/breakpoints";
-
-const AlgorithmPanelShell = styled.div`
+const AlgorithmPanelShell = styled.div<{
+    $boxShadowColor?: string;
+    $backgroundColor?: string;
+}>`
     --box-shadow-color: ${({ $boxShadowColor }) =>
         $boxShadowColor || "var(--color-grey-300)"};
     --background-color: ${({ $backgroundColor }) =>

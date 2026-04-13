@@ -1,15 +1,18 @@
 "use client";
-
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BsLayoutSidebarReverse } from "react-icons/bs";
+import { JSX } from "react";
+import { BsLayoutSidebarReverse, BsX } from "react-icons/bs";
 import { useDispatch, useSelector } from "react-redux";
 import { css, styled } from "styled-components";
 import { NAV_BREAKPOINT } from "../constants/breakpoints";
 import { getSidebarOpen, toggleSidebar } from "../features/play/playSlice";
+import type { AppDispatch, RootState } from "../store";
 import ButtonIcon from "./ButtonIcon";
 
-const types = {
+type NavLinkStyle = "default" | "cta";
+
+const types: Record<NavLinkStyle, ReturnType<typeof css>> = {
     default: css`
         &:hover {
             color: var(--color-grey-800);
@@ -59,7 +62,7 @@ const types = {
     `,
 };
 
-const StyledNavLink = styled(Link)`
+const StyledNavLink = styled(Link)<{ $styleType?: NavLinkStyle }>`
     &:link,
     &:visited {
         position: relative;
@@ -68,7 +71,7 @@ const StyledNavLink = styled(Link)`
         border-radius: 3rem;
     }
 
-    ${({ $styleType }) => types[$styleType] || types["default"]};
+    ${({ $styleType }) => types[$styleType || "default"]};
 `;
 
 const MobileLink = styled(StyledNavLink)`
@@ -105,17 +108,17 @@ const Nav = styled.nav`
     }
 `;
 
-function MainNav() {
-    const pathname = usePathname();
-    const dispatch = useDispatch();
-    const isSidebarOpen = useSelector(getSidebarOpen);
-    const isActive = (href: string) => {
+function MainNav(): JSX.Element {
+    const pathname: string = usePathname();
+    const dispatch = useDispatch<AppDispatch>();
+    const isSidebarOpen = useSelector<RootState, boolean>(getSidebarOpen);
+    const isActive = (href: string): boolean => {
         if (href === "/") return pathname === "/";
         return pathname.startsWith(href);
     };
-    const isPlayRoute = pathname?.startsWith("/play");
+    const isPlayRoute: boolean = pathname.startsWith("/play");
 
-    const handleToggleSidebar = () => {
+    const handleToggleSidebar = (): void => {
         dispatch(toggleSidebar());
     };
 
@@ -136,7 +139,11 @@ function MainNav() {
                             }
                             onClick={handleToggleSidebar}
                         >
-                            <BsLayoutSidebarReverse />
+                            {isSidebarOpen ? (
+                                <BsX />
+                            ) : (
+                                <BsLayoutSidebarReverse />
+                            )}
                         </ButtonIcon>
                     </>
                 ) : (

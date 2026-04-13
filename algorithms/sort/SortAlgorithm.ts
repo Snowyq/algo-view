@@ -1,9 +1,82 @@
 import { clamp } from "../../utils/values";
-import { Algorithm } from "../Algorithm";
+import { Algorithm, type CompareOperator } from "../Algorithm";
 import { CacheManager } from "../CacheManager";
 import type { AlgorithmInstructions } from "../types";
 
-export const sortStepTypes = [
+export type SortStepType =
+    | "initial"
+    | "check"
+    | "check-true"
+    | "check-false"
+    | "check-value"
+    | "check-value-true"
+    | "check-value-false"
+    | "swap"
+    | "copy"
+    | "copy-from"
+    | "copy-to"
+    | "select"
+    | "finish"
+    | "assign";
+
+type SortMetric = { count: number; name: string };
+type SortMetrics = Record<string, SortMetric>;
+type SortMetricItem = { id: string; name: string };
+
+type SortSelection = { id?: string; index: number };
+
+type SortStepBase = {
+    type: SortStepType;
+    activeItems: number[];
+    instructionId?: string[];
+    operationId?: number;
+    prevOperationId?: number;
+    operator?: CompareOperator;
+    payload?: number;
+};
+
+type SortStep = SortStepBase & {
+    metrics?: SortMetrics;
+    selected?: SortSelection[];
+};
+
+type SortStepInput = SortStepBase;
+
+type SortOperation = {
+    type: "swap" | "assign" | "copy" | string;
+    elements: number[];
+    payload?: number;
+};
+
+type SortOptions = {
+    stepTypes?: SortStepType[];
+} & Record<string, unknown>;
+
+type SortStepTypesConfig = {
+    enabled: SortStepType[];
+    available: SortStepType[];
+};
+
+type SortSelectOptions = {
+    mode?: "perm";
+    id?: string;
+    instructionId?: string[];
+};
+
+type SortSelectManyItem = {
+    index: number;
+    options?: SortSelectOptions;
+};
+
+type SortUseData = {
+    steps: SortStep[];
+    operations: SortOperation[];
+    array: number[];
+    minValue: number;
+    maxValue: number;
+};
+
+export const sortStepTypes: SortStepType[] = [
     "initial",
     "check",
     "check-true",
@@ -24,37 +97,37 @@ export const sortStepTypes = [
 
 export class SortAlgorithm extends Algorithm {
     // support instances
-    cacheManager;
+    cacheManager!: CacheManager<number[], SortOperation>;
     //
 
     // state
-    array = []; //					input
-    steps = []; // 					algorithm steps
-    operations = []; //				operations (mutates array)
-    selected = []; //				select item between steps - managed by select
+    array: number[] = []; //					input
+    steps: SortStep[] = []; // 					algorithm steps
+    operations: SortOperation[] = []; //				operations (mutates array)
+    selected: SortSelection[] = []; //				select item between steps - managed by select
     //								options params
-    direction;
-    minValue = NaN;
-    maxValue = NaN;
+    direction: "asc" | "desc" | undefined = undefined;
+    minValue: number = Number.NaN;
+    maxValue: number = Number.NaN;
 
     // config
-    options = {
+    options: SortOptions = {
         stepTypes: undefined,
     };
-    stepTypes = {
+    stepTypes: SortStepTypesConfig = {
         enabled: [],
         available: [],
     };
     //
 
     // metrics
-    shouldCountSubArrays = false;
-    shouldCountArrayAccess = false;
-    metrics = {};
-    metricsItemList = [];
+    shouldCountSubArrays: boolean = false;
+    shouldCountArrayAccess: boolean = false;
+    metrics: SortMetrics = {};
+    metricsItemList: SortMetricItem[] = [];
     //
 
-    constructor(array, options) {
+    constructor(array: number[], options: SortOptions = {}) {
         super();
         this.array = array;
         this.options = options;
@@ -67,7 +140,7 @@ export class SortAlgorithm extends Algorithm {
      * set enabled step types (if not provided - all enabled)
      * create sort steps only by selected step types
      */
-    init() {
+    init(): void {
         this.mountCache();
         this.applyOptions();
         this.prepareArray();
@@ -78,7 +151,7 @@ export class SortAlgorithm extends Algorithm {
      * reset
      * algorithm states are reset
      */
-    reset(options?) {
+    reset(options?: SortOptions): void {
         this.selected = [];
         this.operations = [];
         this.steps = [];
@@ -87,26 +160,28 @@ export class SortAlgorithm extends Algorithm {
         }
     }
 
-    update(array, options) {
+    update(array: number[], options?: SortOptions): void {
         this.array = array;
         this.reset(options);
         this.init();
     }
 
-    prepareArray() {
+    prepareArray(): void {
         this.#calcArrayMinMax();
     }
 
-    applyOptions() {
+    applyOptions(): void {
         const { stepTypes } = this.options;
         this.setEnabledStepTypes(stepTypes);
     }
 
-    mountCache() {
-        this.cacheManager = new CacheManager(this.cache);
+    mountCache(): void {
+        this.cacheManager = new CacheManager<number[], SortOperation>(
+            this.cache
+        );
     }
 
-    use() {
+    use(): SortUseData {
         return {
             steps: this.getSteps(),
             operations: this.getOperations(),
@@ -116,13 +191,13 @@ export class SortAlgorithm extends Algorithm {
         };
     }
 
-    data() {
+    data(): SortUseData {
         return this.use();
     }
 
     // Steps creation
 
-    createSteps() {
+    createSteps(): void {
         const dir = this.direction;
         const arr = this.getArray();
 
@@ -148,7 +223,7 @@ export class SortAlgorithm extends Algorithm {
             );
     }
 
-    createStep(step) {
+    createStep(step: SortStepInput): void {
         this.addStepTypeToAvailableTypes(step.type);
         if (!this.isStepTypeEnabled(step.type)) return;
         this.assignPrevOperationIdToStep(step);
@@ -163,8 +238,8 @@ export class SortAlgorithm extends Algorithm {
         });
     }
 
-    createStepMetrics() {
-        const metrics = {};
+    createStepMetrics(): SortMetrics {
+        const metrics: SortMetrics = {};
         for (const key in this.metrics) {
             metrics[key] = {
                 count: this.metrics[key].count,
@@ -177,7 +252,10 @@ export class SortAlgorithm extends Algorithm {
 
     // Handling step types
 
-    setEnabledStepTypes(types, shouldReset = false) {
+    setEnabledStepTypes(
+        types?: SortStepType[],
+        shouldReset: boolean = false
+    ): void {
         if (Array.isArray(types)) {
             this.stepTypes.enabled = types.slice();
         } else {
@@ -189,18 +267,18 @@ export class SortAlgorithm extends Algorithm {
         }
     }
 
-    addStepTypeToAvailableTypes(type) {
+    addStepTypeToAvailableTypes(type: SortStepType): void {
         if (!this.stepTypes.available.includes(type)) {
             this.stepTypes.available.push(type);
         }
     }
 
-    isStepTypeEnabled(type) {
+    isStepTypeEnabled(type: SortStepType): boolean {
         return this.stepTypes.enabled.includes(type);
     }
 
-    assignPrevOperationIdToStep(step) {
-        if (!("operationId" in step)) {
+    assignPrevOperationIdToStep(step: SortStepInput): void {
+        if (typeof step.operationId !== "number") {
             if (this.operations.length > 0) {
                 step.prevOperationId = this.operations.length - 1;
             }
@@ -209,19 +287,25 @@ export class SortAlgorithm extends Algorithm {
 
     // Operations
 
-    createOperation(type, elements, payload?) {
+    createOperation(
+        type: SortOperation["type"],
+        elements: number[],
+        payload?: number
+    ): number {
         this.operations.push({ type, elements, payload });
         return this.operations.length - 1;
     }
 
-    makeOperation(operation, state) {
+    makeOperation(operation: SortOperation, state: number[]): void {
         if (operation.type === "swap") {
             const [index1, index2] = operation.elements;
             [state[index1], state[index2]] = [state[index2], state[index1]];
         }
         if (operation.type === "assign") {
             const [targetIndex] = operation.elements;
-            state[targetIndex] = operation.payload;
+            if (typeof operation.payload === "number") {
+                state[targetIndex] = operation.payload;
+            }
         }
 
         if (operation.type === "copy") {
@@ -232,54 +316,60 @@ export class SortAlgorithm extends Algorithm {
 
     // Metrics
 
-    countArrayAccess(count = 1) {
+    countArrayAccess(count: number = 1): void {
         this.count("arrayAccess", "Reads", count);
     }
 
-    countSubArrays(count = 1) {
+    countSubArrays(count: number = 1): void {
+        void count;
         // this.count("subArrays", "SubArrays", count);
     }
 
-    countConditionChecks(count = 1) {
+    countConditionChecks(count: number = 1): void {
         this.count("conditionChecks", "Checks", count);
     }
 
-    countRecursiveCalls(count = 1) {
+    countRecursiveCalls(count: number = 1): void {
         this.count("recursiveCalls", "Recursions", count);
     }
 
-    count(id, name, count = 1) {
+    count(id: string, name?: string, count: number = 1): void {
         if (!(id in this.metrics)) {
-            this.metrics[id] = { count, name: name ? name : id };
-            this.metricsItemList.push({ id, name });
+            const resolvedName = name ?? id;
+            this.metrics[id] = { count, name: resolvedName };
+            this.metricsItemList.push({ id, name: resolvedName });
         } else {
             this.metrics[id].count = this.metrics[id].count + count;
         }
     }
 
-    getMetrics() {
+    getMetrics(): SortMetrics {
         return this.metrics;
     }
 
-    getMetricsItems() {
+    getMetricsItems(): SortMetricItem[] {
         return this.metricsItemList;
     }
 
     // Querying algorithm states
 
-    getSteps() {
+    getSteps(): SortStep[] {
         return this.steps.slice();
     }
 
-    getArrayLength() {
+    getOperations(): SortOperation[] {
+        return this.operations.slice();
+    }
+
+    getArrayLength(): number {
         return this.array.length;
     }
 
-    getArray() {
+    getArray(): number[] {
         return this.array.slice();
     }
 
-    getArrayMinMax() {
+    getArrayMinMax(): { min: number; max: number } {
         if (isNaN(this.minValue) || isNaN(this.maxValue)) {
             this.#calcArrayMinMax();
         }
@@ -288,10 +378,10 @@ export class SortAlgorithm extends Algorithm {
 
     // Query by
 
-    getStateByOperationId(operationId) {
+    getStateByOperationId(operationId?: number): number[] {
         let state = this.getArray();
         let stateId = 0;
-        if (isNaN(operationId)) return state;
+        if (typeof operationId !== "number" || isNaN(operationId)) return state;
         const operations = this.getOperations();
 
         // Restore state by prev operationId and calculate state from that
@@ -320,30 +410,33 @@ export class SortAlgorithm extends Algorithm {
         return state;
     }
 
-    getStateByStepsIndex(stepIndex) {
+    getStateByStepsIndex(stepIndex: number): number[] {
         const operationId = this.getOperationIdByStepIndex(stepIndex);
         const state = this.getStateByOperationId(operationId);
         return state;
     }
 
-    getOperationIdByStepIndex(index) {
+    getOperationIdByStepIndex(index: number): number | undefined {
         const steps = this.getSteps();
         if (!steps || steps.length === 0) return;
         const stepIndex = clamp(index, 0, steps.length - 1);
 
-        if (steps[stepIndex].prevOperationId) {
+        if (typeof steps[stepIndex].prevOperationId === "number") {
             return steps[stepIndex].prevOperationId;
         }
 
         for (let i = stepIndex; i > 0; i--) {
             const step = steps[i];
-            if (!isNaN(step.operationId)) {
+            if (
+                typeof step.operationId === "number" &&
+                !Number.isNaN(step.operationId)
+            ) {
                 return step.operationId;
             }
         }
     }
 
-    getStepByIndex(index) {
+    getStepByIndex(index: number): SortStep | undefined {
         const steps = this.getSteps();
         const stepIndex = clamp(index, 0, steps.length - 1);
         const step = steps[stepIndex];
@@ -352,7 +445,7 @@ export class SortAlgorithm extends Algorithm {
 
     // Utils
 
-    #calcArrayMinMax() {
+    #calcArrayMinMax(): void {
         const arr = this.getArray();
         this.minValue = Math.min(...arr);
         this.maxValue = Math.max(...arr);
@@ -360,7 +453,9 @@ export class SortAlgorithm extends Algorithm {
 
     // To implement in child instance
 
-    sort(..._args: unknown[]) {}
+    sort(...args: unknown[]): void {
+        void args;
+    }
     static getInstructions(): AlgorithmInstructions | undefined {
         return undefined;
     }
@@ -369,7 +464,12 @@ export class SortAlgorithm extends Algorithm {
 
     // assign
 
-    assign(targetIndex, item, arr, options?) {
+    assign(
+        targetIndex: number,
+        item: number,
+        arr: number[],
+        options?: SortSelectOptions
+    ): void {
         // operation details
         const type = "assign";
         const instructionId = options?.instructionId;
@@ -393,7 +493,12 @@ export class SortAlgorithm extends Algorithm {
 
     // copy
 
-    copy(targetIndex, copiedIndex, arr, options?) {
+    copy(
+        targetIndex: number,
+        copiedIndex: number,
+        arr: number[],
+        options?: SortSelectOptions
+    ): void {
         // operation details
         const type = "copy";
         const instructionId = options?.instructionId;
@@ -422,7 +527,12 @@ export class SortAlgorithm extends Algorithm {
 
     // swap
 
-    swap(index1, index2, arr, options?) {
+    swap(
+        index1: number,
+        index2: number,
+        arr: number[],
+        options?: SortSelectOptions
+    ): void {
         // Operation Details
         const type = "swap";
         const activeItems = [index1, index2];
@@ -445,7 +555,13 @@ export class SortAlgorithm extends Algorithm {
 
     // check against value
 
-    checkWithValue(index, operator, value, arr, options?) {
+    checkWithValue(
+        index: number,
+        operator: CompareOperator,
+        value: number,
+        arr: number[],
+        options?: SortSelectOptions
+    ): boolean {
         // Operation Details
         const type = "check-value";
         const activeItems = [index];
@@ -486,7 +602,13 @@ export class SortAlgorithm extends Algorithm {
 
     // check
 
-    check(index1, operator, index2, arr, options?) {
+    check(
+        index1: number,
+        operator: CompareOperator,
+        index2: number,
+        arr: number[],
+        options?: SortSelectOptions
+    ): boolean {
         // Operation Details
         const type = "check";
         const activeItems = [index1, index2];
@@ -519,13 +641,13 @@ export class SortAlgorithm extends Algorithm {
 
     // select
 
-    select(index, options?) {
+    select(index: number, options?: SortSelectOptions): void {
         // Operation details
         const type = "select";
         const activeItems = [index];
 
         // handles perm selection
-        if (options && options.mode === "perm") {
+        if (options?.mode === "perm" && options.id) {
             this.selected = this.selected.filter((el) => el.id !== options.id);
             this.selected.push({ id: options.id, index });
         }
@@ -534,17 +656,18 @@ export class SortAlgorithm extends Algorithm {
         this.createStep({ type, activeItems });
     }
 
-    unSelect(id) {
+    unSelect(id: string): void {
         this.selected = this.selected.filter((el) => el.id !== id);
     }
 
-    selectMany(selects) {
+    selectMany(selects: SortSelectManyItem[]): void {
         selects.forEach((sel) => {
-            if (sel.options && sel.options.mode === "perm") {
+            const options = sel.options;
+            if (options?.mode === "perm" && options.id) {
                 this.selected = this.selected.filter(
-                    (el) => el.id !== sel.options.id
+                    (el) => el.id !== options.id
                 );
-                this.selected.push({ id: sel.options.id, index: sel.index });
+                this.selected.push({ id: options.id, index: sel.index });
             }
         });
         this.createStep({
@@ -552,7 +675,9 @@ export class SortAlgorithm extends Algorithm {
             activeItems: selects.map((sel) => sel.index),
             instructionId: [
                 ...new Set(
-                    selects.map((sel) => sel.options?.instructionId).flat()
+                    selects
+                        .map((sel) => sel.options?.instructionId ?? [])
+                        .flat()
                 ),
             ],
         });

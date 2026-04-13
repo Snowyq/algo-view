@@ -1,4 +1,5 @@
-import { memo, useMemo } from "react";
+import type { ComponentType, ReactNode } from "react";
+import { JSX, memo, useMemo } from "react";
 import styled from "styled-components";
 import Slider from "../../ui/Slider";
 
@@ -88,7 +89,7 @@ const Hover = styled.div`
     border-radius: 15px;
 `;
 
-const Point = styled.div`
+const Point = styled.div<{ left: string }>`
     position: absolute;
     top: 50%;
     left: ${({ left }) => left};
@@ -114,6 +115,22 @@ const PointContent = styled.div`
     pointer-events: none;
 `;
 
+export type TimelinePoint = {
+    value?: number;
+    progress?: number;
+    Component?: ReactNode;
+};
+
+type TimelineSliderProps = {
+    max: number;
+    min: number;
+    value: number;
+    onChange?: (value: number) => void;
+    onMouseUp?: () => void;
+    DotComponent?: ComponentType | null;
+    points?: TimelinePoint[];
+};
+
 const MemoMain = memo(Main);
 
 function TimelineSlider({
@@ -124,7 +141,7 @@ function TimelineSlider({
     onMouseUp,
     DotComponent = null,
     points = [],
-}) {
+}: TimelineSliderProps): JSX.Element {
     return (
         <SliderContainer>
             <SliderOutput>
@@ -142,7 +159,23 @@ function TimelineSlider({
     );
 }
 
-function Main({ max, min, value, onChange, onMouseUp, DotComponent }) {
+type MainProps = {
+    max: number;
+    min: number;
+    value: number;
+    onChange?: (value: number) => void;
+    onMouseUp?: () => void;
+    DotComponent?: ComponentType | null;
+};
+
+function Main({
+    max,
+    min,
+    value,
+    onChange,
+    onMouseUp,
+    DotComponent,
+}: MainProps): JSX.Element {
     return (
         <>
             <Slider
@@ -169,8 +202,14 @@ function Main({ max, min, value, onChange, onMouseUp, DotComponent }) {
     );
 }
 
-function Points({ points, min, max }) {
-    const pointComponents = useMemo(() => {
+type PointsProps = {
+    points: TimelinePoint[];
+    min: number;
+    max: number;
+};
+
+function Points({ points, min, max }: PointsProps): JSX.Element {
+    const pointComponents = useMemo<ReactNode[]>(() => {
         if (max <= min) return [];
         return points.map((point, index) => {
             if (!point) return null;

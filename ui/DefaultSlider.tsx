@@ -1,6 +1,6 @@
+import { JSX } from "react";
 import styled from "styled-components";
 import Slider from "./Slider";
-
 const Flex = styled.div`
     display: flex;
     justify-content: center;
@@ -59,14 +59,23 @@ const Hover = styled.div`
     border-radius: 15px;
 `;
 
+type DefaultSliderProps = {
+    min?: number;
+    max: number;
+    value: number;
+    onChange?: (value: number) => void;
+    onMouseUp?: () => void;
+    showFill?: boolean;
+};
+
 function DefaultSlider({
     min = 0,
     max,
     value,
     onChange,
-    onMouseUp = undefined,
+    onMouseUp,
     showFill = false,
-}) {
+}: DefaultSliderProps): JSX.Element {
     return (
         <SliderContainer>
             <SliderOutput>

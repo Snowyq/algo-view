@@ -1,14 +1,17 @@
+import { JSX } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import styled, { css } from "styled-components";
-
 import { PLAY_LAYOUT_BREAKPOINT } from "../../constants/breakpoints";
+import type { AppDispatch, RootState } from "../../store";
 import AlgorithmPicker from "./AlgorithmPicker";
 import ConfigSection from "./ConfigSection";
 import InputConfigPanel from "./InputConfigPanel";
 import SidebarToggleButton from "./SidebarToggleButton";
 import { getSidebarOpen, setSidebarOpen, toggleSidebar } from "./playSlice";
 
-const sidebarStates = {
+type SidebarState = "hidden" | "visible";
+
+const sidebarStates: Record<SidebarState, ReturnType<typeof css>> = {
     hidden: css`
         border-left: 0 solid transparent;
         width: 0;
@@ -18,7 +21,7 @@ const sidebarStates = {
     `,
 };
 
-const Sidebar = styled.div`
+const Sidebar = styled.div<{ state: SidebarState }>`
     --sidebar-border-width: 3px;
     position: absolute;
     @media screen and (min-width: ${PLAY_LAYOUT_BREAKPOINT}) {
@@ -65,7 +68,7 @@ const Container = styled.div`
     }
 `;
 
-const SidebarOutlet = styled.div`
+const SidebarOutlet = styled.div<{ state?: SidebarState }>`
     width: 35rem;
     overflow: hidden;
 
@@ -91,7 +94,7 @@ const LegendItem = styled.div`
     font-size: 1.3rem;
 `;
 
-const LegendSwatch = styled.span`
+const LegendSwatch = styled.span<{ $colorVar: string }>`
     width: 1.2rem;
     height: 1.2rem;
     border-radius: 3px;
@@ -100,7 +103,7 @@ const LegendSwatch = styled.span`
     flex: 0 0 auto;
 `;
 
-const CollapseButtonHolder = styled.div`
+const CollapseButtonHolder = styled.div<{ state: SidebarState }>`
     --margin-right: 0rem;
     --margin-top: 1rem;
     --right-hidden: calc(100% + var(--margin-right));
@@ -120,7 +123,7 @@ const CollapseButtonHolder = styled.div`
     }
 `;
 
-const stepLegend = [
+const stepLegend: Array<{ label: string; colorVar: string }> = [
     { label: "Swap", colorVar: "--color-step-swap" },
     { label: "Select", colorVar: "--color-step-select" },
     { label: "Check", colorVar: "--color-step-check" },
@@ -132,16 +135,16 @@ const stepLegend = [
     { label: "Finish", colorVar: "--color-step-finish" },
 ];
 
-function ConfigSidebar() {
-    const dispatch = useDispatch();
-    const isOpen = useSelector(getSidebarOpen);
-    const state = isOpen ? "visible" : "hidden";
+function ConfigSidebar(): JSX.Element {
+    const dispatch = useDispatch<AppDispatch>();
+    const isOpen = useSelector<RootState, boolean>(getSidebarOpen);
+    const state: SidebarState = isOpen ? "visible" : "hidden";
 
-    const toggleOpen = () => {
+    const toggleOpen = (): void => {
         dispatch(toggleSidebar());
     };
 
-    const handleOverlayClick = () => {
+    const handleOverlayClick = (): void => {
         dispatch(setSidebarOpen(false));
     };
 

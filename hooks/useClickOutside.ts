@@ -1,13 +1,23 @@
+import type { RefObject } from "react";
 import { useEffect, useRef } from "react";
 
-const useClickOutside = (handler, ref, listenCapturing) => {
-    const initRef = useRef(null);
+type ClickOutsideHandler = () => void;
+
+const useClickOutside = <T extends HTMLElement>(
+    handler?: ClickOutsideHandler,
+    ref?: RefObject<T | null>,
+    listenCapturing: boolean = true
+): { ref: RefObject<T | null> } => {
+    const initRef = useRef<T | null>(null);
     const targetRef = ref || initRef;
 
     useEffect(
         function () {
-            function handleClick(e) {
-                if (targetRef.current && !targetRef.current.contains(e.target))
+            function handleClick(e: MouseEvent): void {
+                if (
+                    targetRef.current &&
+                    !targetRef.current.contains(e.target as Node)
+                )
                     handler?.();
             }
 

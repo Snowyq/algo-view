@@ -1,14 +1,17 @@
 import React, {
     createContext,
+    JSX,
     useCallback,
     useContext,
     useEffect,
     useMemo,
     useRef,
     useState,
+    type MutableRefObject,
+    type ReactElement,
+    type ReactNode,
 } from "react";
 import styled from "styled-components";
-
 // Styled components
 
 const SliderContainer = styled.div`
@@ -73,7 +76,7 @@ const TooltipContainer = styled.div`
     -webkit-highlight: none;
 `;
 
-const ProgressContainer = styled.div`
+const ProgressContainer = styled.div<{ transition?: number }>`
     position: absolute;
     left: 0;
     bottom: 0;
@@ -83,7 +86,25 @@ const ProgressContainer = styled.div`
 
 // Compound parent
 
-const SliderContext = createContext();
+type SliderContextValue = {
+    dotRef: MutableRefObject<HTMLDivElement | null>;
+    hoverDotRef: MutableRefObject<HTMLDivElement | null>;
+    tooltipRef: MutableRefObject<HTMLDivElement | null>;
+    progressFillRef: MutableRefObject<HTMLDivElement | null>;
+    tooltipValue: number;
+};
+
+const SliderContext = createContext<SliderContextValue | null>(null);
+
+type SliderProps = {
+    children: ReactNode;
+    value: number;
+    maxValue: number;
+    minValue?: number;
+    snapToValue?: boolean;
+    onChange?: (value: number) => void;
+    onMouseUp?: () => void;
+};
 
 function Slider({
     children,
@@ -93,49 +114,51 @@ function Slider({
     snapToValue = true,
     onChange,
     onMouseUp,
-}) {
+}: SliderProps): JSX.Element {
     // Refs
 
-    const tooltipRef = useRef();
-    const sliderRef = useRef();
-    const dotRef = useRef();
-    const hoverDotRef = useRef();
-    const progressFillRef = useRef();
+    const tooltipRef = useRef<HTMLDivElement | null>(null);
+    const sliderRef = useRef<HTMLDivElement | null>(null);
+    const dotRef = useRef<HTMLDivElement | null>(null);
+    const hoverDotRef = useRef<HTMLDivElement | null>(null);
+    const progressFillRef = useRef<HTMLDivElement | null>(null);
 
     // States
 
-    const [isDragging, setIsDragging] = useState(false);
-    const [tooltipValue, setTooltipValue] = useState(0);
+    const [isDragging, setIsDragging] = useState<boolean>(false);
+    const [tooltipValue, setTooltipValue] = useState<number>(0);
 
     // Helpers
 
     const changeValue = useCallback(
-        (value) => {
+        (value: number) => {
             onChange?.(value);
         },
         [onChange]
     );
 
     // Dot
-    const moveDot = (progress) => setNodeLeft(dotRef, progress);
+    const moveDot = (progress: number): void => setNodeLeft(dotRef, progress);
 
     // hoverDot
-    const moveHoverDot = (progress) => setNodeLeft(hoverDotRef, progress);
-    const showHoverDot = () => setNodeOpacity(hoverDotRef, 1);
-    const hideHoverDot = () => setNodeOpacity(hoverDotRef, 0);
+    const moveHoverDot = (progress: number): void =>
+        setNodeLeft(hoverDotRef, progress);
+    const showHoverDot = (): void => setNodeOpacity(hoverDotRef, 1);
+    const hideHoverDot = (): void => setNodeOpacity(hoverDotRef, 0);
 
     // Tooltip
-    const moveTooltip = (progress) => setNodeLeft(tooltipRef, progress);
-    const showTooltip = () => setNodeOpacity(tooltipRef, 1);
-    const hideTooltip = () => setNodeOpacity(tooltipRef, 0);
+    const moveTooltip = (progress: number): void =>
+        setNodeLeft(tooltipRef, progress);
+    const showTooltip = (): void => setNodeOpacity(tooltipRef, 1);
+    const hideTooltip = (): void => setNodeOpacity(tooltipRef, 0);
 
     // ProgressFill
-    const setProgressFill = (progress) =>
+    const setProgressFill = (progress: number): void =>
         setNodeRight(progressFillRef, progress);
 
     // calculates final progress for moving dotes and tooltip
     const getFinalProgressAndValue = useCallback(
-        (e) => {
+        (e: PointerEvent): { value: number; progress: number } | undefined => {
             if (!sliderRef.current || !e) return;
             const parent = sliderRef.current.getBoundingClientRect();
             const mouseX = e.clientX;
@@ -155,16 +178,21 @@ function Slider({
     // Event listeners
 
     const handleDotDrag = useCallback(
-        (e) => {
-            const { value } = getFinalProgressAndValue(e);
-            changeValue(value);
+        (e: PointerEvent): void => {
+            const result = getFinalProgressAndValue(e);
+            if (!result) return;
+            changeValue(result.value);
+            setTooltipValue(result.value);
+            moveTooltip(result.progress);
         },
         [getFinalProgressAndValue, changeValue]
     );
 
-    const handleMouseMove = (e) => {
+    const handleMouseMove = (e: React.PointerEvent<HTMLDivElement>): void => {
         e.preventDefault();
-        const { progress, value } = getFinalProgressAndValue(e);
+        const result = getFinalProgressAndValue(e.nativeEvent);
+        if (!result) return;
+        const { progress, value } = result;
         if (isDragging) {
             hideHoverDot();
         } else {
@@ -175,21 +203,26 @@ function Slider({
         }
     };
 
-    const handleMouseDown = (e) => {
+    const handleMouseDown = (e: React.PointerEvent<HTMLDivElement>): void => {
         e.preventDefault();
         disableSelection();
-        const { value } = getFinalProgressAndValue(e);
+        const result = getFinalProgressAndValue(e.nativeEvent);
+        if (!result) return;
+        const { value } = result;
         setIsDragging(true);
         changeValue(value);
+        setTooltipValue(value);
+        moveTooltip(result.progress);
     };
 
     const handleMouseUp = useCallback(
-        (e) => {
+        (e: PointerEvent | React.PointerEvent<HTMLDivElement>): void => {
             e.preventDefault();
             enableSelection();
             setIsDragging(false);
-            const rect = sliderRef.current.getBoundingClientRect();
-            if (!isMouseOverRect(e, rect)) {
+            const rect = sliderRef.current?.getBoundingClientRect();
+            const event = "nativeEvent" in e ? e.nativeEvent : e;
+            if (rect && !isMouseOverRect(event, rect)) {
                 hideTooltip();
             }
             onMouseUp?.();
@@ -197,11 +230,11 @@ function Slider({
         [setIsDragging, onMouseUp]
     );
 
-    const handleMouseEnter = () => {
+    const handleMouseEnter = (): void => {
         showTooltip();
     };
 
-    const handleMouseLeave = () => {
+    const handleMouseLeave = (): void => {
         hideHoverDot();
         if (!isDragging) {
             hideTooltip();
@@ -230,13 +263,12 @@ function Slider({
         setProgressFill(progress);
         if (isDragging) {
             moveTooltip(progress);
-            setTooltipValue(stateValue);
         }
-    }, [stateValue, minValue, maxValue, isDragging, setTooltipValue]);
+    }, [stateValue, minValue, maxValue, isDragging]);
 
     // Context provider value
 
-    const value = useMemo(
+    const value = useMemo<SliderContextValue>(
         () => ({
             dotRef,
             hoverDotRef,
@@ -267,8 +299,12 @@ function Slider({
 
 // Compound children
 
-function Dot({ children }) {
-    const { dotRef } = useContext(SliderContext);
+type SlotProps = { children?: ReactElement };
+
+function Dot({ children }: SlotProps): JSX.Element | null {
+    const context = useContext(SliderContext);
+    if (!context) return null;
+    const { dotRef } = context;
     return (
         <DotContainer ref={dotRef}>
             {children && React.cloneElement(children)}
@@ -276,8 +312,10 @@ function Dot({ children }) {
     );
 }
 
-function HoverDot({ children }) {
-    const { hoverDotRef } = useContext(SliderContext);
+function HoverDot({ children }: SlotProps): JSX.Element | null {
+    const context = useContext(SliderContext);
+    if (!context) return null;
+    const { hoverDotRef } = context;
 
     return (
         <HoverDotContainer ref={hoverDotRef}>
@@ -286,18 +324,38 @@ function HoverDot({ children }) {
     );
 }
 
-function Tooltip({ children, modifyValue = (val) => val }) {
-    const { tooltipRef, tooltipValue } = useContext(SliderContext);
+type TooltipProps = {
+    children?: ReactElement;
+    modifyValue?: (value: number) => number;
+};
+
+function Tooltip({
+    children,
+    modifyValue = (val: number) => val,
+}: TooltipProps): JSX.Element | null {
+    const context = useContext(SliderContext);
+    if (!context) return null;
+    const { tooltipRef, tooltipValue } = context;
     const value = modifyValue(tooltipValue);
     return (
         <TooltipContainer ref={tooltipRef}>
-            {children && React.cloneElement(children, { children: value })}
+            {children && React.cloneElement(children, undefined, value)}
         </TooltipContainer>
     );
 }
 
-function ProgressFill({ children, transition = 0 }) {
-    const { progressFillRef } = useContext(SliderContext);
+type ProgressFillProps = {
+    children?: ReactElement;
+    transition?: number;
+};
+
+function ProgressFill({
+    children,
+    transition = 0,
+}: ProgressFillProps): JSX.Element | null {
+    const context = useContext(SliderContext);
+    if (!context) return null;
+    const { progressFillRef } = context;
     return (
         <ProgressContainer ref={progressFillRef} transition={transition}>
             {children && React.cloneElement(children)}
@@ -307,51 +365,72 @@ function ProgressFill({ children, transition = 0 }) {
 
 // Helpers
 
-const calcProgress = (mouseX, parentX, parentWidth) => {
+const calcProgress = (
+    mouseX: number,
+    parentX: number,
+    parentWidth: number
+): number => {
     const x = mouseX - parentX;
     const progress = clamp(x / parentWidth, 0, 1);
     return progress;
 };
 
-const setNodeLeft = (ref, left) => {
+const setNodeLeft = (
+    ref: MutableRefObject<HTMLElement | null>,
+    left: number
+): void => {
     if (!ref.current) return;
     ref.current.style.left = left * 100 + "%";
 };
 
-const setNodeRight = (ref, right) => {
+const setNodeRight = (
+    ref: MutableRefObject<HTMLElement | null>,
+    right: number
+): void => {
     if (!ref.current) return;
     ref.current.style.width = right * 100 + "%";
 };
 
-const setNodeOpacity = (ref, opacity) => {
+const setNodeOpacity = (
+    ref: MutableRefObject<HTMLElement | null>,
+    opacity: number
+): void => {
     if (!ref.current) return;
-    ref.current.style.opacity = opacity;
+    ref.current.style.opacity = String(opacity);
 };
 
-const getValueFromProgress = (progress, minValue, maxValue) => {
+const getValueFromProgress = (
+    progress: number,
+    minValue: number,
+    maxValue: number
+): number => {
     const value = Math.round(progress * (maxValue - minValue) + minValue);
     return value;
 };
 
-const getProgressFromValue = (value, min, max) => {
+const getProgressFromValue = (
+    value: number,
+    min: number,
+    max: number
+): number => {
     if (max === min) return 0;
     const progress = (value - min) / (max - min);
     return clamp(progress, 0, 1);
 };
 
-function clamp(value, min, max) {
+function clamp(value: number, min: number, max: number): number {
     return Math.min(Math.max(value, min), max);
 }
 
-const disableSelection = () => {
+const disableSelection = (): void => {
     document.body.style.userSelect = "none";
 };
 
-const enableSelection = () => {
+const enableSelection = (): void => {
     document.body.style.userSelect = "auto";
 };
 
-function isMouseOverRect(mouseEvent, rect) {
+function isMouseOverRect(mouseEvent: PointerEvent, rect: DOMRect): boolean {
     const mouseX = mouseEvent.clientX;
     const mouseY = mouseEvent.clientY;
 

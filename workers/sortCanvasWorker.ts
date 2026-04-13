@@ -1,38 +1,72 @@
+import type { Algorithm } from "../algorithms/Algorithm";
 import registryApi from "../algorithms/algorithmsRegistryApi";
+import type { AlgorithmConstructor } from "../algorithms/types";
 
-let AlgorithmClass = null;
-let AlgorithmInstance = null;
-let ctx = null;
-let currStepIndex = null;
-let dpr = null;
-let stepColors = null;
+type StepMetric = { count: number; name: string };
+type StepSelection = { id?: string; index: number };
+type SortStep = {
+    type?: string;
+    metrics?: Record<string, StepMetric>;
+    activeItems?: number[];
+    selected?: StepSelection[];
+};
+
+type SortAlgorithmLike = Algorithm & {
+    getMetrics(): Record<string, StepMetric>;
+    getStepByIndex(index: number): SortStep | undefined;
+    getStateByStepsIndex(index: number): number[] | undefined;
+    getArrayMinMax(): { min: number; max: number };
+    getStepsLength(): number;
+};
+
+type StepColors = Record<string, string>;
+
+type WorkerSettings = {
+    blockProportion?: number;
+    upperBlockMargin?: number;
+    textDisplayThreshold?: number;
+};
+
+type RenderRect = {
+    width: number;
+    height: number;
+};
+
+type WorkerIncomingMessage = {
+    type: string;
+    payload?: unknown;
+    canvas?: OffscreenCanvas;
+};
+
+let AlgorithmClass: AlgorithmConstructor<SortAlgorithmLike> | null = null;
+let AlgorithmInstance: SortAlgorithmLike | null = null;
+let ctx: OffscreenCanvasRenderingContext2D | null = null;
+let currStepIndex: number | null = null;
+let dpr: number | null = null;
+let stepColors: StepColors | null = null;
 let doFirstRender = true;
-let currentAnimationFrameId = null;
-let sharedIndex;
-let pendingDrawIndex = null;
+let currentAnimationFrameId: number | null = null;
+let sharedIndex: Uint32Array | undefined;
+let pendingDrawIndex: number | null = null;
 
 let canvasHeight = 0;
 let canvasHeightDpr = 0;
 let canvasWidth = 0;
 let canvasWidthDpr = 0;
 
-/**
- * Updates canvas settings from payload.
- * Can modify block proportions, margin, and text display behavior.
- */
 let blockRatio = 0.8; // 0 - 1
 let upperBlockMargin = 15; //
 let textDisplayThreshold = 10; // px
 const textAlign = "center"; // 'center', 'start', 'end'
 const labelFont = "10px sans-serif";
 
-let tabId;
-let channel;
+let tabId: string | number | undefined;
+let channel: BroadcastChannel | undefined;
 
-self.onmessage = function (event) {
+self.onmessage = function (event: MessageEvent<WorkerIncomingMessage>) {
     const { type, payload, canvas } = event.data;
 
-    function postError(message) {
+    function postError(message: string) {
         postMessage({
             type: "error",
             message,
@@ -42,20 +76,25 @@ self.onmessage = function (event) {
     // Event types
 
     if (type === "tab") {
-        tabId = payload;
-        channel = new BroadcastChannel(`animation-tick:${tabId}`);
-        channel.onmessage = (event) => {
-            const stepIndex = event.data.step;
-            draw(stepIndex); // existing function
-        };
+        if (typeof payload === "string" || typeof payload === "number") {
+            tabId = payload;
+            channel = new BroadcastChannel(`animation-tick:${tabId}`);
+            channel.onmessage = (event: MessageEvent<{ step: number }>) => {
+                draw(event.data.step); // existing function
+            };
+        } else {
+            postError("Invalid tab id");
+        }
     }
 
     // Draw canvas
 
     if (type === "draw-canvas") {
-        const { devicePixelRatio } = payload;
+        const { devicePixelRatio, stepIndex: payloadStepIndex } = (payload ??
+            {}) as { devicePixelRatio?: number; stepIndex?: number };
 
-        let stepIndex = payload?.stepIndex;
+        let stepIndex =
+            typeof payloadStepIndex === "number" ? payloadStepIndex : undefined;
         if (sharedIndex) {
             stepIndex = Atomics.load(sharedIndex, 0);
         }
@@ -65,7 +104,7 @@ self.onmessage = function (event) {
             return;
         }
 
-        if (isNaN(stepIndex)) {
+        if (typeof stepIndex !== "number" || Number.isNaN(stepIndex)) {
             postError("Cannot draw canvas: stepIndex not set");
             return;
         }
@@ -86,7 +125,15 @@ self.onmessage = function (event) {
     // Resize canvas
 
     if (type === "resize") {
-        const { width, height, devicePixelRatio } = payload;
+        const { width, height, devicePixelRatio } = (payload ??
+            {}) as RenderRect & {
+            devicePixelRatio?: number;
+        };
+
+        if (typeof width !== "number" || typeof height !== "number") {
+            postError("Invalid resize payload");
+            return;
+        }
 
         const resized = adjustSize(width, height, devicePixelRatio);
         if (resized) redraw();
@@ -104,6 +151,10 @@ self.onmessage = function (event) {
         }
 
         ctx = canvas.getContext("2d");
+        if (!ctx) {
+            postError("Cannot initialize 2d context");
+            return;
+        }
         if (AlgorithmInstance && typeof pendingDrawIndex === "number") {
             draw(pendingDrawIndex);
             pendingDrawIndex = null;
@@ -116,7 +167,13 @@ self.onmessage = function (event) {
     // Load step colors
 
     if (type === "load-step-colors") {
-        const { stepColors: colors } = payload;
+        const { stepColors: colors } = (payload ?? {}) as {
+            stepColors?: StepColors;
+        };
+        if (!colors) {
+            postError("No step colors provided");
+            return;
+        }
         updateStepColors(colors);
 
         postMessage({ type: "colors-loaded" });
@@ -126,16 +183,19 @@ self.onmessage = function (event) {
     // Find algorithm class
 
     if (type === "mount") {
-        const { id, sharedBuffer } = payload;
+        const { id, sharedBuffer } = (payload ?? {}) as {
+            id?: string;
+            sharedBuffer?: SharedArrayBuffer;
+        };
         if (sharedBuffer) {
-            sharedIndex = new Uint32Array(payload.sharedBuffer);
+            sharedIndex = new Uint32Array(sharedBuffer);
         }
         if (!id) {
             postError("No Algorithm Id provided");
             return;
         }
 
-        const Class = findAlgorithmClass("sort", payload.id);
+        const Class = findAlgorithmClass("sort", id);
 
         if (!Class) {
             postError(`Algorithm Class with Id: ${id} cannot be find`);
@@ -151,11 +211,21 @@ self.onmessage = function (event) {
     // Render algorithm
 
     if (type === "render-algorithm") {
-        const { devicePixelRatio, input, options, rect } = payload;
+        const { devicePixelRatio, input, options, rect } = (payload ?? {}) as {
+            devicePixelRatio?: number;
+            input?: number[];
+            options?: Record<string, unknown>;
+            rect?: RenderRect;
+        };
+
+        if (!rect) {
+            postError("Canvas rect not provided");
+            return;
+        }
 
         adjustSize(rect.width, rect.height, devicePixelRatio);
 
-        if (!input) {
+        if (!Array.isArray(input)) {
             postError("Array to sort not provided");
             return;
         }
@@ -163,7 +233,11 @@ self.onmessage = function (event) {
         postMessage({ type: "render-start" });
 
         doFirstRender = true;
-        createAlgorithmInstance(input, options);
+        createAlgorithmInstance(input, options ?? {});
+        if (!AlgorithmInstance) {
+            postError("Algorithm instance not initialized");
+            return;
+        }
         const stepsLength = getAlgorithmStepsLength();
         const metrics = AlgorithmInstance.getMetrics();
 
@@ -181,7 +255,14 @@ self.onmessage = function (event) {
     // Update settings
 
     if (type === "settings") {
-        const { settings, devicePixelRatio } = payload;
+        const { settings, devicePixelRatio } = (payload ?? {}) as {
+            settings?: WorkerSettings;
+            devicePixelRatio?: number;
+        };
+        if (!settings) {
+            postError("No settings provided");
+            return;
+        }
         adjustSize(null, null, devicePixelRatio);
         updateSettings(settings);
         redraw();
@@ -192,32 +273,41 @@ self.onmessage = function (event) {
 
 // Helper functions
 
-function updateStepIndex(newIndex) {
+function updateStepIndex(newIndex: number) {
     currStepIndex = newIndex;
 }
 
-function updateStepColors(colors) {
+function updateStepColors(colors: StepColors) {
     stepColors = colors;
 }
 
-function findAlgorithmClass(category, id) {
-    return registryApi.getAlgorithmClass(category, id);
+function findAlgorithmClass(
+    category: string,
+    id: string
+): AlgorithmConstructor<SortAlgorithmLike> | undefined {
+    return registryApi.getAlgorithmClass(category, id) as
+        | AlgorithmConstructor<SortAlgorithmLike>
+        | undefined;
 }
 
-function mountAlgorithmClass(Class) {
+function mountAlgorithmClass(Class: AlgorithmConstructor<SortAlgorithmLike>) {
     AlgorithmClass = Class;
 }
 
-function createAlgorithmInstance(input, options) {
+function createAlgorithmInstance(
+    input: number[],
+    options: Record<string, unknown>
+): void {
     if (!AlgorithmClass) return;
     AlgorithmInstance = new AlgorithmClass(input, options);
 }
 
-function getAlgorithmStepsLength() {
+function getAlgorithmStepsLength(): number {
+    if (!AlgorithmInstance) return 0;
     return AlgorithmInstance.getStepsLength();
 }
 
-function updateSettings(payload) {
+function updateSettings(payload: WorkerSettings) {
     const {
         blockProportion: blockProportionValue,
         upperBlockMargin: upperBlockMarginValue,
@@ -231,7 +321,11 @@ function updateSettings(payload) {
 
 // Size adjustments
 
-function adjustSize(width, height, devicePixelRatio) {
+function adjustSize(
+    width: number | null,
+    height: number | null,
+    devicePixelRatio?: number
+): boolean {
     let resized = false;
     if (shouldResize(width, height, devicePixelRatio)) {
         resize(width, height, devicePixelRatio);
@@ -240,24 +334,38 @@ function adjustSize(width, height, devicePixelRatio) {
     return resized;
 }
 
-function updateDevicePixelRatio(newDpr) {
+function updateDevicePixelRatio(newDpr?: number) {
     if (!newDpr) return;
     dpr = newDpr;
 }
 
-function shouldResize(width, height, devicePixelRatio) {
+function shouldResize(
+    width: number | null,
+    height: number | null,
+    devicePixelRatio?: number
+): boolean {
     if (width !== canvasWidth || height !== canvasHeight) return true;
     if (devicePixelRatio && dpr !== devicePixelRatio) return true;
     return false;
 }
 
-function resize(width, height, devicePixelRatio) {
+function resize(
+    width: number | null,
+    height: number | null,
+    devicePixelRatio?: number
+) {
     updateDevicePixelRatio(devicePixelRatio);
-    if (ctx && ctx.canvas && width && height) {
+    if (
+        ctx &&
+        ctx.canvas &&
+        typeof width === "number" &&
+        typeof height === "number"
+    ) {
         canvasWidth = width;
         canvasHeight = height;
-        canvasWidthDpr = canvasWidth * dpr;
-        canvasHeightDpr = canvasHeight * dpr;
+        const resolvedDpr = typeof dpr === "number" ? dpr : 1;
+        canvasWidthDpr = canvasWidth * resolvedDpr;
+        canvasHeightDpr = canvasHeight * resolvedDpr;
 
         ctx.canvas.width = canvasWidthDpr;
         ctx.canvas.height = canvasHeightDpr;
@@ -267,12 +375,12 @@ function resize(width, height, devicePixelRatio) {
 // Drawing
 
 function redraw() {
-    if (!isNaN(currStepIndex)) {
+    if (typeof currStepIndex === "number" && !Number.isNaN(currStepIndex)) {
         draw(currStepIndex);
     }
 }
 
-function draw(stepIndex) {
+function draw(stepIndex: number) {
     if (!AlgorithmInstance) return;
 
     if (currentAnimationFrameId !== null) {
@@ -307,13 +415,14 @@ function draw(stepIndex) {
     }
 }
 
-function handleDraw(callback) {
+function handleDraw(callback: () => void) {
     if (!ctx || !ctx.canvas) return;
     if (!dpr) updateDevicePixelRatio(1);
+    const resolvedDpr = typeof dpr === "number" ? dpr : 1;
 
     ctx.save();
 
-    ctx.scale(dpr, dpr);
+    ctx.scale(resolvedDpr, resolvedDpr);
     ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
     callback();
@@ -322,14 +431,15 @@ function handleDraw(callback) {
 }
 
 function drawBlock(
-    val,
-    index,
-    step,
-    blockWidth,
-    gapWidth,
-    maxValue,
+    val: number,
+    index: number,
+    step: SortStep | undefined,
+    blockWidth: number,
+    gapWidth: number,
+    maxValue: number,
     showText = true
 ) {
+    if (!ctx) return;
     // Account for vertical space above each block to fit the text label
 
     const blockHeight = calculateBlockHeight(val, maxValue);
@@ -348,8 +458,12 @@ function drawBlock(
     }
 }
 
-function drawArray(state, step, maxValue) {
-    const output = [];
+function drawArray(
+    state: number[] | undefined,
+    step: SortStep | undefined,
+    maxValue: number
+): number[] {
+    const output: number[] = [];
     if (!state) return output;
 
     // Calculate block and gap widths proportionally based on canvas size
@@ -363,11 +477,13 @@ function drawArray(state, step, maxValue) {
             drawBlock(val, index, step, blockWidth, gapWidth, maxValue);
         });
     });
+
+    return output;
 }
 
 // Drawing helpers
 
-function getColorByType(type) {
+function getColorByType(type: string): string {
     if (stepColors) {
         if (type in stepColors) return stepColors[type];
     }
@@ -375,7 +491,10 @@ function getColorByType(type) {
     return "#d1d5db";
 }
 
-function calcBlockGapWidth(arrayLength, blockProportion) {
+function calcBlockGapWidth(
+    arrayLength: number,
+    blockProportion: number
+): { blockWidth: number; gapWidth: number } {
     const gapCount = arrayLength - 1;
     let blockWidth = (canvasWidth / arrayLength) * blockProportion;
     let gapWidth = (canvasWidth / gapCount) * (1 - blockProportion);
@@ -387,20 +506,21 @@ function calcBlockGapWidth(arrayLength, blockProportion) {
     return { blockWidth, gapWidth };
 }
 
-const calculateBlockHeight = (value, maxValue) => {
+const calculateBlockHeight = (value: number, maxValue: number): number => {
     const maxBlockHeight = canvasHeight - upperBlockMargin;
     const height = (value / maxValue) * maxBlockHeight;
     return height;
 };
 
-function displayText(text, x, y) {
+function displayText(text: string | number, x: number, y: number) {
+    if (!ctx) return;
     ctx.fillStyle = "#111827";
     ctx.font = labelFont;
     ctx.textAlign = textAlign;
-    ctx.fillText(text, x, y);
+    ctx.fillText(String(text), x, y);
 }
 
-function getBlockDisplayType(step, index) {
+function getBlockDisplayType(step: SortStep | undefined, index: number) {
     let type = "default";
     if (step) {
         const isActive = step.activeItems?.includes(index);
@@ -413,10 +533,10 @@ function getBlockDisplayType(step, index) {
 
 // Animating
 
-function handleAnimate(callback) {
+function handleAnimate(callback: (now: number, startTime: number) => boolean) {
     const startTime = performance.now();
 
-    function frame(now) {
+    function frame(now: number) {
         const shouldRepeat = callback(now, startTime);
         if (shouldRepeat) {
             currentAnimationFrameId = requestAnimationFrame(frame);
@@ -429,13 +549,13 @@ function handleAnimate(callback) {
 }
 
 function animateDrawArray(
-    state,
-    step,
-    maxValue,
+    state: number[] | undefined,
+    step: SortStep | undefined,
+    maxValue: number,
     duration = 500,
-    appearStyle = "atOnce" // 'sequence', 'atOnce',
-) {
-    const output = [];
+    appearStyle: "sequence" | "atOnce" = "atOnce" // 'sequence', 'atOnce',
+): number[] {
+    const output: number[] = [];
     if (!state) return output;
 
     // Calculate block and gap widths proportionally based on canvas size
@@ -444,24 +564,30 @@ function animateDrawArray(
         blockRatio
     );
 
-    const onDraw = (val, index, showText) => {
+    const onDraw = (val: number, index: number, showText: boolean) => {
         drawBlock(val, index, step, blockWidth, gapWidth, maxValue, showText);
     };
 
-    const animations = {
+    const animations: Record<"sequence" | "atOnce", () => void> = {
         sequence: () => animateInSequence(state, onDraw, duration),
         atOnce: () => animateAtOnce(state, onDraw, duration),
     };
 
-    (animations[appearStyle] || animations.atOnce)();
+    animations[appearStyle]();
+
+    return output;
 }
 
-function animateAtOnce(state, onDraw, duration) {
-    const onFrame = (now, startTime) => {
+function animateAtOnce(
+    state: number[],
+    onDraw: (val: number, index: number, showText: boolean) => void,
+    duration: number
+) {
+    const onFrame = (now: number, startTime: number) => {
         const progress = Math.min((now - startTime) / duration, 1);
 
         handleDraw(() => {
-            const drawEachValue = (val, index) => {
+            const drawEachValue = (val: number, index: number) => {
                 const animatedVal = val * progress;
                 onDraw(animatedVal, index, progress === 1);
             };
@@ -474,14 +600,18 @@ function animateAtOnce(state, onDraw, duration) {
 
     handleAnimate(onFrame);
 }
-function animateInSequence(state, onDraw, duration) {
+function animateInSequence(
+    state: number[],
+    onDraw: (val: number, index: number, showText: boolean) => void,
+    duration: number
+) {
     const totalBlocks = state.length;
 
-    const onFrame = (now, startTime) => {
+    const onFrame = (now: number, startTime: number) => {
         const elapsed = now - startTime;
 
         handleDraw(() => {
-            const drawEachValue = (val, index) => {
+            const drawEachValue = (val: number, index: number) => {
                 const delayPerBlock = (duration / totalBlocks) * index;
                 const localElapsed = elapsed - delayPerBlock;
                 const progress = Math.min(

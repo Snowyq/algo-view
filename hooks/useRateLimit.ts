@@ -1,20 +1,20 @@
 import { useCallback, useEffect, useRef } from "react";
 
-function useRateLimit(callback, interval = 10) {
-    const latestArgsRef = useRef(null);
+function useRateLimit<Args extends unknown[]>(
+    callback: (...args: Args) => void,
+    interval: number = 10
+): (...args: Args) => void {
+    const latestArgsRef = useRef<Args | null>(null);
     const callbackRef = useRef(callback);
-    const isRunningRef = useRef(false);
+    const isRunningRef = useRef<boolean>(false);
 
     useEffect(() => {
         callbackRef.current = callback;
     }, [callback]);
 
-    const trigger = useCallback(
-        (...args) => {
-            latestArgsRef.current = args;
-        },
-        [latestArgsRef]
-    );
+    const trigger = useCallback((...args: Args) => {
+        latestArgsRef.current = args;
+    }, []);
 
     useEffect(() => {
         isRunningRef.current = true;

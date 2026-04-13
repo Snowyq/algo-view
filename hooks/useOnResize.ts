@@ -1,27 +1,36 @@
+import type { RefObject } from "react";
 import { useCallback, useLayoutEffect, useRef } from "react";
 
-function useOnResize(onResize, ref) {
-	const initRef = useRef(document.body);
-	const targetRef = ref || initRef;
+type ResizeCallback<T extends HTMLElement> = (ref: RefObject<T | null>) => void;
 
-	const updateRect = useCallback(() => {
-		if (!targetRef.current) return;
-		onResize?.(targetRef);
-	}, [targetRef, onResize]);
+function useOnResize<T extends HTMLElement>(
+    onResize: ResizeCallback<T>,
+    ref?: RefObject<T | null>
+): { ref: RefObject<T | null>; update: () => void } {
+    const initRef = useRef<T | null>(null);
+    const targetRef = ref || initRef;
 
-	useLayoutEffect(() => {
-		const node = targetRef.current;
-		if (!node) return;
+    const updateRect = useCallback((): void => {
+        if (!targetRef.current) return;
+        onResize?.(targetRef);
+    }, [targetRef, onResize]);
 
-		updateRect();
+    useLayoutEffect(() => {
+        if (!ref && typeof document !== "undefined" && !initRef.current) {
+            initRef.current = document.body as T;
+        }
+        const node = targetRef.current;
+        if (!node) return;
 
-		const resizeObserver = new ResizeObserver(updateRect);
-		resizeObserver.observe(node);
+        updateRect();
 
-		return () => resizeObserver.disconnect();
-	}, [targetRef, updateRect]);
+        const resizeObserver = new ResizeObserver(updateRect);
+        resizeObserver.observe(node);
 
-	return { ref: targetRef, update: updateRect };
+        return () => resizeObserver.disconnect();
+    }, [ref, targetRef, updateRect]);
+
+    return { ref: targetRef, update: updateRect };
 }
 
 export default useOnResize;

@@ -1,9 +1,10 @@
-import { useEffect, useRef } from "react";
+import { JSX, useEffect, useRef } from "react";
 import { useDispatch, useSelector, useStore } from "react-redux";
 import useRateLimit from "../../hooks/useRateLimit";
 import useWorker from "../../hooks/useWorker";
 import { AppDispatch, RootState } from "../../store";
 import { SharedBufferAPI } from "../../utils/sharedBufferAPI";
+import type { ActiveAlgorithm } from "./playSlice";
 import {
     changeStep,
     getActiveAlgorithms,
@@ -15,19 +16,26 @@ import {
     stopAnimation,
 } from "./playSlice";
 
-function PlaybackTicker() {
+function PlaybackTicker(): JSX.Element | null {
     const dispatch = useDispatch<AppDispatch>();
     const store = useStore<RootState>();
-    const animationIntervalValue = useSelector(getCurrentSpeed);
-    const activeAlgorithms = useSelector(getActiveAlgorithms);
-    const animationStatus = useSelector(getAnimationStatus);
-    const maxStep = useSelector(getMaxStep);
-    const { value: step, trigger } = useSelector(getStep);
+    const animationIntervalValue = useSelector<RootState, number>(
+        getCurrentSpeed
+    );
+    const activeAlgorithms = useSelector<RootState, ActiveAlgorithm[]>(
+        getActiveAlgorithms
+    );
+    const animationStatus = useSelector<RootState, string>(getAnimationStatus);
+    const maxStep = useSelector<RootState, number>(getMaxStep);
+    const { value: step, trigger } = useSelector<
+        RootState,
+        { value: number; trigger: string }
+    >(getStep);
 
-    const prevAnimationRef = useRef(null);
+    const prevAnimationRef = useRef<string | null>(null);
     const { worker, onMessageType } = useWorker("stepWorker.ts");
 
-    useEffect(() => {
+    useEffect((): void | (() => void) => {
         if (!worker) return;
         dispatch(setStepWorkerReady(true));
         return () => {
@@ -36,7 +44,7 @@ function PlaybackTicker() {
     }, [worker, dispatch]);
 
     // limiting dispatch function
-    const updateStep = (value) => {
+    const updateStep = (value: number): void => {
         const state = store.getState();
         if (state.play.animation.status !== "playing") return;
         console.log(value);
@@ -46,23 +54,25 @@ function PlaybackTicker() {
     const limitedChangeStep = useRateLimit(updateStep, 50);
 
     // limited stepIndex update in UI
-    useEffect(() => {
+    useEffect((): void => {
         onMessageType("ticked", (payload) => {
             const state = store.getState();
             if (state.play.animation.status !== "playing") return;
-            limitedChangeStep(payload.step);
+            const nextStep = (payload as { step?: number } | undefined)?.step;
+            if (typeof nextStep !== "number") return;
+            limitedChangeStep(nextStep);
         });
     }, [onMessageType, limitedChangeStep, store]);
 
     // sync changed stepIndex by action in ui with stepWorker
-    useEffect(() => {
+    useEffect((): void => {
         if (trigger !== "tick") {
             worker?.postMessage({ type: "change", payload: { step } });
         }
     }, [step, worker, activeAlgorithms, trigger]);
 
     // Animation state manager effect
-    useEffect(() => {
+    useEffect((): void => {
         if (prevAnimationRef.current === animationStatus) return;
         prevAnimationRef.current = animationStatus;
 
@@ -90,7 +100,7 @@ function PlaybackTicker() {
     }, [animationStatus, dispatch, animationIntervalValue, worker, maxStep]);
 
     // Auto stop after animation is finished
-    useEffect(() => {
+    useEffect((): void => {
         if (animationStatus === "playing") {
             if (step >= maxStep) dispatch(stopAnimation());
         }

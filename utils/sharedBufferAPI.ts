@@ -1,42 +1,55 @@
-let buffers = new Map();
+type BufferId = string | number;
+
+type BufferEntry = {
+    sharedBuffer: SharedArrayBuffer;
+    typedArray: Int32Array;
+};
+
+type Int32ArrayConstructor = typeof Int32Array;
+
+const buffers: Map<BufferId, BufferEntry> = new Map();
 
 export const SharedBufferAPI = {
-	init(id, size, Type = Int32Array) {
-		if (buffers.has(id)) return buffers.get(id).typedArray;
+    init(
+        id: BufferId,
+        size: number,
+        Type: Int32ArrayConstructor = Int32Array
+    ): Int32Array | undefined {
+        const existing = buffers.get(id);
+        if (existing) return existing.typedArray;
 
-		if (typeof Type !== "function") {
-			throw new Error("Type must be a TypedArray constructor");
-		}
-		if (typeof SharedArrayBuffer !== "undefined") {
-			const sharedBuffer = new SharedArrayBuffer(size);
-			const typedArray = new Int32Array(sharedBuffer);
+        if (typeof Type !== "function") {
+            throw new Error("Type must be a TypedArray constructor");
+        }
+        if (typeof SharedArrayBuffer !== "undefined") {
+            const sharedBuffer = new SharedArrayBuffer(size);
+            const typedArray = new Type(sharedBuffer);
 
-			buffers.set(id, { sharedBuffer, typedArray });
+            buffers.set(id, { sharedBuffer, typedArray });
 
-			return typedArray;
-		}
-	},
+            return typedArray;
+        }
+    },
 
-	find(id) {
-		const bufferObj = buffers.get(id);
-		return bufferObj;
-	},
+    find(id: BufferId): BufferEntry | undefined {
+        return buffers.get(id);
+    },
 
-	write(id, value, index = 0) {
-		const bufferObj = buffers.get(id);
-		if (!bufferObj) return;
-		Atomics.store(bufferObj.typedArray, index, value);
-	},
+    write(id: BufferId, value: number, index: number = 0): void {
+        const bufferObj = buffers.get(id);
+        if (!bufferObj) return;
+        Atomics.store(bufferObj.typedArray, index, value);
+    },
 
-	read(id, index = 0) {
-		const bufferObj = buffers.get(id);
-		if (!bufferObj) return;
-		return Atomics.load(bufferObj.typedArray, index);
-	},
+    read(id: BufferId, index: number = 0): number | undefined {
+        const bufferObj = buffers.get(id);
+        if (!bufferObj) return;
+        return Atomics.load(bufferObj.typedArray, index);
+    },
 
-	getBuffer(id) {
-		const bufferObj = buffers.get(id);
-		if (!bufferObj) return;
-		return bufferObj.sharedBuffer;
-	},
+    getBuffer(id: BufferId): SharedArrayBuffer | undefined {
+        const bufferObj = buffers.get(id);
+        if (!bufferObj) return;
+        return bufferObj.sharedBuffer;
+    },
 };

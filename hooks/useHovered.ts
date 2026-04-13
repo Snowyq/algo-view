@@ -1,7 +1,8 @@
+import type { RefObject } from "react";
 import { useEffect, useState } from "react";
 
-function useHovered(ref) {
-    const [isHovered, setIsHovered] = useState(false);
+function useHovered<T extends HTMLElement>(ref: RefObject<T | null>) {
+    const [isHovered, setIsHovered] = useState<boolean>(false);
     const toggleHoverOn = () => setIsHovered(true);
     const toggleHoverOff = () => setIsHovered(false);
 

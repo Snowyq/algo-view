@@ -1,55 +1,88 @@
+export type CompareOperator =
+    | ">"
+    | "<"
+    | ">="
+    | "<="
+    | "=="
+    | "==="
+    | "!="
+    | "!==";
+
+type AlgorithmOperation = {
+    type?: string;
+    elements?: number[];
+    payload?: unknown;
+    [key: string]: unknown;
+};
+
+type AlgorithmStep = {
+    type?: string;
+    [key: string]: unknown;
+};
+
+type AlgorithmCache = {
+    logs: unknown[];
+    stored: Record<string, unknown>; // dynamic cache
+    info: number[];
+    persistent: Record<string, unknown>; // static cache
+    groups: string[];
+    [key: string]: unknown;
+};
 
 export class Algorithm {
-	// optionsManager;
-	// cacheManager;
-	steps = [];
-	operations = [];
-	options = {};
+    // optionsManager;
+    // cacheManager;
+    steps: AlgorithmStep[] = [];
+    operations: AlgorithmOperation[] = [];
+    options: Record<string, unknown> = {};
 
-	cache = {
-		logs: [],
-		stored: {}, // dynamic cache
-		info: [],
-		persistent: {}, // static cache
-		groups: [],
-	};
+    cache: AlgorithmCache = {
+        logs: [],
+        stored: {}, // dynamic cache
+        info: [],
+        persistent: {}, // static cache
+        groups: [],
+    };
 
-	getSteps() {
-		return this.steps.slice();
-	}
+    getSteps(): AlgorithmStep[] {
+        return this.steps.slice();
+    }
 
-	getStepsLength() {
-		return this.steps.length;
-	}
+    getStepsLength(): number {
+        return this.steps.length;
+    }
 
-	getOperations() {
-		return this.operations.slice();
-	}
+    getOperations(): AlgorithmOperation[] {
+        return this.operations.slice();
+    }
 
-	makeOperation(_operation: unknown, _state: unknown) {}
+    makeOperation(operation: unknown, state: unknown): void {
+        void operation;
+        void state;
+    }
 
-	compare(a, b, operator) {
-		switch (operator) {
-			case ">":
-				return a > b;
-			case "<":
-				return a < b;
-			case ">=":
-				return a >= b;
-			case "<=":
-				return a <= b;
-			case "==":
-				return a == b;
-			case "===":
-				return a === b;
-			case "!=":
-				return a != b;
-			case "!==":
-				return a !== b;
-			default:
-				throw new Error(`wrong operator: ${operator}`);
-		}
-	}
+    compare(a: number, b: number, operator: CompareOperator): boolean {
+        switch (operator) {
+            case ">":
+                return a > b;
+            case "<":
+                return a < b;
+            case ">=":
+                return a >= b;
+            case "<=":
+                return a <= b;
+            case "==":
+                return a == b;
+            case "===":
+                return a === b;
+            case "!=":
+                return a != b;
+            case "!==":
+                return a !== b;
+            default:
+                throw new Error(`wrong operator: ${operator}`);
+        }
+    }
 }
 
 // getCacheGroup(group) {

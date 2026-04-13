@@ -1,4 +1,6 @@
 import { Geist_Mono, Inter } from "next/font/google";
+import { JSX } from "react";
+import StyledComponentsRegistry from "../lib/StyledComponentsRegistry";
 import AppLayout from "../ui/AppLayout";
 import AppClient from "./AppClient";
 
@@ -13,16 +15,18 @@ export default function RootLayout({
     children,
 }: Readonly<{
     children: React.ReactNode;
-}>) {
+}>): JSX.Element {
     return (
         <html
             lang="en"
             className={`antialiased ${fontMono.variable} font-sans ${inter.variable}`}
         >
             <body>
-                <AppClient>
-                    <AppLayout>{children}</AppLayout>
-                </AppClient>
+                <StyledComponentsRegistry>
+                    <AppClient>
+                        <AppLayout>{children}</AppLayout>
+                    </AppClient>
+                </StyledComponentsRegistry>
             </body>
         </html>
     );

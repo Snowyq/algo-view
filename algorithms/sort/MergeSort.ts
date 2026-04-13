@@ -1,18 +1,23 @@
 import { SortAlgorithm } from "./SortAlgorithm";
 
 export class MergeSort extends SortAlgorithm {
-    name = "MergeSort";
-    complexity = "O(n^2)";
+    name: string = "MergeSort";
+    complexity: string = "O(n^2)";
 
-    sort(array) {
-        const merge = (arr, left, middle, right) => {
+    sort(array: number[]): void {
+        const merge = (
+            arr: number[],
+            left: number,
+            middle: number,
+            right: number
+        ): void => {
             // Length of both sorted aub arrays
             const l1 = middle - left + 1;
             const l2 = right - middle;
 
             // Create new subarrays
-            const arr1 = new Array(l1);
-            const arr2 = new Array(l2);
+            const arr1: number[] = new Array(l1);
+            const arr2: number[] = new Array(l2);
 
             // this.countSubArrays(2);
 
@@ -38,7 +43,7 @@ export class MergeSort extends SortAlgorithm {
                 k = left;
 
             // Assign the smaller value for sorted output
-            this.countConditionChecks(); //! off by one? 
+            this.countConditionChecks(); //! off by one?
             while (i < l1 && j < l2) {
                 this.countConditionChecks(3);
                 if (arr1[i] < arr2[j]) {
@@ -76,16 +81,23 @@ export class MergeSort extends SortAlgorithm {
         };
 
         // Function to implement merger sort in javaScript
-        const mergeSort = (arr, left, right) => {
+        const mergeSort = (
+            arr: number[],
+            left: number,
+            right: number
+        ): void => {
             if (left >= right) {
                 return;
             }
 
             // Middle index to create subarray halves
             const middle = left + Math.floor((right - left) / 2);
-            const all = Array.from(Array(right - left), (_, index) => {
-                return { index: left + index };
-            });
+            const all: Array<{ index: number }> = Array.from(
+                Array(right - left),
+                (_, index) => {
+                    return { index: left + index };
+                }
+            );
 
             this.selectMany(all);
             this.select(middle);
@@ -102,15 +114,20 @@ export class MergeSort extends SortAlgorithm {
         mergeSort(array, 0, array.length - 1);
     }
 
-    static rawSort(array) {
-        function merge(arr, left, middle, right) {
+    static rawSort(array: number[]): void {
+        function merge(
+            arr: number[],
+            left: number,
+            middle: number,
+            right: number
+        ): void {
             // Length of both sorted aub arrays
             const l1 = middle - left + 1;
             const l2 = right - middle;
 
             // Create new subarrays
-            const arr1 = new Array(l1);
-            const arr2 = new Array(l2);
+            const arr1: number[] = new Array(l1);
+            const arr2: number[] = new Array(l2);
 
             // Assign values in subarrays
             for (let i = 0; i < l1; ++i) {
@@ -150,7 +167,7 @@ export class MergeSort extends SortAlgorithm {
         }
 
         // Function to implement merger sort in javaScript
-        function mergeSort(arr, left, right) {
+        function mergeSort(arr: number[], left: number, right: number): void {
             if (left >= right) {
                 return;
             }
