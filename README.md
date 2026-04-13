@@ -5,7 +5,7 @@ runs in Canvas + Web Workers while React handles UI and controls.
 
 ## Live Demo
 
-TODO: add link
+https://algorithms-visualizer-alpha.vercel.app/
 
 ## Features
 
