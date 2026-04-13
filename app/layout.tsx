@@ -1,10 +1,15 @@
-import { Geist_Mono, Inter } from "next/font/google";
+import { Geist_Mono, Inter, Space_Grotesk } from "next/font/google";
 import { JSX } from "react";
 import StyledComponentsRegistry from "../lib/StyledComponentsRegistry";
 import AppLayout from "../ui/AppLayout";
 import AppClient from "./AppClient";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
+
+const display = Space_Grotesk({
+    subsets: ["latin"],
+    variable: "--font-display",
+});
 
 const fontMono = Geist_Mono({
     subsets: ["latin"],
@@ -19,7 +24,7 @@ export default function RootLayout({
     return (
         <html
             lang="en"
-            className={`antialiased ${fontMono.variable} font-sans ${inter.variable}`}
+            className={`antialiased ${fontMono.variable} ${display.variable} font-sans ${inter.variable}`}
         >
             <body>
                 <StyledComponentsRegistry>

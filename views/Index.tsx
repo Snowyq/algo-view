@@ -1,33 +1,105 @@
+import heroImage from "@/public/hero2.png";
 import Button from "@/ui/Button";
+import Image from "next/image";
 import Link from "next/link";
 import type { JSX } from "react";
 import styled from "styled-components";
 
 const Layout = styled.div`
-    height: 100%;
+    min-height: 100%;
     width: 100%;
     display: flex;
     justify-content: center;
-    padding: 12rem 1.5rem;
+    position: relative;
 `;
 
 const Container = styled.div`
     width: 100%;
-    max-width: 96rem;
     display: flex;
     flex-direction: column;
-    gap: 4rem;
+    gap: 6rem;
 `;
 
-const Hero = styled.div`
-    width: 100%;
-    max-width: 96rem;
+const Hero = styled.section`
+    position: relative;
+    gap: 4.5rem;
+    padding: 5.6rem 0;
+    overflow: hidden;
+    background-color: white;
+
+    /* left ball */
+    &::before {
+        content: "";
+        position: absolute;
+        top: -12rem;
+        left: -10rem;
+        width: 28rem;
+        height: 28rem;
+        background: radial-gradient(
+            circle,
+            rgba(34, 211, 238, 0.35),
+            transparent 70%
+        );
+        opacity: 0.8;
+        pointer-events: none;
+    }
+
+    /* rigth ball */
+    &::after {
+        content: "";
+        position: absolute;
+        bottom: -14rem;
+        right: -12rem;
+        width: 32rem;
+        height: 32rem;
+        background: radial-gradient(
+            circle,
+            rgba(250, 204, 21, 0.35),
+            transparent 70%
+        );
+        opacity: 0.7;
+        pointer-events: none;
+    }
+`;
+
+const HeroContent = styled.div`
+    position: relative;
+    z-index: 1;
     display: flex;
     flex-direction: column;
-    gap: 2rem;
-    margin-bottom: 8rem;
+    gap: 2.4rem;
+    margin: 0 auto;
+    max-width: 104rem;
+    padding: 0 2rem;
     text-align: center;
     align-items: center;
+`;
+
+const H1 = styled.h1`
+    font-size: clamp(3rem, 5vw, 6.2rem);
+    line-height: 1.05;
+    font-family: var(--font-display), var(--font-sans), "Open Sans", sans-serif;
+    letter-spacing: -0.02em;
+    color: var(--color-grey-900);
+`;
+
+const HeroLead = styled.p`
+    font-size: 1.8rem;
+    color: var(--color-grey-600);
+    max-width: 52rem;
+
+    @media (max-width: 900px) {
+        max-width: 100%;
+    }
+`;
+
+const HeroActions = styled.div`
+    display: flex;
+    align-items: center;
+    gap: 1.6rem;
+    flex-wrap: wrap;
+
+    justify-content: center;
 `;
 
 const Content = styled.div`
@@ -35,9 +107,10 @@ const Content = styled.div`
     flex-direction: column;
     gap: 4.4rem;
     width: 100%;
-    max-width: 76rem;
     align-self: center;
+    padding: 0 2rem;
     padding-bottom: 4rem;
+    max-width: 104rem;
 `;
 
 const Section = styled.section`
@@ -46,27 +119,49 @@ const Section = styled.section`
     gap: 1.6rem;
 `;
 
-const H1 = styled.h1`
-    font-size: 3.2rem;
-    text-align: center;
+const ImageContainer = styled.div`
+    position: relative;
+    width: 100%;
+    padding: 1rem;
+    background-color: var(--color-grey-300);
+    border-radius: 2.6rem;
+    overflow: hidden;
 `;
 
 function Index(): JSX.Element {
     return (
         <Layout>
             <Container>
-                <Content>
-                    <Hero>
+                <Hero>
+                    <HeroContent>
                         <H1>Sort Algorithm Visualizer</H1>
-                        <p>
+                        <HeroLead>
                             Interactive sorting visualizer focused on
-                            performance and clarity. Canvas + Web Workers
-                            render, React handles UI and control.
-                        </p>
-                        <Button as={Link} href="/play">
-                            Get Started
-                        </Button>
-                    </Hero>
+                            performance and clarity. Canvas + Web Workers handle
+                            rendering while React stays on UI control.
+                        </HeroLead>
+                        <HeroActions>
+                            <Button as={Link} href="/play" size="large">
+                                Open Playground
+                            </Button>
+                        </HeroActions>
+                        <ImageContainer>
+                            <Image
+                                src={heroImage}
+                                alt="Algorithm Visualizer"
+                                sizes="(max-width: 900px) 100vw, 100vw"
+                                loading="eager"
+                                style={{
+                                    width: "100%",
+                                    height: "auto",
+                                    marginBottom: "-0.6rem",
+                                    borderRadius: "1.6rem",
+                                }}
+                            />
+                        </ImageContainer>
+                    </HeroContent>
+                </Hero>
+                <Content>
                     <Section>
                         <h2>TL;DR</h2>
                         <p>
