@@ -28,6 +28,8 @@ const AlgorithmContainer = styled.div`
     width: 100%;
     height: 100%;
     display: flex;
+    flex: 1;
+    min-height: 0;
     gap: 2rem;
     padding: 1rem;
     background-color: var(--color-grey-50);
@@ -44,6 +46,18 @@ const Sizer = styled.div`
     height: 100%;
     position: relative;
     overflow: hidden;
+    flex: 1;
+    min-height: 0;
+`;
+
+const LoaderOverlay = styled.div`
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+    pointer-events: none;
 `;
 
 const Placeholder = styled.div`
@@ -205,7 +219,11 @@ function SortVisualizerCanvas({
     return (
         <AlgorithmContainer>
             <Sizer ref={sizerRef}>
-                {hasInput && isLoading && <Loader />}
+                {hasInput && isLoading && (
+                    <LoaderOverlay>
+                        <Loader />
+                    </LoaderOverlay>
+                )}
                 <canvas
                     ref={canvasRef}
                     style={{

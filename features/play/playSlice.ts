@@ -3,14 +3,14 @@ import registryApi from "../../algorithms/algorithmsRegistryApi";
 import type { SortStepType } from "../../algorithms/sort/SortAlgorithm";
 import type { AlgorithmMeta, AlgorithmMetrics } from "../../algorithms/types";
 import {
-    DEFAULT_SORT_ANIMATION_SPEED,
-    DEFAULT_SORT_INPUT_LENGTH,
-    DEFAULT_SORT_INPUT_VALUE_RANGE,
+    SORT_ANIMATION_SPEEDS,
+    SORT_DEFAULT_ANIMATION_SPEED,
+    SORT_DEFAULT_INPUT_LENGTH,
+    SORT_DEFAULT_INPUT_VALUE_RANGE,
+    SORT_DEFAULT_STEP_TYPES,
+    SORT_MAX_INPUT_LENGTH,
+    SORT_MIN_INPUT_LENGTH,
 } from "../../config/sort";
-import {
-    ANIMATION_SPEEDS,
-    DEFAULT_STEP_TYPES,
-} from "../../constants/constants";
 import type { RootState } from "../../store";
 import { generateRandomArray } from "../../utils/randoms";
 import { clamp } from "../../utils/values";
@@ -61,16 +61,15 @@ function getInitialState(): PlayState {
     const defaultCategory = "sort";
     const defaultAlgorithmId = "selectionSort";
     const categories = registryApi.getCategoriesIds() || [];
-    const speeds = ANIMATION_SPEEDS[defaultCategory] || [];
-    const defaultSpeed = speeds.includes(DEFAULT_SORT_ANIMATION_SPEED)
-        ? DEFAULT_SORT_ANIMATION_SPEED
+    const speeds = SORT_ANIMATION_SPEEDS;
+    const defaultSpeed = speeds.includes(SORT_DEFAULT_ANIMATION_SPEED)
+        ? SORT_DEFAULT_ANIMATION_SPEED
         : speeds[0] || 100;
-    const defaultStepTypes = (DEFAULT_STEP_TYPES[defaultCategory] ||
-        []) as SortStepType[];
+    const defaultStepTypes = SORT_DEFAULT_STEP_TYPES as SortStepType[];
     const initialInput = generateRandomArray(
-        DEFAULT_SORT_INPUT_LENGTH,
-        DEFAULT_SORT_INPUT_VALUE_RANGE[0],
-        DEFAULT_SORT_INPUT_VALUE_RANGE[1]
+        SORT_DEFAULT_INPUT_LENGTH,
+        SORT_DEFAULT_INPUT_VALUE_RANGE[0],
+        SORT_DEFAULT_INPUT_VALUE_RANGE[1]
     );
     const defaultRegistry = registryApi.getAlgorithmRegistry(
         defaultCategory,
@@ -136,8 +135,13 @@ const playSlice = createSlice({
             }
         ) {
             const { length, min, max } = action.payload;
+            const safeLength = clamp(
+                length,
+                SORT_MIN_INPUT_LENGTH,
+                SORT_MAX_INPUT_LENGTH
+            );
 
-            const newInput = generateRandomArray(length, min, max);
+            const newInput = generateRandomArray(safeLength, min, max);
 
             state.input = newInput;
             state.animation.step = { value: 0, trigger: "changeInput" };
