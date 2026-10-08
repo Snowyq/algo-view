@@ -76,6 +76,7 @@ export class SelectionSort extends SortAlgorithm {
 
     static getInstructions(): AlgorithmInstructions {
         const instructions = {
+            in: { line: `const n = arr.length;`, indent: 0 },
             i0: { line: `for (let i = 0; i < n; i++) {`, indent: 0 },
             i1: { line: `let minIdx = i;`, indent: 1 },
             i2: { line: `for (let j = i + 1; j < n; j++) {`, indent: 1 },

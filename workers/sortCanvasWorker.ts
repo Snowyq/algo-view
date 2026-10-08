@@ -6,6 +6,7 @@ type StepMetric = { count: number; name: string };
 type StepSelection = { id?: string; index: number };
 type SortStep = {
     type?: string;
+    instructionId?: string[];
     metrics?: Record<string, StepMetric>;
     activeItems?: number[];
     selected?: StepSelection[];
@@ -396,14 +397,12 @@ function draw(stepIndex: number) {
     if (step && step.metrics) {
         postMessage({
             type: "step-metrics",
-            payload: { stepIndex, metrics: step.metrics },
-        });
-    }
-
-    if (step && step.metrics) {
-        postMessage({
-            type: "step-metrics",
-            payload: { stepIndex, metrics: step.metrics },
+            payload: {
+                stepIndex,
+                metrics: step.metrics,
+                stepType: step.type,
+                instructionId: step.instructionId ?? [],
+            },
         });
     }
 
@@ -514,7 +513,7 @@ const calculateBlockHeight = (value: number, maxValue: number): number => {
 
 function displayText(text: string | number, x: number, y: number) {
     if (!ctx) return;
-    ctx.fillStyle = "#111827";
+    ctx.fillStyle = stepColors?.label || "#111827";
     ctx.font = labelFont;
     ctx.textAlign = textAlign;
     ctx.fillText(String(text), x, y);
