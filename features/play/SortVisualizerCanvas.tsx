@@ -9,7 +9,6 @@ import type {
     AlgorithmMetrics,
     AlgorithmRegistryItem,
 } from "../../algorithms/types";
-import { PLAY_LAYOUT_BREAKPOINT } from "../../constants/breakpoints";
 import useOnResize from "../../hooks/useOnResize";
 import useSortCanvas from "../../hooks/useSortCanvas";
 import type { AppDispatch, RootState } from "../../store";
@@ -22,6 +21,7 @@ import {
     passAlgorithmInfo,
     setSortWorkerReady,
 } from "./playSlice";
+import type { StepInfo } from "./stepLegend";
 
 const AlgorithmContainer = styled.div`
     position: relative;
@@ -30,15 +30,8 @@ const AlgorithmContainer = styled.div`
     display: flex;
     flex: 1;
     min-height: 0;
-    gap: 2rem;
-    padding: 1rem;
-    background-color: var(--color-grey-50);
-    border-radius: 15px;
-
-    @media screen and (min-width: ${PLAY_LAYOUT_BREAKPOINT}) {
-        padding: 1rem;
-        box-shadow: 0.2rem 0.2rem 0px 2px var(--color-grey-300);
-    }
+    padding-top: var(--space-4);
+    border-bottom: 1px solid var(--ink-600);
 `;
 
 const Sizer = styled.div`
@@ -67,9 +60,9 @@ const Placeholder = styled.div`
     align-items: center;
     justify-content: center;
     text-align: center;
-    color: var(--color-grey-500);
-    font-size: 1.4rem;
-    padding: 2rem;
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+    padding: var(--space-5);
     z-index: 1;
 `;
 
@@ -77,6 +70,7 @@ type SortVisualizerCanvasProps = {
     registry: AlgorithmRegistryItem;
     onMetricsUpdate?: (metrics: AlgorithmMetrics | null) => void;
     onStepMetricsUpdate?: (metrics: AlgorithmMetrics | null) => void;
+    onStepInfoUpdate?: (info: StepInfo | null) => void;
 };
 
 type AlgorithmOptions = {
@@ -90,12 +84,15 @@ type RenderDonePayload = {
 
 type StepMetricsPayload = {
     metrics?: AlgorithmMetrics;
+    stepType?: string;
+    instructionId?: string[];
 };
 
 function SortVisualizerCanvas({
     registry,
     onMetricsUpdate,
     onStepMetricsUpdate,
+    onStepInfoUpdate,
 }: SortVisualizerCanvasProps): JSX.Element {
     // Contexts
 
@@ -191,9 +188,17 @@ function SortVisualizerCanvas({
         });
         onStatusType("step-metrics", (payload) => {
             if (!payload) return;
-            const { metrics } = payload as StepMetricsPayload;
+            const { metrics, stepType, instructionId } =
+                payload as StepMetricsPayload;
             if (typeof onStepMetricsUpdate === "function") {
                 onStepMetricsUpdate(metrics || null);
+            }
+            if (typeof onStepInfoUpdate === "function") {
+                onStepInfoUpdate(
+                    stepType
+                        ? { type: stepType, instructionId: instructionId ?? [] }
+                        : null
+                );
             }
         });
     }, [
@@ -202,6 +207,7 @@ function SortVisualizerCanvas({
         dispatch,
         onMetricsUpdate,
         onStepMetricsUpdate,
+        onStepInfoUpdate,
     ]);
 
     useEffect((): void | (() => void) => {

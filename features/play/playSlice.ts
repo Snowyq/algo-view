@@ -26,6 +26,11 @@ export type ActiveAlgorithm = {
 
 export type RegistryAlgorithm = AlgorithmMeta & { id: string };
 
+export type SidebarTab = "input" | "selection" | "code" | "info";
+
+/** Tabs that show one algorithm (and outline its panel). */
+export const PER_ALGORITHM_TABS: SidebarTab[] = ["code", "info"];
+
 type PlayState = {
     active: {
         category: string;
@@ -33,6 +38,7 @@ type PlayState = {
     };
     input: number[];
     allMetricsVisible: boolean;
+    allCodeVisible: boolean;
     registry: {
         categories: string[];
         algorithms: RegistryAlgorithm[];
@@ -43,6 +49,9 @@ type PlayState = {
     };
     ui: {
         sidebarOpen: boolean;
+        sidebarTab: SidebarTab;
+        /** Algorithm followed by the Code/Info tabs (null = none). */
+        observedAlgorithmId: string | null;
         stepWorkerReady: boolean;
         sortWorkerReady: boolean;
         sortWorkerLoadingCount: number;
@@ -96,6 +105,7 @@ function getInitialState(): PlayState {
         },
         input: initialInput,
         allMetricsVisible: false,
+        allCodeVisible: false,
         registry: {
             categories,
             algorithms: algorithmsInCategory.map((algo) => ({
@@ -109,6 +119,8 @@ function getInitialState(): PlayState {
         },
         ui: {
             sidebarOpen: true,
+            sidebarTab: "input",
+            observedAlgorithmId: null,
             stepWorkerReady: false,
             sortWorkerReady: false,
             sortWorkerLoadingCount: 0,
@@ -222,6 +234,15 @@ const playSlice = createSlice({
             };
         },
 
+        closeAllAlgorithms(state) {
+            state.active.algorithms = [];
+            state.animation.maxStep = findMaxStep(state.active.algorithms);
+            state.animation.step = {
+                value: 0,
+                trigger: "closeAlgorithm",
+            };
+        },
+
         // Handle category
 
         changeCategory(state, action: { payload: string }) {
@@ -280,6 +301,12 @@ const playSlice = createSlice({
             state.allMetricsVisible = !state.allMetricsVisible;
         },
 
+        // Handle all code views state
+
+        toggleCode(state) {
+            state.allCodeVisible = !state.allCodeVisible;
+        },
+
         // UI state
 
         toggleSidebar(state) {
@@ -288,6 +315,39 @@ const playSlice = createSlice({
 
         setSidebarOpen(state, action: { payload: boolean }) {
             state.ui.sidebarOpen = Boolean(action.payload);
+        },
+
+        setSidebarTab(state, action: { payload: SidebarTab }) {
+            state.ui.sidebarTab = action.payload;
+        },
+
+        setObservedAlgorithm(state, action: { payload: string }) {
+            state.ui.observedAlgorithmId = action.payload;
+        },
+
+        /** Clicked panel: observe it; Input/Selection show nothing per algorithm. */
+        observeAlgorithm(state, action: { payload: string }) {
+            state.ui.observedAlgorithmId = action.payload;
+            state.ui.sidebarOpen = true;
+            if (!PER_ALGORITHM_TABS.includes(state.ui.sidebarTab))
+                state.ui.sidebarTab = "info";
+        },
+
+        /** Click on empty space between panels: stop following. */
+        clearObservedAlgorithm(state) {
+            state.ui.observedAlgorithmId = null;
+        },
+
+        showInfoInSidebar(state, action: { payload: string }) {
+            state.ui.observedAlgorithmId = action.payload;
+            state.ui.sidebarTab = "info";
+            state.ui.sidebarOpen = true;
+        },
+
+        showCodeInSidebar(state, action: { payload: string }) {
+            state.ui.observedAlgorithmId = action.payload;
+            state.ui.sidebarTab = "code";
+            state.ui.sidebarOpen = true;
         },
 
         setStepWorkerReady(state, action: { payload: boolean }) {
@@ -351,9 +411,17 @@ export const {
     openAlgorithm,
     changeCategory,
     closeAlgorithm,
+    closeAllAlgorithms,
     toggleMetrics,
+    toggleCode,
     toggleSidebar,
     setSidebarOpen,
+    setSidebarTab,
+    setObservedAlgorithm,
+    showCodeInSidebar,
+    showInfoInSidebar,
+    clearObservedAlgorithm,
+    observeAlgorithm,
     setStepWorkerReady,
     setSortWorkerReady,
     incrementSortWorkerLoading,
@@ -390,8 +458,26 @@ export const getActiveAlgorithms = (state: RootState): ActiveAlgorithm[] =>
 export const getInput = (state: RootState): number[] => state.play.input;
 export const getAllMetricsVisible = (state: RootState): boolean =>
     state.play.allMetricsVisible;
+export const getAllCodeVisible = (state: RootState): boolean =>
+    state.play.allCodeVisible;
 export const getSidebarOpen = (state: RootState): boolean =>
     state.play.ui.sidebarOpen;
+export const getSidebarTab = (state: RootState): SidebarTab =>
+    state.play.ui.sidebarTab;
+/** The followed algorithm, or null when none is chosen or it was closed. */
+export const getObservedAlgorithmId = (state: RootState): string | null => {
+    const chosen = state.play.ui.observedAlgorithmId;
+    if (!chosen) return null;
+    return state.play.active.algorithms.some((algo) => algo.id === chosen)
+        ? chosen
+        : null;
+};
+/** The panel to outline: only while the sidebar shows a per-algorithm tab. */
+export const getHighlightedPanelId = (state: RootState): string | null => {
+    const { sidebarOpen, sidebarTab } = state.play.ui;
+    if (!sidebarOpen || !PER_ALGORITHM_TABS.includes(sidebarTab)) return null;
+    return getObservedAlgorithmId(state);
+};
 export const getStepWorkerReady = (state: RootState): boolean =>
     state.play.ui.stepWorkerReady;
 export const getSortWorkerReady = (state: RootState): boolean =>

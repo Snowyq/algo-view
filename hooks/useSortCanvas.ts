@@ -146,6 +146,8 @@ function getStepColors(): StepColors {
     for (const type of sortStepTypes) {
         stepColors[type] = getCssVar(`--color-step-${type}`);
     }
+    stepColors.default = getCssVar("--color-step-default");
+    stepColors.label = getCssVar("--color-step-label");
     return stepColors;
 }
 

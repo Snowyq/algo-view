@@ -1,44 +1,37 @@
 import { JSX } from "react";
 import { BsLayoutSidebarReverse } from "react-icons/bs";
-import { IoIosArrowBack } from "react-icons/io";
-import styled, { css } from "styled-components";
-const CollapseButton = styled.button<{ $fontSize?: string }>`
-    --border-color: var(--color-grey-300);
-    --border-radius: 2rem;
-
-    border: none;
-    background-color: var(--color-grey-50);
-    font-size: ${({ $fontSize = "2rem" }) => $fontSize};
-    padding: 0.2em 0.2em;
-    position: absolute;
-    right: 0;
-
-    box-shadow: 1px 4px 0px -1px var(--color-grey-400);
-
-    border-top-left-radius: var(--border-radius);
-    border-bottom-left-radius: var(--border-radius);
-    border-top: 3px solid var(--border-color);
-    border-bottom: 3px solid var(--border-color);
-    border-left: 3px solid var(--border-color);
-`;
+import styled from "styled-components";
 
 type SidebarState = "hidden" | "visible";
 
-const arrowStates: Record<SidebarState, ReturnType<typeof css>> = {
-    hidden: css``,
-    visible: css`
-        rotate: 180deg;
-    `,
-};
-const ArrowCollapse = styled.div<{ state: SidebarState }>`
+const CollapseButton = styled.button<{ $state: SidebarState }>`
     position: absolute;
-    font-size: 2rem;
-    top: 50%;
-    left: 10%;
-    translate: 0 -50%;
-    transition: rotate 0.5s;
+    right: 0;
+    display: grid;
+    place-items: center;
+    width: var(--sidebar-tab-width);
+    height: 4rem;
+    border: 1px solid var(--ink-700);
+    border-right: none;
+    border-radius: var(--radius-md) 0 0 var(--radius-md);
+    background-color: var(--ink-900);
+    color: ${({ $state }) =>
+        $state === "visible" ? "var(--text)" : "var(--text-muted)"};
+    transition:
+        color var(--dur-fast) var(--ease-out),
+        background-color var(--dur-fast) var(--ease-out);
 
-    ${({ state }) => arrowStates[state]}
+    svg {
+        width: 1.8rem;
+        height: 1.8rem;
+    }
+
+    @media (hover: hover) {
+        &:hover {
+            color: var(--text);
+            background-color: var(--ink-850);
+        }
+    }
 `;
 
 type SidebarToggleButtonProps = {
@@ -50,12 +43,17 @@ function SidebarToggleButton({
     onClick,
     state,
 }: SidebarToggleButtonProps): JSX.Element {
+    const label = state === "visible" ? "Hide sidebar" : "Show sidebar";
     return (
-        <CollapseButton onClick={onClick} $fontSize={"2.6rem"}>
-            <ArrowCollapse state={state}>
-                <IoIosArrowBack />
-            </ArrowCollapse>
-            <BsLayoutSidebarReverse />
+        <CollapseButton
+            type="button"
+            onClick={onClick}
+            $state={state}
+            aria-label={label}
+            aria-expanded={state === "visible"}
+            title={label}
+        >
+            <BsLayoutSidebarReverse aria-hidden="true" />
         </CollapseButton>
     );
 }
