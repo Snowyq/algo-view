@@ -16,7 +16,27 @@ import {
 
 const Container = styled.div`
     display: flex;
-    gap: 0.5rem;
+    align-items: center;
+    gap: var(--space-1);
+
+    @media (min-width: 480px) {
+        gap: var(--space-2);
+    }
+
+    @media (max-width: 479px) {
+        button {
+            --padding: 0.9rem;
+        }
+    }
+`;
+
+/* ±10 jumps are a power-user shortcut; the timeline covers them on phones. */
+const Jump = styled.span`
+    display: contents;
+
+    @media (max-width: 479px) {
+        display: none;
+    }
 `;
 
 function PlaybackTransport(): JSX.Element {
@@ -41,12 +61,16 @@ function PlaybackTransport(): JSX.Element {
 
     return (
         <Container>
-            <ControlIconButton
-                icon={<TbRewindBackward10 />}
-                onClick={() => backward(10)}
-            />
+            <Jump>
+                <ControlIconButton
+                    icon={<TbRewindBackward10 />}
+                    label="Back 10 steps"
+                    onClick={() => backward(10)}
+                />
+            </Jump>
             <ControlIconButton
                 icon={<FaBackward />}
+                label="Back 1 step"
                 onClick={() => backward(1)}
             />
             <PlayStopButton
@@ -56,12 +80,16 @@ function PlaybackTransport(): JSX.Element {
             />
             <ControlIconButton
                 icon={<FaForward />}
+                label="Forward 1 step"
                 onClick={() => forward(1)}
             />
-            <ControlIconButton
-                icon={<TbRewindForward10 />}
-                onClick={() => forward(10)}
-            />
+            <Jump>
+                <ControlIconButton
+                    icon={<TbRewindForward10 />}
+                    label="Forward 10 steps"
+                    onClick={() => forward(10)}
+                />
+            </Jump>
         </Container>
     );
 }

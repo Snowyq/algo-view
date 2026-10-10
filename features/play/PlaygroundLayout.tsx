@@ -19,13 +19,16 @@ const Container = styled.div`
 const PlayMain = styled.div`
     flex-direction: column;
     width: 100%;
+    min-width: 0;
     height: 100%;
     display: flex;
 `;
 
+/* Takes what the playback bar leaves; never pushes it off screen. */
 const PlayGroup = styled.div`
     display: flex;
-    height: 100%;
+    flex: 1;
+    min-height: 0;
 `;
 
 function PlaygroundLayout(): JSX.Element {

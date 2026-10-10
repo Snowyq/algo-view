@@ -503,23 +503,25 @@ export class SortAlgorithm extends Algorithm {
         const type = "copy";
         const instructionId = options?.instructionId;
         const payload = arr[copiedIndex];
-        const activeItems = [targetIndex, copiedIndex];
+        const elements = [targetIndex, copiedIndex];
 
-        this.count(type, "copies");
+        this.count(type, "Shifts");
 
+        // "Shift from": highlight only the source bar.
         this.createStep({
             type: "copy",
-            activeItems,
+            activeItems: [copiedIndex],
             instructionId,
         });
 
         // Creates and executes an operation. Saves its id and assigns it to step
-        const operationId = this.createOperation(type, activeItems, payload);
-        this.makeOperation({ type, elements: activeItems }, arr);
+        const operationId = this.createOperation(type, elements, payload);
+        this.makeOperation({ type, elements }, arr);
 
+        // "Shift to": highlight only the bar that received the value.
         this.createStep({
             type: "copy-to",
-            activeItems,
+            activeItems: [targetIndex],
             instructionId,
             operationId,
         });
@@ -653,7 +655,11 @@ export class SortAlgorithm extends Algorithm {
         }
 
         // creates step
-        this.createStep({ type, activeItems });
+        this.createStep({
+            type,
+            activeItems,
+            instructionId: options?.instructionId,
+        });
     }
 
     unSelect(id: string): void {

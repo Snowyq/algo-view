@@ -23,8 +23,15 @@ const Flex = styled.div`
 `;
 
 const Progress = styled.span<{ state: "visible" | "hidden" }>`
-    font-size: 1.4rem;
-    align-self: flex-start;
+    /* Below the track: hint labels grow upwards from the markers. */
+    order: 2;
+    align-self: flex-end;
+    margin-top: -0.4rem;
+    font-family: var(--font-mono-stack);
+    font-size: var(--text-xs);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
     visibility: ${({ state }) => state};
 `;
 
@@ -47,11 +54,17 @@ const PointHintLabel = styled.span`
     transform-origin: 0 50%;
     rotate: 300deg;
     pointer-events: none;
+    font-family: var(--font-mono-stack);
+    font-size: var(--text-xs);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--finish);
+    white-space: nowrap;
 `;
 
 const Container = styled.div`
-    width: calc(100%);
-    padding: 1rem 0;
+    width: 100%;
+    padding: var(--space-2) 0;
 `;
 
 const MemoSlider = memo(TimelineSlider);

@@ -7,11 +7,21 @@ export type AlgorithmInstruction = {
 
 export type AlgorithmInstructions = Record<string, AlgorithmInstruction>;
 
+export type AlgorithmGroup = "classic" | "fun";
+
 export type AlgorithmMeta = {
     name: string;
     description: string;
+    /** Average-case time. */
     timeComplexity: string;
+    bestCase: string;
+    worstCase: string;
     auxiliarySpace: string;
+    /** Equal values keep their relative order (as implemented here). */
+    stable: boolean;
+    /** Sorts within the input array, without a second array of size n. */
+    inPlace: boolean;
+    group?: AlgorithmGroup;
 };
 
 export type AlgorithmMetric = {

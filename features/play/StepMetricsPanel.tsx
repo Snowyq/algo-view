@@ -4,26 +4,32 @@ import type { AlgorithmMetrics } from "../../algorithms/types";
 
 const Metrics = styled.div`
     display: flex;
-    gap: 0 1rem;
+    gap: 0 var(--space-5);
     width: 100%;
 `;
 
 const MetricsItem = styled.div`
     display: flex;
     flex-direction: column;
-
+    align-items: flex-end;
     white-space: nowrap;
     position: relative;
-    align-items: start;
-    font-size: 1.2rem;
-    line-height: 1.4rem;
+    line-height: 1.2;
 `;
 
 const Name = styled.span`
-    color: var(--color-grey-500);
+    font-family: var(--font-mono-stack);
+    font-size: 1.1rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
 `;
 const Count = styled.span`
-    font-weight: bold;
+    font-family: var(--font-mono-stack);
+    font-size: var(--text-base);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
 `;
 
 type StepMetricsPanelProps = {

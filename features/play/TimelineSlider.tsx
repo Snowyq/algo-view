@@ -11,10 +11,9 @@ const Flex = styled.div`
 
 const SliderContainer = styled(Flex)`
     width: 100%;
-    height: 8px;
-    gap: 1.5rem;
-    background-color: var(--color-grey-400);
-    border-radius: 15px;
+    height: 4px;
+    background-color: var(--ink-700);
+    border-radius: var(--radius-pill);
 
     -webkit-user-select: none;
     -ms-user-select: none;
@@ -26,67 +25,63 @@ const SliderContainer = styled(Flex)`
 const SliderOutput = styled.div`
     position: relative;
     width: 100%;
-    height: 25px;
+    height: 2.8rem;
 
     @media screen and (min-width: 640px) {
-        height: 12px;
+        height: 1.6rem;
     }
 `;
 
 const Dot = styled.div`
     position: absolute;
-    background-color: var(--color-grey-50);
-    border-radius: 50%;
-    height: 12px;
-    aspect-ratio: 1/1;
-
-    @media screen and (min-width: 640px) {
-        height: 100%;
-    }
-
     top: 50%;
+    height: 1.4rem;
+    aspect-ratio: 1/1;
     translate: -50% -50%;
-    box-shadow: 1px 1px 0px 1px var(--color-grey-400);
+    border-radius: 50%;
+    background-color: var(--text);
+    box-shadow:
+        0 0 0 4px var(--ink-900),
+        var(--shadow-1);
+    transition: scale var(--dur-fast) var(--ease-out);
 
-    &::before {
-        content: "";
-        position: absolute;
-        height: 50%;
-        width: 50%;
-        top: 50%;
-        left: 50%;
-        translate: -50% -50%;
-        z-index: -10;
-        border-radius: 50%;
-        background-color: var(--color-grey-500);
+    /* Grab affordance: the thumb grows when the track is under the pointer. */
+    @media (hover: hover) {
+        ${SliderOutput}:hover & {
+            scale: 1.25;
+        }
     }
 `;
 
 const Tooltip = styled.div`
     position: absolute;
-    translate: -50% calc(-100% - 0.75rem);
-    background-color: var(--color-grey-100);
-    border-radius: 5px;
+    translate: -50% calc(-100% - 0.8rem);
+    padding: 0.3rem 0.6rem;
+    border-radius: var(--radius-xs);
+    background-color: var(--ink-800);
+    color: var(--text);
+    font-family: var(--font-mono-stack);
+    font-size: var(--text-xs);
+    font-variant-numeric: tabular-nums;
     line-height: 1;
-    padding: 0.1rem 0.2rem;
     pointer-events: none;
 `;
 
 const Fill = styled.div`
     width: 100%;
-    height: 8px;
+    height: 4px;
     position: absolute;
     top: 50%;
     translate: 0 -50%;
-    background-color: var(--color-grey-500);
-    border-radius: 15px;
+    background-color: var(--swap);
+    border-radius: var(--radius-pill);
 `;
 
 const Hover = styled.div`
-    width: 5px;
+    width: 2px;
     height: 100%;
-    background-color: var(--color-grey-600);
-    border-radius: 15px;
+    background-color: var(--text-muted);
+    border-radius: 2px;
 `;
 
 const Point = styled.div<{ left: string }>`
@@ -94,13 +89,10 @@ const Point = styled.div<{ left: string }>`
     top: 50%;
     left: ${({ left }) => left};
     translate: -50% -50%;
-    height: 100%;
-    width: 5px;
-    border-radius: 15px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background-color: black;
+    height: 1.2rem;
+    width: 2px;
+    border-radius: 2px;
+    background-color: var(--finish);
     pointer-events: none;
     display: none;
 

@@ -1,17 +1,26 @@
 import type { ReactNode } from "react";
 import { JSX } from "react";
 import styled from "styled-components";
-const Item = styled.div`
+const Item = styled.section`
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: var(--space-4);
+    padding: var(--space-5) 0;
+    border-top: 1px solid var(--ink-700);
+
+    &:first-child {
+        border-top: none;
+        padding-top: 0;
+    }
 `;
 
-const Container = styled.div`
-    gap: 1.5rem;
-    padding: 1rem 1rem;
-    border-radius: 15px;
-    background-color: var(--color-grey-200);
+const Title = styled.h2`
+    font-family: var(--font-mono-stack);
+    font-size: var(--text-xs);
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
 `;
 
 type ConfigSectionProps = {
@@ -22,8 +31,8 @@ type ConfigSectionProps = {
 function ConfigSection({ title, children }: ConfigSectionProps): JSX.Element {
     return (
         <Item>
-            <p>{title}</p>
-            <Container>{children}</Container>
+            <Title>{title}</Title>
+            {children}
         </Item>
     );
 }

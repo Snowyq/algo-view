@@ -15,23 +15,34 @@ import {
 } from "./playSlice";
 
 const Option = styled.div`
-    padding: 0.25rem 0.5rem;
-    cursor: pointer;
     display: flex;
     flex-direction: column;
     align-items: flex-start;
     gap: 0.2rem;
+    min-width: 9rem;
+    padding: 0.8rem 1.2rem;
+    border-radius: var(--radius-xs);
+    font-family: var(--font-mono-stack);
+    font-size: var(--text-sm);
+    font-variant-numeric: tabular-nums;
+    color: var(--text-soft);
+    cursor: pointer;
 
     &:hover {
-        background-color: var(--color-grey-100);
+        color: var(--text);
+        background-color: var(--ink-800);
     }
 `;
 
 const Wrapper = styled.div`
-    background-color: var(--color-grey-50);
+    display: flex;
+    flex-direction: column;
+    padding: 0.4rem;
+    border: 1px solid var(--ink-700);
+    border-radius: var(--radius-md);
+    background-color: var(--ink-850);
+    box-shadow: var(--shadow-2);
     overflow: hidden;
-    border-radius: 10px;
-    box-shadow: 0 0 15px 0px var(--color-grey-400);
 `;
 
 const StyledPlaybackSpeed = styled.div`
@@ -40,41 +51,47 @@ const StyledPlaybackSpeed = styled.div`
 `;
 
 const SpeedButton = styled.button`
-    display: flex;
-    flex-direction: column;
-    padding: 0.2rem;
+    display: inline-flex;
     align-items: center;
-    justify-content: center;
-    height: auto;
-    width: 3.5rem;
-    background-color: var(--color-grey-100);
-    border-radius: 5px;
-    border: none;
+    gap: var(--space-2);
+    height: 4.2rem;
+    padding: 0 1.2rem;
+    border: 1px solid var(--ink-700);
+    border-radius: var(--radius-sm);
+    background-color: transparent;
+    color: var(--text-soft);
+    transition:
+        border-color var(--dur-fast) var(--ease-out),
+        color var(--dur-fast) var(--ease-out);
+
+    @media (hover: hover) {
+        &:hover {
+            border-color: var(--ink-600);
+            color: var(--text);
+        }
+    }
 `;
 
 const SpeedButtonValue = styled.span<{ $isWarning: boolean }>`
     display: inline-flex;
     align-items: center;
     gap: 0.3rem;
-    width: auto;
-    line-height: 1.2rem;
-    font-size: 1.2rem;
-    border-radius: 2.5px;
-    color: ${({ $isWarning }) =>
-        $isWarning ? "var(--color-red-600)" : "inherit"};
-
-    height: fit-content;
+    font-family: var(--font-mono-stack);
+    font-size: var(--text-xs);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    color: ${({ $isWarning }) => ($isWarning ? "var(--danger)" : "inherit")};
 `;
 
 const WarningIcon = styled(BsExclamationTriangle)`
-    color: var(--color-red-600);
+    color: var(--danger);
     font-size: 1.1rem;
     flex: 0 0 auto;
 `;
 
 const WarningText = styled.span`
-    color: var(--color-red-600);
-    font-size: 1.1rem;
+    color: var(--danger);
+    font-size: var(--text-xs);
     line-height: 1.1;
 `;
 
@@ -85,17 +102,42 @@ const WarningRow = styled.span`
 `;
 
 const Icon = styled.span`
-    font-size: 2rem;
+    display: inline-flex;
+    font-size: 1.6rem;
 `;
 
 const SelectorContainer = styled.div<{ state: "hidden" | "visible" }>`
     display: ${({ state }) => (state === "hidden" ? "none" : "block")};
     position: absolute;
     z-index: 2000;
-
     bottom: 0;
-    right: -0.5rem;
+    right: -0.8rem;
     translate: 100% 0%;
+
+    /* Grows out of the speed button (its left edge). */
+    & > * {
+        transform-origin: 0 100%;
+        animation: speed-in 180ms var(--ease-out);
+    }
+
+    @keyframes speed-in {
+        from {
+            opacity: 0;
+            transform: translateX(-4px) scale(0.97);
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        & > * {
+            animation-name: speed-fade;
+        }
+
+        @keyframes speed-fade {
+            from {
+                opacity: 0;
+            }
+        }
+    }
 `;
 
 type AnimationStatus = "stopped" | "playing" | "freezed";
@@ -159,8 +201,12 @@ function PlaybackSpeed(): JSX.Element {
 
     return (
         <StyledPlaybackSpeed>
-            <SpeedButton onClick={handleClick}>
-                <Icon>
+            <SpeedButton
+                onClick={handleClick}
+                aria-label={`Playback speed ${display(speed)}`}
+                aria-expanded={!isHidden}
+            >
+                <Icon aria-hidden="true">
                     <BsSpeedometer2 />
                 </Icon>
                 <SpeedButtonValue $isWarning={isUnstableSpeed(speed)}>

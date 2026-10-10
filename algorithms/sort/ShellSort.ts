@@ -1,3 +1,4 @@
+import type { AlgorithmInstructions } from "../types";
 import { SortAlgorithm } from "./SortAlgorithm";
 
 export class ShellSort extends SortAlgorithm {
@@ -15,33 +16,47 @@ export class ShellSort extends SortAlgorithm {
                 this.countConditionChecks();
 
                 this.countArrayAccess();
-                this.select(i, { mode: "perm", id: "i" });
+                this.select(i, {
+                    mode: "perm",
+                    id: "i",
+                    instructionId: ["h1"],
+                });
                 const temp = arr[i];
 
                 let j = i;
                 this.countConditionChecks();
 
                 if (arr[j - gap] > temp) {
-                    this.select(j - gap, { mode: "perm", id: "j" });
+                    this.select(j - gap, {
+                        mode: "perm",
+                        id: "j",
+                        instructionId: ["h4"],
+                    });
                 }
 
                 while (
                     j >= gap &&
-                    this.checkWithValue(j - gap, ">", temp, arr)
+                    this.checkWithValue(j - gap, ">", temp, arr, {
+                        instructionId: ["h4"],
+                    })
                 ) {
                     this.countConditionChecks();
                     // arr[j] = arr[j - gap];
-                    this.copy(j, j - gap, arr);
+                    this.copy(j, j - gap, arr, { instructionId: ["h5"] });
                     j -= gap;
 
                     if (arr[j - gap] > temp) {
-                        this.select(j - gap, { mode: "perm", id: "j" });
+                        this.select(j - gap, {
+                            mode: "perm",
+                            id: "j",
+                            instructionId: ["h4"],
+                        });
                     } else {
                         this.unSelect("j");
                     }
                 }
                 // arr[j] = temp;
-                this.assign(j, temp, arr);
+                this.assign(j, temp, arr, { instructionId: ["h7"] });
             }
         }
     }
@@ -62,5 +77,27 @@ export class ShellSort extends SortAlgorithm {
                 arr[j] = temp;
             }
         }
+    }
+
+    static getInstructions(): AlgorithmInstructions {
+        return {
+            h0: {
+                line: `for (let gap = n >> 1; gap > 0; gap >>= 1) {`,
+                indent: 0,
+            },
+            h1: { line: `for (let i = gap; i < n; i++) {`, indent: 1 },
+            h2: { line: `const temp = arr[i];`, indent: 2 },
+            h3: { line: `let j = i;`, indent: 2 },
+            h4: {
+                line: `while (j >= gap && arr[j - gap] > temp) {`,
+                indent: 2,
+            },
+            h5: { line: `arr[j] = arr[j - gap];`, indent: 3 },
+            h6: { line: `j -= gap;`, indent: 3 },
+            he4: { line: `}`, indent: 2 },
+            h7: { line: `arr[j] = temp;`, indent: 2 },
+            he1: { line: `}`, indent: 1 },
+            he0: { line: `}`, indent: 0 },
+        };
     }
 }

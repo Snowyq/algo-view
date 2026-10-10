@@ -2,14 +2,16 @@ import type { MouseEvent } from "react";
 import { JSX, useEffect } from "react";
 import { IoIosClose } from "react-icons/io";
 import { useDispatch, useSelector } from "react-redux";
-import styled, { css } from "styled-components";
+import styled from "styled-components";
 import { PLAY_LAYOUT_BREAKPOINT } from "../../constants/breakpoints";
 import useWindowSize from "../../hooks/useWindowSize";
 import type { AppDispatch, RootState } from "../../store";
 import ButtonIcon from "../../ui/ButtonIcon";
 import type { ActiveAlgorithm, RegistryAlgorithm } from "./playSlice";
+import ButtonText from "../../ui/ButtonText";
 import {
     closeAlgorithm,
+    closeAllAlgorithms,
     getActiveAlgorithms,
     getAlgorithms,
     openAlgorithm,
@@ -17,82 +19,137 @@ import {
 
 type ItemState = "default" | "selected";
 
-const ItemCloseButton = styled(ButtonIcon)<{ state: ItemState }>`
-    background-color: transparent;
-    padding: 0.2rem;
-    opacity: ${({ state }) => (state === "selected" ? 1 : 0)};
-    visibility: ${({ state }) => (state === "selected" ? "visible" : "hidden")};
-    svg {
-        color: white;
-        width: 2.2rem;
-        height: 2.2rem;
-    }
-
-    &:hover {
-        background-color: var(--color-red-500);
-
-        svg {
-            color: white;
-        }
-    }
-`;
-
-const itemStates: Record<ItemState, ReturnType<typeof css>> = {
-    default: css`
-        box-shadow: 3px 3px 0px 1px var(--color-grey-300);
-        @media (hover: hover) and (pointer: fine) {
-            &:hover {
-                background-color: var(--color-blue-200);
-                box-shadow: 3px 3px 0px 1px var(--color-blue-300);
-            }
-        }
-    `,
-    selected: css`
-        background-color: var(--color-blue-400);
-        box-shadow: 3px 3px 0px 1px var(--color-blue-500);
-        color: white;
-        transition:
-            background-color 0.2s,
-            box-shadow 0.2s;
-
-        &:has(${ItemCloseButton}:hover) {
-            background-color: var(--color-red-400);
-            box-shadow: 3px 3px 0px 1px var(--color-red-500);
-        }
-    `,
-};
-
-const disabledStyles = css`
-    opacity: 0.5;
-    cursor: not-allowed;
+const StyledItem = styled.div<{ state: ItemState; $isDisabled?: boolean }>`
+    position: relative;
+    display: flex;
+    align-items: stretch;
+    height: 4.4rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid
+        ${({ state }) =>
+            state === "selected" ? "var(--swap)" : "var(--ink-700)"};
+    background-color: ${({ state }) =>
+        state === "selected"
+            ? "rgba(var(--swap-rgb), 0.12)"
+            : "var(--ink-950)"};
+    opacity: ${({ $isDisabled }) => ($isDisabled ? 0.45 : 1)};
+    transition:
+        border-color var(--dur-fast) var(--ease-out),
+        background-color var(--dur-fast) var(--ease-out);
 
     @media (hover: hover) and (pointer: fine) {
         &:hover {
-            background-color: var(--color-grey-50);
-            box-shadow: 3px 3px 0px 1px var(--color-grey-300);
+            border-color: ${({ state, $isDisabled }) =>
+                $isDisabled
+                    ? "var(--ink-700)"
+                    : state === "selected"
+                      ? "var(--swap-strong)"
+                      : "var(--ink-600)"};
         }
     }
 `;
 
-const StyledItem = styled.div<{ state: ItemState; $isDisabled?: boolean }>`
-    background-color: var(--color-grey-50);
-    padding: 1rem 0.5rem 1rem 1.5rem;
-    border-radius: 10px;
+const ItemButton = styled.button<{ state: ItemState }>`
+    flex: 1;
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    cursor: pointer;
-    ${({ state }) => itemStates[state]};
-    ${({ $isDisabled }) => $isDisabled && disabledStyles};
+    gap: var(--space-2);
+    min-width: 0;
+    padding: 0 var(--space-3);
+    border: none;
+    border-radius: inherit;
+    background: none;
+    color: ${({ state }) =>
+        state === "selected" ? "var(--text)" : "var(--text-soft)"};
+    font-size: var(--text-sm);
+    font-weight: 500;
+    text-align: left;
+
+    &::before {
+        content: "";
+        flex: 0 0 auto;
+        width: 0.8rem;
+        height: 0.8rem;
+        border-radius: 2px;
+        background-color: ${({ state }) =>
+            state === "selected" ? "var(--swap)" : "var(--ink-600)"};
+        transition: background-color var(--dur-fast) var(--ease-out);
+    }
+
+    &:disabled {
+        background: none;
+        color: var(--text-muted);
+    }
+`;
+
+const ItemCloseButton = styled(ButtonIcon)`
+    align-self: center;
+    margin-right: 0.4rem;
+    --hover-background: rgba(255, 125, 125, 0.16);
+    --hover-color: var(--danger);
+`;
+
+const Toolbar = styled.div`
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    min-height: 2.4rem;
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+`;
+
+const Count = styled.span`
+    font-variant-numeric: tabular-nums;
+`;
+
+const ClearButton = styled(ButtonText)`
+    font-size: var(--text-sm);
+
+    &:disabled {
+        color: var(--text-faint);
+        text-decoration: none;
+        cursor: default;
+    }
+`;
+
+const LimitNote = styled.p`
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+`;
+
+const Groups = styled.div`
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+`;
+
+const Group = styled.div`
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+`;
+
+const GroupLabel = styled.p`
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--text-soft);
+
+    &::after {
+        content: "";
+        flex: 1;
+        height: 1px;
+        background-color: var(--ink-700);
+    }
 `;
 
 const AlgorithmsList = styled.div`
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1.5rem;
-    padding: 1rem 1rem;
-    border-radius: 15px;
-    background-color: var(--color-grey-200);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2);
 `;
 
 function AlgorithmPicker(): JSX.Element {
@@ -128,26 +185,59 @@ function AlgorithmPicker(): JSX.Element {
         dispatch(openAlgorithm(id));
     };
 
+    const renderItem = (algo: RegistryAlgorithm): JSX.Element => {
+        const isSelected = activeAlgorithms.some(
+            (x: ActiveAlgorithm) => x.id === algo.id
+        );
+        const isDisabled = !isSelected && isLimitReached;
+        return (
+            <Item
+                key={algo.id}
+                name={algo.name}
+                id={algo.id}
+                isSelected={isSelected}
+                isDisabled={isDisabled}
+                onClose={handleClose}
+                onOpen={handleOpen}
+            />
+        );
+    };
+
+    const classic = algorithms.filter((algo) => algo.group !== "fun");
+    const fun = algorithms.filter((algo) => algo.group === "fun");
+
+    const selectedCount = activeAlgorithms.length;
+
     return (
-        <AlgorithmsList>
-            {algorithms.map((algo) => {
-                const isSelected = activeAlgorithms.some(
-                    (x: ActiveAlgorithm) => x.id === algo.id
-                );
-                const isDisabled = !isSelected && isLimitReached;
-                return (
-                    <Item
-                        key={algo.id}
-                        name={algo.name}
-                        id={algo.id}
-                        isSelected={isSelected}
-                        isDisabled={isDisabled}
-                        onClose={handleClose}
-                        onOpen={handleOpen}
-                    />
-                );
-            })}
-        </AlgorithmsList>
+        <Groups>
+            <Toolbar>
+                <Count aria-live="polite">
+                    {selectedCount === 0
+                        ? "None selected"
+                        : `${selectedCount} selected`}
+                </Count>
+                <ClearButton
+                    type="button"
+                    onClick={() => dispatch(closeAllAlgorithms())}
+                    disabled={selectedCount === 0}
+                >
+                    Clear all
+                </ClearButton>
+            </Toolbar>
+            {isLimitReached && (
+                <LimitNote>
+                    Small screens show up to {maxVisibleAlgorithms} at once.
+                    Remove one to pick another.
+                </LimitNote>
+            )}
+            <AlgorithmsList>{classic.map(renderItem)}</AlgorithmsList>
+            {fun.length > 0 && (
+                <Group>
+                    <GroupLabel>Just for fun</GroupLabel>
+                    <AlgorithmsList>{fun.map(renderItem)}</AlgorithmsList>
+                </Group>
+            )}
+        </Groups>
     );
 }
 
@@ -181,17 +271,29 @@ function Item({
     };
 
     return (
-        <StyledItem
-            state={state}
-            $isDisabled={isDisabled}
-            aria-disabled={isDisabled}
-            onClick={handleOpen}
-        >
-            <span>{name}</span>
+        <StyledItem state={state} $isDisabled={isDisabled}>
+            <ItemButton
+                type="button"
+                state={state}
+                onClick={handleOpen}
+                disabled={isDisabled}
+                aria-pressed={isSelected}
+            >
+                <span>{name}</span>
+            </ItemButton>
 
-            <ItemCloseButton state={state} onClick={handleClose}>
-                <IoIosClose />
-            </ItemCloseButton>
+            {isSelected && (
+                <ItemCloseButton
+                    type="button"
+                    onClick={handleClose}
+                    aria-label={`Remove ${name}`}
+                    title={`Remove ${name}`}
+                    size="1.8rem"
+                    padding="0.5rem"
+                >
+                    <IoIosClose />
+                </ItemCloseButton>
+            )}
         </StyledItem>
     );
 }

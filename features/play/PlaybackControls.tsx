@@ -1,17 +1,25 @@
 import { PLAY_LAYOUT_BREAKPOINT } from "@/constants/breakpoints";
 import { JSX, memo, useRef } from "react";
+import { BsCodeSlash } from "react-icons/bs";
 import { RiNumbersLine } from "react-icons/ri";
 import { useDispatch, useSelector } from "react-redux";
-import styled, { css } from "styled-components";
+import styled from "styled-components";
 import useHovered from "../../hooks/useHovered";
 import type { AppDispatch, RootState } from "../../store";
-import ButtonIcon from "../../ui/ButtonIcon";
+import { ToolButton, ToolGroup } from "../../ui/ToolGroup";
 import PlaybackSpeed from "./PlaybackSpeed";
 import PlaybackTicker from "./PlaybackTicker";
 import PlaybackTimeline from "./PlaybackTimeline";
 import PlaybackTransport from "./PlaybackTransport";
 import type { ActiveAlgorithm } from "./playSlice";
-import { getActiveAlgorithms, toggleMetrics } from "./playSlice";
+import {
+    getActiveAlgorithms,
+    getAllCodeVisible,
+    getAllMetricsVisible,
+    toggleCode,
+    toggleMetrics,
+} from "./playSlice";
+import StepLegendPopover from "./StepLegendPopover";
 const Flex = styled.div`
     display: flex;
     justify-content: center;
@@ -19,7 +27,8 @@ const Flex = styled.div`
 `;
 
 const Group = styled.div`
-    position: absolute;
+    display: flex;
+    align-items: center;
 `;
 
 const Center = styled.div`
@@ -32,57 +41,58 @@ const Center = styled.div`
 `;
 
 const Left = styled(Group)`
-    left: 0;
+    justify-self: start;
 `;
 
 const Right = styled(Group)`
-    right: 0;
+    justify-self: end;
+    gap: var(--space-1);
 `;
 
 const StyledPlaybackControls = styled(Flex)`
     position: relative;
     flex-direction: column;
-    border-top: 5px solid var(--color-grey-400);
-    /* background-color: yellow; */
-    background-color: var(--color-grey-200);
-    padding: 0.5rem 3rem 0.5rem 3rem;
+    border-top: 1px solid var(--ink-700);
+    background-color: var(--ink-900);
+    padding: var(--space-2) var(--space-4) var(--space-3);
+    padding-bottom: calc(var(--space-3) + env(safe-area-inset-bottom));
     height: fit-content;
     width: 100%;
 
     touch-action: none;
-
-    -webkit-user-select: none; /* iOS Safari */
-    -ms-user-select: none; /* IE 10+ */
-    user-select: none; /* Modern browsers */
-
-    -webkit-touch-callout: none; /* iOS Safari long press menu */
-    -webkit-tap-highlight-color: transparent; /* remove highlight on tap */
-
-    -webkit-touch-callout: none;
-    -webkit-user-callout: none;
     -webkit-user-select: none;
-    -webkit-user-drag: none;
-    -webkit-user-modify: none;
-    -webkit-highlight: none;
+    -ms-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
 
     @media screen and (min-width: ${PLAY_LAYOUT_BREAKPOINT}) {
-        border-top: 5px solid var(--color-grey-300);
-        background-color: var(--color-grey-200);
-        padding: 1rem 4rem 1rem 4rem;
+        padding: var(--space-3) var(--space-7) var(--space-4);
     }
 `;
 
+/* Nothing to play: dim and make inert; the empty canvas explains why. */
 const Container = styled(Flex)`
     width: 100%;
     max-width: 1200px;
     height: fit-content;
     gap: 0rem;
     flex-direction: column;
+    transition: opacity var(--dur-base) var(--ease-out);
+
+    &[inert] {
+        opacity: 0.35;
+    }
 `;
 
-const Controls = styled(Flex)`
+const Controls = styled.div`
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--space-2);
     width: 100%;
-    padding: 0.5rem 0;
+    min-height: 5rem;
+    padding: var(--space-1) 0 0;
     height: fit-content;
     justify-content: space-between;
     position: relative;
@@ -93,48 +103,6 @@ const Bar = styled(Flex)`
     height: 100%;
 `;
 
-type DisabledOverlayState = "hide" | "show";
-
-const disabledOverlayStates: Record<
-    DisabledOverlayState,
-    ReturnType<typeof css>
-> = {
-    hide: css`
-        display: none;
-        background-color: none;
-    `,
-    show: css`
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 10000;
-        background-color: rgba(var(--color-grey-300-rgb), 0.85);
-    `,
-};
-
-const StatusOverlay = styled.div`
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    top: 0;
-
-    span {
-        color: var(--color-grey-600);
-        padding: 0.5rem 1rem;
-        border-radius: 0.5rem;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        width: 100%;
-        height: 100%;
-    }
-`;
-
-const DisabledOverlay = styled(StatusOverlay)<{ status: DisabledOverlayState }>`
-    ${({ status }) => disabledOverlayStates[status]};
-`;
-
 function PlaybackControls(): JSX.Element {
     const dispatch = useDispatch<AppDispatch>();
     const ref = useRef<HTMLDivElement | null>(null);
@@ -143,14 +111,14 @@ function PlaybackControls(): JSX.Element {
         getActiveAlgorithms
     );
     const isActive: boolean = activeAlgorithms.length > 0;
-    const status: "active" | "disabled" = isActive ? "active" : "disabled";
+    const allCodeVisible = useSelector<RootState, boolean>(getAllCodeVisible);
+    const allMetricsVisible = useSelector<RootState, boolean>(
+        getAllMetricsVisible
+    );
 
     return (
         <StyledPlaybackControls ref={ref}>
-            <DisabledOverlay status={status === "disabled" ? "show" : "hide"}>
-                <span>select algorithm</span>
-            </DisabledOverlay>
-            <Container>
+            <Container inert={!isActive}>
                 <Bar>
                     <PlaybackTimeline showHint={isHovered} />
                 </Bar>
@@ -162,15 +130,27 @@ function PlaybackControls(): JSX.Element {
                         <PlaybackTransport />
                     </Center>
                     <Right>
-                        {/* <ButtonIcon>
-							<FaInfo />
-						</ButtonIcon>
-						<ButtonIcon>
-							<FaCode />
-						</ButtonIcon> */}
-                        <ButtonIcon onClick={() => dispatch(toggleMetrics())}>
-                            <RiNumbersLine />
-                        </ButtonIcon>
+                        <ToolGroup aria-label="View options">
+                            <ToolButton
+                                type="button"
+                                onClick={() => dispatch(toggleCode())}
+                                aria-pressed={allCodeVisible}
+                                aria-label="Code in all panels"
+                                title="Code in all panels"
+                            >
+                                <BsCodeSlash />
+                            </ToolButton>
+                            <ToolButton
+                                type="button"
+                                onClick={() => dispatch(toggleMetrics())}
+                                aria-pressed={allMetricsVisible}
+                                aria-label="Step metrics"
+                                title="Step metrics"
+                            >
+                                <RiNumbersLine />
+                            </ToolButton>
+                            <StepLegendPopover />
+                        </ToolGroup>
                     </Right>
                 </Controls>
             </Container>

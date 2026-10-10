@@ -1,5 +1,5 @@
 import type { ChangeEvent, InputHTMLAttributes } from "react";
-import { JSX, useEffect, useRef, useState } from "react";
+import { JSX, useEffect, useId, useRef, useState } from "react";
 import { BsExclamationTriangle } from "react-icons/bs";
 import { useDispatch, useSelector } from "react-redux";
 import styled from "styled-components";
@@ -26,49 +26,72 @@ import {
 const Container = styled.div`
     display: flex;
     flex-direction: column;
-    gap: 1.6rem;
+    gap: var(--space-5);
 `;
 
 const Item = styled.div`
     display: flex;
     flex-direction: column;
-    gap: 0.8rem;
+    gap: var(--space-2);
+`;
+
+const FieldLabel = styled.label`
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--text);
 `;
 
 const LengthContainer = styled.div`
     display: flex;
-    gap: 2rem;
+    gap: var(--space-4);
     align-items: center;
     width: 100%;
 `;
 
 const RangeContainer = styled.div`
-    display: flex;
-    gap: 2rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-3);
     width: 100%;
+`;
+
+const RangeField = styled.label`
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    font-family: var(--font-mono-stack);
+    font-size: var(--text-xs);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
 `;
 
 const ToggleRow = styled.label`
     display: flex;
-    align-items: flex-start;
-    gap: 0.8rem;
-    font-size: 1.3rem;
-    color: var(--color-grey-700);
+    align-items: center;
+    gap: var(--space-2);
+    margin-top: var(--space-1);
+    font-size: var(--text-sm);
+    color: var(--text-soft);
+    cursor: pointer;
 `;
 
 const ToggleInput = styled.input`
-    margin-top: 0.2rem;
-    accent-color: var(--color-brand-600);
+    width: 1.6rem;
+    height: 1.6rem;
+    accent-color: var(--swap);
+    cursor: pointer;
 `;
 
 const ToggleLabel = styled.span`
     display: inline-flex;
     align-items: center;
-    gap: 0.6rem;
+    flex-wrap: wrap;
+    gap: var(--space-2);
 `;
 
 const WarningIcon = styled(BsExclamationTriangle)`
-    color: var(--color-red-600);
+    color: var(--danger);
     font-size: 1.2rem;
     flex: 0 0 auto;
 `;
@@ -76,22 +99,31 @@ const WarningIcon = styled(BsExclamationTriangle)`
 const WarningRow = styled.span`
     display: inline-flex;
     align-items: center;
-    gap: 0.4rem;
-    color: var(--color-red-600);
-    font-size: 1.1rem;
+    gap: var(--space-1);
+    color: var(--danger);
+    font-family: var(--font-mono-stack);
+    font-size: var(--text-xs);
+    letter-spacing: 0.04em;
     line-height: 1.1;
+`;
+
+const GenerateButton = styled(Button)`
+    width: 100%;
 `;
 
 const numericInputProps: InputHTMLAttributes<HTMLInputElement> = {
     type: "text",
     inputMode: "numeric",
     pattern: "[0-9]*",
+    autoComplete: "off",
+    spellCheck: false,
 };
 
 type NumericState = number | "";
 
 function InputConfigPanel(): JSX.Element {
     const dispatch = useDispatch<AppDispatch>();
+    const lengthId = useId();
     const activeAlgorithms = useSelector<RootState, ActiveAlgorithm[]>(
         getActiveAlgorithms
     );
@@ -325,10 +357,11 @@ function InputConfigPanel(): JSX.Element {
     return (
         <Container>
             <Item>
-                <p>Values number</p>
+                <FieldLabel htmlFor={lengthId}>Values number</FieldLabel>
                 <LengthContainer>
                     <PlaySidebarInput
                         {...numericInputProps}
+                        id={lengthId}
                         value={length}
                         onChange={handleInputLengthChange}
                         onBlur={handleLengthBlur}
@@ -338,6 +371,7 @@ function InputConfigPanel(): JSX.Element {
                         max={maxInputLength}
                         value={lengthValue}
                         onChange={handleLengthChangeBySlider}
+                        showFill
                     />
                 </LengthContainer>
                 <ToggleRow>
@@ -356,10 +390,10 @@ function InputConfigPanel(): JSX.Element {
                 </ToggleRow>
             </Item>
             <Item>
-                <p>Values range</p>
+                <FieldLabel as="p">Values range</FieldLabel>
 
                 <RangeContainer>
-                    <div>
+                    <RangeField>
                         <span>min</span>
                         <PlaySidebarInput
                             {...numericInputProps}
@@ -367,8 +401,8 @@ function InputConfigPanel(): JSX.Element {
                             onChange={handleMinValueChange}
                             onBlur={handleMinValueBlur}
                         />
-                    </div>
-                    <div>
+                    </RangeField>
+                    <RangeField>
                         <span>max</span>
                         <PlaySidebarInput
                             {...numericInputProps}
@@ -376,21 +410,26 @@ function InputConfigPanel(): JSX.Element {
                             onChange={handleMaxValueChange}
                             onBlur={handleMaxValueBlur}
                         />
-                    </div>
+                    </RangeField>
                 </RangeContainer>
             </Item>
 
-            <Button onClick={handleChangeInput} disabled={isBlocked}>
+            <GenerateButton onClick={handleChangeInput} disabled={isBlocked}>
                 Generate input
-            </Button>
+            </GenerateButton>
         </Container>
     );
 }
 
 const InputContainer = styled.div`
-    margin: 0.2rem 0;
-    height: 3rem;
-    width: 10rem;
+    flex: 0 0 auto;
+    height: 4rem;
+    width: 100%;
+    max-width: 9rem;
+
+    ${RangeField} & {
+        max-width: none;
+    }
 `;
 
 function PlaySidebarInput(
