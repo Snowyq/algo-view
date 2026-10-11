@@ -3,57 +3,60 @@ type ButtonSize = "small" | "medium" | "large" | "xlarge";
 type ButtonVariation = "primary" | "secondary" | "danger";
 const sizes: Record<ButtonSize, ReturnType<typeof css>> = {
     small: css`
-        font-size: 1.4rem;
-        padding: 0.4rem 0.8rem;
-        border-radius: 3rem;
+        height: 3.2rem;
+        padding: 0 1.2rem;
+        font-size: var(--text-xs);
+        font-family: var(--font-mono-stack);
+        letter-spacing: 0.06em;
         text-transform: uppercase;
-        font-weight: 600;
-        text-align: center;
     `,
     medium: css`
-        font-size: 1.6rem;
-        padding: 0.6rem 1.6rem;
-        border-radius: 3rem;
-        font-weight: 500;
+        height: 4rem;
+        padding: 0 1.6rem;
+        font-size: var(--text-sm);
     `,
     large: css`
-        font-size: 1.8rem;
-        padding: 0.6rem 2.4rem;
-        border-radius: 3rem;
-        font-weight: 500;
+        height: 4.8rem;
+        padding: 0 2.4rem;
+        font-size: var(--text-base);
     `,
     xlarge: css`
-        font-size: 2rem;
-        border-radius: 3rem;
-        padding: 0.6rem 2.8rem;
-        font-weight: 500;
+        height: 5.6rem;
+        padding: 0 3.2rem;
+        font-size: var(--text-md);
     `,
 };
 
 const variations: Record<ButtonVariation, ReturnType<typeof css>> = {
     primary: css`
-        color: var(--color-brand-50);
-        background-color: var(--color-brand-600);
+        color: var(--ink-950);
+        background-color: var(--swap);
 
-        &:hover {
-            background-color: var(--color-brand-700);
+        @media (hover: hover) {
+            &:hover:not(:disabled) {
+                background-color: var(--swap-strong);
+            }
         }
     `,
     secondary: css`
-        color: var(--color-grey-600);
-        background: var(--color-grey-0);
-        border: 1px solid var(--color-grey-200);
+        color: var(--text);
+        background-color: transparent;
+        box-shadow: inset 0 0 0 1px var(--ink-600);
 
-        &:hover {
-            background-color: var(--color-grey-50);
+        @media (hover: hover) {
+            &:hover:not(:disabled) {
+                background-color: var(--ink-800);
+            }
         }
     `,
     danger: css`
-        color: var(--color-red-100);
-        background-color: var(--color-red-700);
+        color: var(--ink-950);
+        background-color: var(--danger);
 
-        &:hover {
-            background-color: var(--color-red-800);
+        @media (hover: hover) {
+            &:hover:not(:disabled) {
+                background-color: #ffb0b0;
+            }
         }
     `,
 };
@@ -62,16 +65,37 @@ const Button = styled.button<{
     size?: ButtonSize;
     variation?: ButtonVariation;
 }>`
-    border: none;
-    box-shadow: var(--shadow-sm);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
     width: fit-content;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+    transition:
+        background-color var(--dur-fast) var(--ease-out),
+        transform var(--dur-fast) var(--ease-out);
 
     ${({ size = "medium" }) => sizes[size]}
     ${({ variation = "primary" }) => variations[variation]}
-	&:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
+
+    &:active:not(:disabled) {
+        transform: scale(0.97);
+    }
+
+    &:disabled {
+        color: var(--text-faint);
+        background-color: var(--ink-800);
         box-shadow: none;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        &:active:not(:disabled) {
+            transform: none;
+        }
     }
 `;
 

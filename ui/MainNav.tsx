@@ -14,50 +14,62 @@ type NavLinkStyle = "default" | "cta";
 
 const types: Record<NavLinkStyle, ReturnType<typeof css>> = {
     default: css`
-        &:hover {
-            color: var(--color-grey-800);
-            background-color: var(--color-grey-100);
+        &:link,
+        &:visited {
+            color: var(--text-muted);
         }
 
-        &:active,
+        &::after {
+            content: "";
+            position: absolute;
+            left: 1.2rem;
+            right: 1.2rem;
+            bottom: 0.2rem;
+            height: 2px;
+            border-radius: 2px;
+            background-color: var(--finish);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform var(--dur-base) var(--ease-out);
+        }
+
+        &:hover {
+            color: var(--text);
+        }
+
         &[data-active="true"],
         &[data-active="true"]:link,
         &[data-active="true"]:visited {
-            color: var(--color-grey-800);
-            text-decoration: underline;
+            color: var(--text);
         }
 
-        & svg {
-            width: 2.4rem;
-            height: 2.4rem;
-            color: var(--color-grey-400);
+        &[data-active="true"]::after {
+            transform: scaleX(1);
         }
 
-        &:hover svg,
-        &:active svg,
-        &[data-active="true"] svg,
-        &[data-active="true"]:link svg,
-        &[data-active="true"]:visited svg {
-            color: var(--color-brand-600);
+        @media (prefers-reduced-motion: reduce) {
+            &::after {
+                transition: none;
+            }
         }
     `,
     cta: css`
         &:link,
         &:visited {
-            background-color: var(--color-grey-700);
-            color: var(--color-brand-50);
-            font-weight: bold;
+            color: var(--ink-950);
+            background-color: var(--swap);
+            font-weight: 600;
         }
 
         &:hover {
-            background-color: var(--color-grey-500);
+            background-color: var(--swap-strong);
         }
-        &:active,
+
         &[data-active="true"],
         &[data-active="true"]:link,
         &[data-active="true"]:visited {
-            background-color: var(--color-grey-700);
-            text-decoration: underline;
+            color: var(--ink-950);
+            background-color: var(--finish);
         }
     `,
 };
@@ -66,9 +78,17 @@ const StyledNavLink = styled(Link)<{ $styleType?: NavLinkStyle }>`
     &:link,
     &:visited {
         position: relative;
-        padding: 0.2rem 1.2rem;
-        border: 0.3rem solid transparent;
-        border-radius: 3rem;
+        display: inline-flex;
+        align-items: center;
+        height: 3.6rem;
+        padding: 0 1.2rem;
+        border-radius: var(--radius-sm);
+        font-size: var(--text-sm);
+        font-weight: 500;
+        letter-spacing: 0.01em;
+        transition:
+            color var(--dur-fast) var(--ease-out),
+            background-color var(--dur-fast) var(--ease-out);
     }
 
     ${({ $styleType }) => types[$styleType || "default"]};
@@ -77,7 +97,7 @@ const StyledNavLink = styled(Link)<{ $styleType?: NavLinkStyle }>`
 const MobileLink = styled(StyledNavLink)`
     &:link,
     &:visited {
-        padding: 0.2rem 0.6rem;
+        padding: 0 1rem;
     }
 `;
 
@@ -99,7 +119,7 @@ const MobileNav = styled.div`
 
 const Nav = styled.nav`
     display: none;
-    gap: 2.4rem;
+    gap: var(--space-2);
     justify-content: center;
     align-items: center;
 
