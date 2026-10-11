@@ -8,7 +8,14 @@ const Container = styled.div<{ size?: string }>`
     width: 100%;
     height: 100%;
     font-size: ${({ size }) => size || "2rem"};
-    animation: spin 2s linear infinite;
+    color: var(--swap);
+    animation: spin 1.2s linear infinite;
+
+    /* Progress feedback is essential motion: keep it under reduced motion. */
+    @media (prefers-reduced-motion: reduce) {
+        animation-duration: 1.2s !important;
+        animation-iteration-count: infinite !important;
+    }
 
     @keyframes spin {
         0% {

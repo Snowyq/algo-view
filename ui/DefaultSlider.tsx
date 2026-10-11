@@ -9,10 +9,9 @@ const Flex = styled.div`
 
 const SliderContainer = styled(Flex)`
     width: 100%;
-    height: 8px;
-    gap: 1.5rem;
-    background-color: var(--color-grey-400);
-    border-radius: 15px;
+    height: 4px;
+    background-color: var(--ink-700);
+    border-radius: var(--radius-pill);
 
     -webkit-user-select: none;
     -ms-user-select: none;
@@ -25,38 +24,36 @@ const SliderContainer = styled(Flex)`
 const SliderOutput = styled.div`
     position: relative;
     width: 100%;
-    height: 25px;
-
-    padding: 0 0.5rem;
-
-    @media screen and (min-width: 640px) {
-        height: 12px;
-    }
+    height: 2.4rem;
 `;
 
 const Dot = styled.div`
-    background-color: var(--color-grey-600);
-    border-radius: 50%;
-    height: 100%;
+    height: 1.6rem;
     aspect-ratio: 1/1;
-    box-shadow: 1px 1px 0px 1px var(--color-grey-400);
+    margin-top: 0.4rem;
+    border-radius: 50%;
+    background-color: var(--text);
+    box-shadow:
+        0 0 0 4px var(--ink-900),
+        var(--shadow-1);
 `;
 
 const Fill = styled.div`
     width: 100%;
-    height: 8px;
+    height: 4px;
     position: absolute;
     top: 50%;
     translate: 0 -50%;
-    background-color: var(--color-grey-200);
-    border-radius: 15px;
+    background-color: var(--swap);
+    border-radius: var(--radius-pill);
 `;
 
 const Hover = styled.div`
-    width: 3px;
-    height: 100%;
-    background-color: var(--color-grey-500);
-    border-radius: 15px;
+    width: 2px;
+    height: 1.2rem;
+    margin-top: 0.6rem;
+    background-color: var(--text-muted);
+    border-radius: 2px;
 `;
 
 type DefaultSliderProps = {

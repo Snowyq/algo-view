@@ -29,35 +29,36 @@ const sizes: Record<CircleButtonSize, ReturnType<typeof css>> = {
 
 const variations: Record<CircleButtonVariation, ReturnType<typeof css>> = {
     primary: css`
-        color: var(--color-brand-50);
-        background-color: var(--color-brand-600);
+        color: var(--ink-950);
+        background-color: var(--swap);
 
         &:hover {
-            background-color: var(--color-brand-700);
+            background-color: var(--swap-strong);
         }
     `,
     secondary: css`
-        color: var(--color-grey-600);
-        background: var(--color-grey-0);
-        border: 1px solid var(--color-grey-200);
+        color: var(--text);
+        background: var(--ink-850);
+        border: 1px solid var(--ink-700);
 
         &:hover {
-            background-color: var(--color-grey-50);
+            background-color: var(--ink-800);
         }
     `,
     danger: css`
-        color: var(--color-red-100);
-        background-color: var(--color-red-700);
+        color: var(--ink-950);
+        background-color: var(--danger);
 
         &:hover {
-            background-color: var(--color-red-800);
+            background-color: #ffb0b0;
         }
     `,
     close: css`
-        color: var(--color-grey-600);
-        background-color: var(--color-red-100);
+        color: var(--text-muted);
+        background-color: var(--ink-800);
         &:hover {
-            background-color: var(--color-red-700);
+            color: var(--ink-950);
+            background-color: var(--danger);
         }
     `,
 };
@@ -68,7 +69,10 @@ const CircleButton = styled.button<{
 }>`
     border: none;
     border-radius: 50%;
-    box-shadow: var(--shadow-lg);
+    box-shadow: var(--shadow-2);
+    transition:
+        background-color var(--dur-fast) var(--ease-out),
+        color var(--dur-fast) var(--ease-out);
 
     ${({ size = "medium" }) => sizes[size]}
     ${({ variation = "primary" }) => variations[variation]}

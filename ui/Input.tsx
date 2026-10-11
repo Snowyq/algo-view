@@ -7,13 +7,28 @@ const Input = styled.input`
     display: block;
     width: 100%;
     height: 100%;
-    background-color: var(--color-grey-50);
-    border: none;
-    border-radius: 10px;
-    padding: 0 0.5rem;
+    padding: 0 1rem;
+    border: 1px solid var(--ink-700);
+    border-radius: var(--radius-sm);
+    background-color: var(--ink-950);
+    color: var(--text);
+    font-family: var(--font-mono-stack);
+    font-size: var(--text-sm);
+    font-variant-numeric: tabular-nums;
     line-height: 1.2;
+    transition: border-color var(--dur-fast) var(--ease-out);
 
-    box-shadow: 3px 3px 0px 1px var(--color-grey-300);
+    @media (hover: hover) {
+        &:hover:not(:disabled) {
+            border-color: var(--ink-600);
+        }
+    }
+
+    &:focus-visible {
+        border-color: var(--swap);
+        outline: 2px solid rgba(var(--swap-rgb), 0.35);
+        outline-offset: 0;
+    }
 `;
 
 export default Input;

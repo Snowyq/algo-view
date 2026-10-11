@@ -15,17 +15,32 @@ type SelectProps = SelectHTMLAttributes<HTMLSelectElement> & {
 };
 
 const StyledSelect = styled.select<{ $variant?: "white" | "normal" }>`
-    font-size: 1.4rem;
-    padding: 0.8rem 1.2rem;
+    height: 4rem;
+    padding: 0 3.2rem 0 1.2rem;
     border: 1px solid
         ${(props) =>
-            props.$variant === "white"
-                ? "var(--color-grey-100)"
-                : "var(--color-grey-300)"};
-    border-radius: var(--border-radius-sm);
-    background-color: var(--color-grey-0);
+            props.$variant === "white" ? "var(--ink-600)" : "var(--ink-700)"};
+    border-radius: var(--radius-sm);
+    background-color: var(--ink-950);
+    color: var(--text);
+    font-size: var(--text-sm);
     font-weight: 500;
-    box-shadow: var(--shadow-sm);
+    appearance: none;
+    background-image:
+        linear-gradient(45deg, transparent 50%, currentColor 50%),
+        linear-gradient(135deg, currentColor 50%, transparent 50%);
+    background-position:
+        calc(100% - 1.6rem) 50%,
+        calc(100% - 1.2rem) 50%;
+    background-size:
+        0.4rem 0.4rem,
+        0.4rem 0.4rem;
+    background-repeat: no-repeat;
+    transition: border-color var(--dur-fast) var(--ease-out);
+
+    &:hover {
+        border-color: var(--ink-600);
+    }
 `;
 
 const Select = ({

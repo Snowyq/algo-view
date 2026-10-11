@@ -1,13 +1,15 @@
-import { Geist_Mono, Inter, Space_Grotesk } from "next/font/google";
+import { Big_Shoulders, Geist_Mono, Hanken_Grotesk } from "next/font/google";
+import type { Viewport } from "next";
 import { JSX } from "react";
 import StyledComponentsRegistry from "../lib/StyledComponentsRegistry";
 import AppLayout from "../ui/AppLayout";
 import AppClient from "./AppClient";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
+const body = Hanken_Grotesk({ subsets: ["latin"], variable: "--font-sans" });
 
-const display = Space_Grotesk({
+const display = Big_Shoulders({
     subsets: ["latin"],
+    axes: ["opsz"],
     variable: "--font-display",
 });
 
@@ -15,6 +17,11 @@ const fontMono = Geist_Mono({
     subsets: ["latin"],
     variable: "--font-mono",
 });
+
+export const viewport: Viewport = {
+    themeColor: "#0a0c12",
+    colorScheme: "dark",
+};
 
 export default function RootLayout({
     children,
@@ -24,8 +31,17 @@ export default function RootLayout({
     return (
         <html
             lang="en"
-            className={`antialiased ${fontMono.variable} ${display.variable} font-sans ${inter.variable}`}
+            suppressHydrationWarning
+            className={`antialiased ${fontMono.variable} ${display.variable} ${body.variable}`}
         >
+            <head>
+                <script
+                    // Lets CSS hide intro elements only when JS will animate them in.
+                    dangerouslySetInnerHTML={{
+                        __html: "document.documentElement.classList.add('js')",
+                    }}
+                />
+            </head>
             <body>
                 <StyledComponentsRegistry>
                     <AppClient>
