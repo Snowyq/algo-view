@@ -17,6 +17,14 @@ import { InsertionSort } from "./sort/InsertionSort";
 import { MergeSort } from "./sort/MergeSort";
 import { SelectionSort } from "./sort/SelectionSort";
 import { ShellSort } from "./sort/ShellSort";
+import { AStar } from "./path/AStar";
+import { BidirectionalBFS } from "./path/BidirectionalBFS";
+import { BreadthFirstSearch } from "./path/BreadthFirstSearch";
+import { DepthFirstSearch } from "./path/DepthFirstSearch";
+import { Dijkstra } from "./path/Dijkstra";
+import { GreedyBestFirst } from "./path/GreedyBestFirst";
+import { RandomWalk } from "./path/RandomWalk";
+import { WallFollower } from "./path/WallFollower";
 import type {
     AlgorithmCategory,
     AlgorithmConstructor,
@@ -386,7 +394,164 @@ const data: AlgorithmCategory[] = [
             },
         ],
     },
-    { name: "Path Finding", id: "path", items: [] },
+    {
+        name: "Path Finding",
+        id: "path",
+        items: [
+            {
+                id: "bfs",
+                meta: {
+                    name: "BFS",
+                    description:
+                        "Breadth-first search explores ring by ring from the start, so the first time it reaches the end it has the route with the fewest steps. It treats mud like any other cell.",
+                    timeComplexity: "O(V + E)",
+                    bestCase: "O(V + E)",
+                    worstCase: "O(V + E)",
+                    auxiliarySpace: "O(V)",
+                    optimal: true,
+                    weighted: false,
+                    group: "classic",
+                },
+                algorithm: {
+                    Class: BreadthFirstSearch as AlgorithmConstructor,
+                    instructions: BreadthFirstSearch.getInstructions(),
+                },
+            },
+            {
+                id: "dijkstra",
+                meta: {
+                    name: "Dijkstra",
+                    description:
+                        "Always expands the cheapest cell found so far. Mud costs five times more, so the route it returns is the cheapest one, which is not always the shortest.",
+                    timeComplexity: "O(E log V)",
+                    bestCase: "O(E log V)",
+                    worstCase: "O(E log V)",
+                    auxiliarySpace: "O(V)",
+                    optimal: true,
+                    weighted: true,
+                    group: "classic",
+                },
+                algorithm: {
+                    Class: Dijkstra as AlgorithmConstructor,
+                    instructions: Dijkstra.getInstructions(),
+                },
+            },
+            {
+                id: "astar",
+                meta: {
+                    name: "A*",
+                    description:
+                        "Dijkstra with a sense of direction: it ranks cells by cost so far plus the Manhattan distance still to go. Same cheapest route, usually far fewer cells explored.",
+                    timeComplexity: "O(E log V)",
+                    bestCase: "O(E)",
+                    worstCase: "O(E log V)",
+                    auxiliarySpace: "O(V)",
+                    optimal: true,
+                    weighted: true,
+                    group: "classic",
+                },
+                algorithm: {
+                    Class: AStar as AlgorithmConstructor,
+                    instructions: AStar.getInstructions(),
+                },
+            },
+            {
+                id: "greedy",
+                meta: {
+                    name: "Greedy",
+                    description:
+                        "Picks whichever open cell looks closest to the goal and ignores how far it has already walked. Very quick on open ground, easily led into dead ends.",
+                    timeComplexity: "O(E log V)",
+                    bestCase: "O(E)",
+                    worstCase: "O(E log V)",
+                    auxiliarySpace: "O(V)",
+                    optimal: false,
+                    weighted: false,
+                    group: "classic",
+                },
+                algorithm: {
+                    Class: GreedyBestFirst as AlgorithmConstructor,
+                    instructions: GreedyBestFirst.getInstructions(),
+                },
+            },
+            {
+                id: "bidirectional",
+                meta: {
+                    name: "Bidirectional",
+                    description:
+                        "Two breadth-first searches, one from each end, take turns until they touch. The fewest-steps route, after exploring roughly half as much.",
+                    timeComplexity: "O(V + E)",
+                    bestCase: "O(V + E)",
+                    worstCase: "O(V + E)",
+                    auxiliarySpace: "O(V)",
+                    optimal: true,
+                    weighted: false,
+                    group: "classic",
+                },
+                algorithm: {
+                    Class: BidirectionalBFS as AlgorithmConstructor,
+                    instructions: BidirectionalBFS.getInstructions(),
+                },
+            },
+            {
+                id: "dfs",
+                meta: {
+                    name: "DFS",
+                    description:
+                        "Depth-first search follows one corridor until it dead-ends, then backtracks. It finds a route if there is one, rarely a short one.",
+                    timeComplexity: "O(V + E)",
+                    bestCase: "O(V + E)",
+                    worstCase: "O(V + E)",
+                    auxiliarySpace: "O(V)",
+                    optimal: false,
+                    weighted: false,
+                    group: "classic",
+                },
+                algorithm: {
+                    Class: DepthFirstSearch as AlgorithmConstructor,
+                    instructions: DepthFirstSearch.getInstructions(),
+                },
+            },
+            {
+                id: "randomWalk",
+                meta: {
+                    name: "Random walk",
+                    description:
+                        "Steps to a random neighbour again and again until it stumbles onto the end, or gives up after twice as many moves as there are cells.",
+                    timeComplexity: "Unbounded",
+                    bestCase: "O(path)",
+                    worstCase: "Unbounded",
+                    auxiliarySpace: "O(V)",
+                    optimal: false,
+                    weighted: false,
+                    group: "fun",
+                },
+                algorithm: {
+                    Class: RandomWalk as AlgorithmConstructor,
+                    instructions: RandomWalk.getInstructions(),
+                },
+            },
+            {
+                id: "wallFollower",
+                meta: {
+                    name: "Wall follower",
+                    description:
+                        "Keeps its left hand on the wall. Solves every maze whose walls all connect to the edge; circles forever around a free-standing wall, so it eventually gives up.",
+                    timeComplexity: "O(V)",
+                    bestCase: "O(path)",
+                    worstCase: "Unbounded",
+                    auxiliarySpace: "O(V)",
+                    optimal: false,
+                    weighted: false,
+                    group: "fun",
+                },
+                algorithm: {
+                    Class: WallFollower as AlgorithmConstructor,
+                    instructions: WallFollower.getInstructions(),
+                },
+            },
+        ],
+    },
     { name: "Find", id: "find", items: [] },
 ];
 
