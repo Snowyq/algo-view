@@ -59,7 +59,9 @@ let blockRatio = 0.8; // 0 - 1
 let upperBlockMargin = 15; //
 let textDisplayThreshold = 10; // px
 const textAlign = "center"; // 'center', 'start', 'end'
-const labelFont = "10px sans-serif";
+const labelFont = "bold 10px ui-monospace, monospace";
+/* Bar heights snap to this many CSS px, for a bitmap staircase. */
+const heightStep = 2;
 
 let tabId: string | number | undefined;
 let channel: BroadcastChannel | undefined;
@@ -81,7 +83,7 @@ self.onmessage = function (event: MessageEvent<WorkerIncomingMessage>) {
             tabId = payload;
             channel = new BroadcastChannel(`animation-tick:${tabId}`);
             channel.onmessage = (event: MessageEvent<{ step: number }>) => {
-                draw(event.data.step); // existing function
+                scheduleDraw(event.data.step);
             };
         } else {
             postError("Invalid tab id");
@@ -176,6 +178,7 @@ self.onmessage = function (event: MessageEvent<WorkerIncomingMessage>) {
             return;
         }
         updateStepColors(colors);
+        redraw();
 
         postMessage({ type: "colors-loaded" });
         return;
@@ -395,14 +398,11 @@ function draw(stepIndex: number) {
     const maxValue = AlgorithmInstance.getArrayMinMax().max;
 
     if (step && step.metrics) {
-        postMessage({
-            type: "step-metrics",
-            payload: {
-                stepIndex,
-                metrics: step.metrics,
-                stepType: step.type,
-                instructionId: step.instructionId ?? [],
-            },
+        postStepMetrics({
+            stepIndex,
+            metrics: step.metrics,
+            stepType: step.type,
+            instructionId: step.instructionId ?? [],
         });
     }
 
@@ -412,6 +412,59 @@ function draw(stepIndex: number) {
     } else {
         drawArray(state, step, maxValue);
     }
+}
+
+// Frame pacing
+
+/*
+ * Ticks can arrive far faster than the screen refreshes. Keep only the
+ * newest step and draw it once per animation frame, so a backlog of
+ * stale frames can never build up behind the playhead.
+ */
+const nextFrame: (cb: () => void) => void =
+    typeof requestAnimationFrame === "function"
+        ? (cb) => requestAnimationFrame(() => cb())
+        : (cb) => setTimeout(cb, 16);
+
+let scheduledStep: number | null = null;
+let drawScheduled = false;
+
+function scheduleDraw(step: number) {
+    scheduledStep = step;
+    if (drawScheduled) return;
+    drawScheduled = true;
+    nextFrame(() => {
+        drawScheduled = false;
+        if (scheduledStep === null) return;
+        const target = scheduledStep;
+        scheduledStep = null;
+        draw(target);
+    });
+}
+
+/*
+ * Counters and the code highlight re-render React on the main thread.
+ * 20 updates a second reads as live; the last one is always delivered.
+ */
+const METRICS_INTERVAL_MS = 50;
+let lastMetricsAt = 0;
+let metricsTimer: ReturnType<typeof setTimeout> | null = null;
+let pendingMetrics: unknown = null;
+
+function flushStepMetrics() {
+    metricsTimer = null;
+    if (pendingMetrics === null) return;
+    lastMetricsAt = performance.now();
+    postMessage({ type: "step-metrics", payload: pendingMetrics });
+    pendingMetrics = null;
+}
+
+function postStepMetrics(payload: unknown) {
+    pendingMetrics = payload;
+    const wait = METRICS_INTERVAL_MS - (performance.now() - lastMetricsAt);
+    if (wait <= 0) flushStepMetrics();
+    else if (metricsTimer === null)
+        metricsTimer = setTimeout(flushStepMetrics, wait);
 }
 
 function handleDraw(callback: () => void) {
@@ -441,15 +494,34 @@ function drawBlock(
     if (!ctx) return;
     // Account for vertical space above each block to fit the text label
 
-    const blockHeight = calculateBlockHeight(val, maxValue);
-    const x = index * (blockWidth + gapWidth);
+    // Snap every edge to whole device pixels: crisp, bitmap-like bars.
+    const ratio = typeof dpr === "number" ? dpr : 1;
+    const snap = (value: number): number => Math.round(value * ratio) / ratio;
+    const rawHeight = calculateBlockHeight(val, maxValue);
+    const blockHeight =
+        rawHeight > 0
+            ? Math.max(
+                  heightStep,
+                  Math.round(rawHeight / heightStep) * heightStep
+              )
+            : 0;
+    const left = snap(index * (blockWidth + gapWidth));
+    const right = snap(index * (blockWidth + gapWidth) + blockWidth);
+    const x = left;
+    const width = Math.max(1 / ratio, right - left);
     const y = canvasHeight - blockHeight;
     // Determine the step type to apply corresponding highlight styles
     const type = getBlockDisplayType(step, index);
 
     // Apply fill style based on step type
     ctx.fillStyle = getColorByType(type);
-    ctx.fillRect(x, y, blockWidth, blockHeight);
+    ctx.fillRect(x, y, width, blockHeight);
+
+    // One lighter row on top of wide bars, like a lit pixel edge.
+    if (width >= 4 && blockHeight >= heightStep * 2) {
+        ctx.fillStyle = "rgba(255, 255, 255, 0.28)";
+        ctx.fillRect(x, y, width, heightStep);
+    }
 
     // Display block value only if its width exceeds the configured threshold
     if (blockWidth >= textDisplayThreshold && showText) {

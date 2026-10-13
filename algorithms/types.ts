@@ -17,10 +17,14 @@ export type AlgorithmMeta = {
     bestCase: string;
     worstCase: string;
     auxiliarySpace: string;
-    /** Equal values keep their relative order (as implemented here). */
-    stable: boolean;
-    /** Sorts within the input array, without a second array of size n. */
-    inPlace: boolean;
+    /** Sort: equal values keep their relative order (as implemented here). */
+    stable?: boolean;
+    /** Sort: works within the input array, without a second array of size n. */
+    inPlace?: boolean;
+    /** Path: guarantees the best route (shortest, or cheapest if weighted). */
+    optimal?: boolean;
+    /** Path: takes mud (cell cost) into account. */
+    weighted?: boolean;
     group?: AlgorithmGroup;
 };
 
