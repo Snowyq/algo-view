@@ -10,9 +10,12 @@ import type {
     AlgorithmRegistryItem,
 } from "../../algorithms/types";
 import useOnResize from "../../hooks/useOnResize";
-import useSortCanvas from "../../hooks/useSortCanvas";
+import useSortCanvas, { getStepColors } from "../../hooks/useSortCanvas";
+import { PALETTE_EVENT } from "./pixel/fx/rainbow";
 import type { AppDispatch, RootState } from "../../store";
-import Loader from "../../ui/Loader";
+import useReducedMotion from "../../hooks/useReducedMotion";
+import PixelLoader from "./pixel/canvas/PixelLoader";
+import { pixelWipe } from "./pixel/fx/pixelWipe";
 import {
     decrementSortWorkerLoading,
     getDefaultStepTypes,
@@ -30,8 +33,7 @@ const AlgorithmContainer = styled.div`
     display: flex;
     flex: 1;
     min-height: 0;
-    padding-top: var(--space-4);
-    border-bottom: 1px solid var(--ink-600);
+    padding-top: 1.6rem;
 `;
 
 const Sizer = styled.div`
@@ -60,9 +62,9 @@ const Placeholder = styled.div`
     align-items: center;
     justify-content: center;
     text-align: center;
-    color: var(--text-muted);
-    font-size: var(--text-sm);
-    padding: var(--space-5);
+    color: var(--fg-3);
+    font-size: 1.4rem;
+    padding: 2.4rem;
     z-index: 1;
 `;
 
@@ -112,6 +114,22 @@ function SortVisualizerCanvas({
 
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const pendingLoadsRef = useRef<number>(0);
+    const reduced = useReducedMotion();
+    const wasLoadingRef = useRef<boolean>(true);
+
+    // A finished render dissolves in from blocks instead of popping in.
+    useEffect((): void => {
+        const wasLoading = wasLoadingRef.current;
+        wasLoadingRef.current = isLoading;
+        if (!wasLoading || isLoading || reduced || !sizerRef.current) return;
+        pixelWipe(sizerRef.current, {
+            mode: "reveal",
+            color: "--surface",
+            block: 12,
+            duration: 320,
+            frames: 6,
+        });
+    }, [isLoading, reduced]);
     // Canvas API
 
     const algoOptions = useMemo<AlgorithmOptions>(() => {
@@ -119,7 +137,15 @@ function SortVisualizerCanvas({
     }, [stepTypes]);
 
     const canvasApi = useSortCanvas(canvasRef, registry.id);
-    const { worker, changeSize, renderAlgorithm, onStatusType } = canvasApi;
+    const { worker, changeSize, renderAlgorithm, onStatusType, changeColors } =
+        canvasApi;
+
+    // The palette can change at runtime (easter egg): re-read and redraw.
+    useEffect(() => {
+        const onPalette = (): void => changeColors(getStepColors());
+        window.addEventListener(PALETTE_EVENT, onPalette);
+        return () => window.removeEventListener(PALETTE_EVENT, onPalette);
+    }, [changeColors]);
 
     const onResize = (ref: RefObject<HTMLDivElement | null>): void => {
         if (!ref.current) return;
@@ -165,7 +191,6 @@ function SortVisualizerCanvas({
             setIsLoading(true);
         });
         onStatusType("render-done", (payload) => {
-            console.log("rendered");
             const { stepsLength, metrics } = (payload ||
                 {}) as RenderDonePayload;
             if (typeof stepsLength === "number") {
@@ -227,7 +252,7 @@ function SortVisualizerCanvas({
             <Sizer ref={sizerRef}>
                 {hasInput && isLoading && (
                     <LoaderOverlay>
-                        <Loader />
+                        <PixelLoader />
                     </LoaderOverlay>
                 )}
                 <canvas
@@ -241,7 +266,7 @@ function SortVisualizerCanvas({
                 />
                 {!hasInput && (
                     <Placeholder>
-                        Choose input in the sidebar and click Generate input.
+                        Pick an input in the Inspector and press Generate.
                     </Placeholder>
                 )}
             </Sizer>

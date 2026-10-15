@@ -3,66 +3,137 @@ import { useSelector } from "react-redux";
 import styled from "styled-components";
 import type { AlgorithmRegistryItem } from "../../algorithms/types";
 import type { RootState } from "../../store";
+import { labelText, pixelFrame } from "./pixel/primitives/pixel";
+import { algorithmTraits } from "./traits";
 import type { ActiveAlgorithm } from "./playSlice";
-import { getActiveAlgorithms, getInput } from "./playSlice";
+import {
+    getActiveAlgorithms,
+    getActiveCategory,
+    getGrid,
+    getInput,
+} from "./playSlice";
+import type { GridInput } from "../../utils/grid";
 
 /*
- * Basic facts about one algorithm, as implemented here. Rendered both in
- * the sidebar's Info tab and in a panel's side column when it fits.
+ * Spec card for one algorithm, as implemented here. Rendered in the
+ * Inspector's Info tab and in a panel's side column when it fits.
  */
 
 const Wrap = styled.div`
     display: flex;
     flex-direction: column;
-    gap: var(--space-5);
+    gap: 2.4rem;
 `;
 
 const Title = styled.h3`
-    font-family: var(--font-display-stack);
-    font-variation-settings: "opsz" 48;
-    font-weight: 700;
-    font-size: 3.2rem;
-    line-height: 1;
+    font-family: var(--f-display);
+    font-size: 4rem;
+    line-height: 0.8;
     text-transform: uppercase;
-    color: var(--text);
+    color: var(--fg);
 `;
 
 const Group = styled.p`
-    margin-top: var(--space-2);
-    font-family: var(--font-mono-stack);
-    font-size: var(--text-xs);
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--text-muted);
+    margin-top: 0.8rem;
+    ${labelText};
+    font-size: 1rem;
+    color: var(--accent);
 `;
 
 const Description = styled.p`
-    font-size: var(--text-base);
-    line-height: var(--leading-body);
-    color: var(--text-soft);
+    font-size: 1.6rem;
+    line-height: 1.5;
+    color: var(--fg-2);
+    text-wrap: pretty;
 `;
 
-const Facts = styled.dl`
-    display: grid;
-    grid-template-columns: max-content 1fr;
-    gap: var(--space-2) var(--space-5);
-    padding-top: var(--space-4);
-    border-top: 1px solid var(--ink-700);
+/* Yes/no traits as pixel badges: lit when true. */
+const Traits = styled.ul`
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+`;
+
+const Trait = styled.li<{ $on: boolean }>`
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.6rem 0.8rem;
+    margin: var(--b);
+    ${labelText};
+    font-size: 1rem;
+    color: ${({ $on }) => ($on ? "var(--fg)" : "var(--fg-4)")};
+    background-color: ${({ $on }) =>
+        $on ? "var(--surface-3)" : "transparent"};
+    ${({ $on }) => pixelFrame($on ? "var(--line-2)" : "var(--line)")};
+
+    &::before {
+        content: "";
+        width: 0.6rem;
+        height: 0.6rem;
+        background-color: ${({ $on }) =>
+            $on ? "var(--color-step-check-true)" : "var(--line-2)"};
+    }
+`;
+
+const Section = styled.section`
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+`;
+
+const SectionTitle = styled.h4`
+    ${labelText};
+    font-size: 1rem;
+    color: var(--fg-4);
+    margin-bottom: 0.4rem;
+`;
+
+/* name ········· value, the dots fill whatever space is left. */
+const Fact = styled.div`
+    display: flex;
+    align-items: baseline;
+    gap: 0.8rem;
 
     dt {
-        font-size: var(--text-sm);
-        color: var(--text-muted);
+        font-size: 1.4rem;
+        color: var(--fg-3);
     }
-
+    i {
+        flex: 1;
+        height: 2px;
+        min-width: 1.6rem;
+        background-image: repeating-linear-gradient(
+            90deg,
+            var(--line-2) 0 2px,
+            transparent 2px 6px
+        );
+    }
     dd {
-        font-family: var(--font-mono-stack);
-        font-size: var(--text-sm);
+        font-family: var(--f-mono);
+        font-size: 1.35rem;
         font-variant-numeric: tabular-nums;
-        color: var(--text);
+        color: var(--fg);
     }
 `;
 
 const numberFormat = new Intl.NumberFormat("en-US");
+
+function FactRow({
+    name,
+    value,
+}: {
+    name: string;
+    value: string;
+}): JSX.Element {
+    return (
+        <Fact>
+            <dt>{name}</dt>
+            <i aria-hidden="true" />
+            <dd>{value}</dd>
+        </Fact>
+    );
+}
 
 type AlgorithmInfoProps = {
     registry: AlgorithmRegistryItem;
@@ -78,6 +149,9 @@ function AlgorithmInfo({
         getActiveAlgorithms
     );
     const input = useSelector<RootState, number[]>(getInput);
+    const grid = useSelector<RootState, GridInput>(getGrid);
+    const isPath =
+        useSelector<RootState, string>(getActiveCategory) === "path";
     const { meta } = registry;
     const running = active.find((algo) => algo.id === registry.id);
     const group = meta.group === "fun" ? "Just for fun" : "Classic";
@@ -90,33 +164,49 @@ function AlgorithmInfo({
                     <Group>{group}</Group>
                 </div>
             ) : (
-                <Group as="p">{group}</Group>
+                <Group>{group}</Group>
             )}
             <Description>{meta.description}</Description>
-            <Facts>
-                <dt>Best case</dt>
-                <dd>{meta.bestCase}</dd>
-                <dt>Average case</dt>
-                <dd>{meta.timeComplexity}</dd>
-                <dt>Worst case</dt>
-                <dd>{meta.worstCase}</dd>
-                <dt>Extra space</dt>
-                <dd>{meta.auxiliarySpace}</dd>
-                <dt>Stable</dt>
-                <dd>{meta.stable ? "Yes" : "No"}</dd>
-                <dt>In place</dt>
-                <dd>{meta.inPlace ? "Yes" : "No, needs extra memory"}</dd>
-            </Facts>
-            <Facts aria-label="This run">
-                <dt>Input size</dt>
-                <dd>{numberFormat.format(input.length)}</dd>
-                <dt>Steps</dt>
-                <dd>
-                    {running?.stepsLength
-                        ? numberFormat.format(running.stepsLength)
-                        : "–"}
-                </dd>
-            </Facts>
+            <Traits aria-label="Traits">
+                {algorithmTraits(meta).map((trait) => (
+                    <Trait key={trait.label} $on={trait.on}>
+                        {trait.label}
+                    </Trait>
+                ))}
+            </Traits>
+            <Section>
+                <SectionTitle>Complexity</SectionTitle>
+                <dl>
+                    <FactRow name="Best" value={meta.bestCase} />
+                    <FactRow name="Average" value={meta.timeComplexity} />
+                    <FactRow name="Worst" value={meta.worstCase} />
+                    <FactRow name="Extra space" value={meta.auxiliarySpace} />
+                </dl>
+            </Section>
+            <Section>
+                <SectionTitle>This run</SectionTitle>
+                <dl>
+                    {isPath ? (
+                        <FactRow
+                            name="Grid"
+                            value={`${grid.cols}×${grid.rows}`}
+                        />
+                    ) : (
+                        <FactRow
+                            name="Input size"
+                            value={numberFormat.format(input.length)}
+                        />
+                    )}
+                    <FactRow
+                        name="Steps"
+                        value={
+                            running?.stepsLength
+                                ? numberFormat.format(running.stepsLength)
+                                : "–"
+                        }
+                    />
+                </dl>
+            </Section>
         </Wrap>
     );
 }

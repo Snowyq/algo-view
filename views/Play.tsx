@@ -1,9 +1,10 @@
 "use client";
 
 import { JSX } from "react";
-import PlaygroundLayout from "../features/play/PlaygroundLayout";
+import PlayShell from "../features/play/pixel/PlayShell";
+
 function Play(): JSX.Element {
-    return <PlaygroundLayout />;
+    return <PlayShell />;
 }
 
 export default Play;
