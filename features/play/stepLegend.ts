@@ -32,6 +32,15 @@ export const STEP_LEGEND: Record<string, StepLegendItem> = {
     copy: { label: "Shift from", colorVar: "--color-step-copy" },
     "copy-to": { label: "Shift to", colorVar: "--color-step-copy-to" },
     finish: { label: "Finish", colorVar: "--color-step-finish" },
+    // Path finding
+    frontier: { label: "Frontier", colorVar: "--color-step-frontier" },
+    visit: { label: "Visited", colorVar: "--color-step-visit" },
+    current: { label: "Current", colorVar: "--color-step-current" },
+    path: { label: "Route", colorVar: "--color-step-path" },
+    wall: { label: "Wall", colorVar: "--color-path-wall" },
+    mud: { label: "Mud (×5 cost)", colorVar: "--color-path-mud-dot" },
+    start: { label: "Start", colorVar: "--color-path-start" },
+    end: { label: "End", colorVar: "--color-path-end" },
 };
 
 /** Order shown in the sidebar legend (check-value shares check's colors). */
@@ -46,3 +55,19 @@ export const LEGEND_ORDER = [
     "copy-to",
     "finish",
 ];
+
+/** Path-finding legend: search states, then the grid's materials. */
+export const PATH_LEGEND_ORDER = [
+    "frontier",
+    "visit",
+    "current",
+    "path",
+    "wall",
+    "mud",
+    "start",
+    "end",
+];
+
+export function legendOrderFor(category: string): string[] {
+    return category === "path" ? PATH_LEGEND_ORDER : LEGEND_ORDER;
+}

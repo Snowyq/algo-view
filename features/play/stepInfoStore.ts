@@ -60,3 +60,42 @@ export function useCodeSnapshot(id: string): CodeSnapshot {
     const getSnapshot = useCallback(() => snapshots.get(id) ?? EMPTY, [id]);
     return useSyncExternalStore(subscribe, getSnapshot, () => EMPTY);
 }
+
+/*
+ * Per-algorithm counters at the current step. Same reasoning as above:
+ * only the metrics readout should re-render on every drawn step, not the
+ * whole panel around the canvas.
+ */
+
+type MetricsMap = Record<string, { count: number; name: string }>;
+
+const metricsSnapshots = new Map<string, MetricsMap | null>();
+const metricsListeners = new Map<string, Set<() => void>>();
+
+export function publishStepMetrics(
+    id: string,
+    metrics: MetricsMap | null
+): void {
+    if (metricsSnapshots.get(id) === metrics) return;
+    metricsSnapshots.set(id, metrics);
+    metricsListeners.get(id)?.forEach((listener) => listener());
+}
+
+export function useStepMetrics(id: string): MetricsMap | null {
+    const subscribe = useCallback(
+        (listener: () => void) => {
+            const set = metricsListeners.get(id) ?? new Set<() => void>();
+            set.add(listener);
+            metricsListeners.set(id, set);
+            return () => {
+                set.delete(listener);
+            };
+        },
+        [id]
+    );
+    const getSnapshot = useCallback(
+        () => metricsSnapshots.get(id) ?? null,
+        [id]
+    );
+    return useSyncExternalStore(subscribe, getSnapshot, () => null);
+}

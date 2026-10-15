@@ -4,9 +4,10 @@ import styled from "styled-components";
 import type { AlgorithmInstructions } from "../../algorithms/types";
 import useReducedMotion from "../../hooks/useReducedMotion";
 import type { RootState } from "../../store";
-import { getCurrentSpeed } from "./playSlice";
+import { getActiveCategory, getCurrentSpeed } from "./playSlice";
 import { STEP_LEGEND } from "./stepLegend";
 import { useCodeSnapshot } from "./stepInfoStore";
+import { labelText, pixelFrame } from "./pixel/primitives/pixel";
 
 /*
  * Code view rules:
@@ -25,27 +26,27 @@ const Figure = styled.figure`
     min-width: 0;
     min-height: 0;
     height: 100%;
-    border: 1px solid var(--ink-700);
-    border-radius: var(--radius-md);
-    background-color: var(--ink-950);
+    margin: var(--b);
+    background-color: var(--bg-2);
     overflow: hidden;
+    cursor: auto;
+    ${pixelFrame("var(--line)")};
 `;
 
 const Caption = styled.figcaption`
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--space-3);
-    padding: 0.6rem var(--space-3);
-    border-bottom: 1px solid var(--ink-700);
-    font-family: var(--font-mono-stack);
-    font-size: 1.1rem;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--text-muted);
+    gap: 1.2rem;
+    padding: 0.8rem 1.2rem;
+    border-bottom: var(--b) solid var(--line);
+    ${labelText};
+    font-size: 1rem;
+    color: var(--fg-4);
     white-space: nowrap;
 `;
 
+/* Status swatch blinks once per change: a two-frame "lit" pixel. */
 const Status = styled.span<{ $color: string }>`
     display: inline-flex;
     align-items: center;
@@ -53,14 +54,13 @@ const Status = styled.span<{ $color: string }>`
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
-    color: var(--text-soft);
+    color: var(--fg-2);
 
     &::before {
         content: "";
         flex: 0 0 auto;
         width: 0.8rem;
         height: 0.8rem;
-        border-radius: 2px;
         background-color: ${({ $color }) => $color};
     }
 `;
@@ -70,18 +70,17 @@ const Scroller = styled.div`
     min-height: 0;
     overflow: auto;
     overscroll-behavior: contain;
-    padding: var(--space-2) 0;
+    padding: 0.8rem 0;
 `;
 
 /* The description reads as a doc comment above the code, unnumbered. */
 const DocComment = styled.p`
-    margin: 0 0 var(--space-2);
-    padding: 0 var(--space-3) 0 calc(3.6rem + var(--space-3));
-    font-family: var(--font-mono-stack);
+    margin: 0 0 0.8rem;
+    padding: 0 1.2rem 0 calc(3.6rem + 1.2rem);
+    font-family: var(--f-mono);
     font-size: 1.2rem;
     line-height: 1.6;
-    font-style: italic;
-    color: var(--text-faint);
+    color: var(--fg-4);
     text-wrap: pretty;
 
     &::before {
@@ -91,9 +90,9 @@ const DocComment = styled.p`
 
 const Pre = styled.pre`
     margin: 0;
-    font-family: var(--font-mono-stack);
+    font-family: var(--f-mono);
     font-size: 1.25rem;
-    line-height: 1.75;
+    line-height: 1.8;
     tab-size: 2;
 `;
 
@@ -104,31 +103,30 @@ const Line = styled.span<{ $active: boolean; $color: string }>`
     align-items: center;
     min-width: 100%;
     width: max-content;
-    padding-right: var(--space-3);
+    padding-right: 1.2rem;
     background-color: ${({ $active, $color }) =>
         $active
-            ? `color-mix(in srgb, ${$color} 16%, transparent)`
+            ? `color-mix(in srgb, ${$color} 18%, transparent)`
             : "transparent"};
 
-    /* Gutter marker: an editor convention, sits inside the line number column. */
+    /* Gutter marker: a square pixel block in the step color. */
     &::before {
         content: "";
         position: absolute;
-        left: 0;
-        top: 0.3rem;
-        bottom: 0.3rem;
-        width: 3px;
-        border-radius: 0 2px 2px 0;
+        left: 0.4rem;
+        top: 50%;
+        width: 0.8rem;
+        height: 0.8rem;
+        translate: 0 -50%;
         background-color: ${({ $color }) => $color};
         opacity: ${({ $active }) => ($active ? 1 : 0)};
     }
 `;
 
 const LineNumber = styled.span<{ $active: boolean }>`
-    padding-right: var(--space-3);
+    padding-right: 1.2rem;
     text-align: right;
-    color: ${({ $active }) =>
-        $active ? "var(--text-soft)" : "var(--text-faint)"};
+    color: ${({ $active }) => ($active ? "var(--fg-2)" : "var(--fg-4)")};
     font-variant-numeric: tabular-nums;
     user-select: none;
 `;
@@ -136,31 +134,29 @@ const LineNumber = styled.span<{ $active: boolean }>`
 const LineCode = styled.span<{ $indent: number }>`
     padding-left: ${({ $indent }) => `${$indent * 2}ch`};
     white-space: pre;
-    color: var(--text-soft);
+    color: var(--fg-2);
 `;
 
 const StepTag = styled.span<{ $color: string }>`
     justify-self: end;
-    margin-left: var(--space-4);
-    font-size: 1.05rem;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+    margin-left: 1.6rem;
+    ${labelText};
+    font-size: 1rem;
     color: ${({ $color }) => $color};
     white-space: nowrap;
 `;
 
 const Keyword = styled.span`
-    color: var(--text);
+    color: var(--fg);
     font-weight: 600;
 `;
 
 const Comment = styled.span`
-    color: var(--text-faint);
-    font-style: italic;
+    color: var(--fg-4);
 `;
 
 const Literal = styled.span`
-    color: var(--text);
+    color: var(--accent-2);
 `;
 
 const TOKEN =
@@ -198,6 +194,7 @@ function CodePanel({
     const scrollerRef = useRef<HTMLDivElement | null>(null);
     const reduced = useReducedMotion();
     const speed = useSelector<RootState, number>(getCurrentSpeed);
+    const category = useSelector<RootState, string>(getActiveCategory);
 
     // Sticky highlight lives in the store, so a view opened mid-run is current.
     const {
@@ -215,8 +212,8 @@ function CodePanel({
     const finished = stepType === "finish";
     const status = finished
         ? {
-              label: gaveUp ? "Gave up" : "Sorted",
-              color: gaveUp ? "var(--danger)" : "var(--finish)",
+              label: gaveUp ? "Stopped" : category === "path" ? "Found" : "Sorted",
+              color: gaveUp ? "var(--danger)" : "var(--color-step-finish)",
           }
         : legend
           ? { label: legend.label, color: activeColor }
