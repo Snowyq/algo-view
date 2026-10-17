@@ -1,8 +1,14 @@
-import { Big_Shoulders, Geist_Mono, Hanken_Grotesk } from "next/font/google";
+import {
+    Big_Shoulders,
+    Geist_Mono,
+    Hanken_Grotesk,
+    Jersey_10,
+    Pixelify_Sans,
+    Silkscreen,
+} from "next/font/google";
 import type { Viewport } from "next";
 import { JSX } from "react";
 import StyledComponentsRegistry from "../lib/StyledComponentsRegistry";
-import AppLayout from "../ui/AppLayout";
 import AppClient from "./AppClient";
 
 const body = Hanken_Grotesk({ subsets: ["latin"], variable: "--font-sans" });
@@ -18,8 +24,26 @@ const fontMono = Geist_Mono({
     variable: "--font-mono",
 });
 
+/* Pixel faces shared by the landing page and the playground. */
+const jersey = Jersey_10({
+    subsets: ["latin"],
+    weight: "400",
+    variable: "--font-jersey",
+});
+
+const silk = Silkscreen({
+    subsets: ["latin"],
+    weight: ["400", "700"],
+    variable: "--font-silk",
+});
+
+const pixelify = Pixelify_Sans({
+    subsets: ["latin"],
+    variable: "--font-pixelify",
+});
+
 export const viewport: Viewport = {
-    themeColor: "#0a0c12",
+    themeColor: "#15120f",
     colorScheme: "dark",
 };
 
@@ -32,7 +56,7 @@ export default function RootLayout({
         <html
             lang="en"
             suppressHydrationWarning
-            className={`antialiased ${fontMono.variable} ${display.variable} ${body.variable}`}
+            className={`antialiased ${fontMono.variable} ${display.variable} ${body.variable} ${jersey.variable} ${silk.variable} ${pixelify.variable}`}
         >
             <head>
                 <script
@@ -44,9 +68,7 @@ export default function RootLayout({
             </head>
             <body>
                 <StyledComponentsRegistry>
-                    <AppClient>
-                        <AppLayout>{children}</AppLayout>
-                    </AppClient>
+                    <AppClient>{children}</AppClient>
                 </StyledComponentsRegistry>
             </body>
         </html>
