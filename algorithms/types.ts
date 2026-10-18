@@ -7,11 +7,25 @@ export type AlgorithmInstruction = {
 
 export type AlgorithmInstructions = Record<string, AlgorithmInstruction>;
 
+export type AlgorithmGroup = "classic" | "fun";
+
 export type AlgorithmMeta = {
     name: string;
     description: string;
+    /** Average-case time. */
     timeComplexity: string;
+    bestCase: string;
+    worstCase: string;
     auxiliarySpace: string;
+    /** Sort: equal values keep their relative order (as implemented here). */
+    stable?: boolean;
+    /** Sort: works within the input array, without a second array of size n. */
+    inPlace?: boolean;
+    /** Path: guarantees the best route (shortest, or cheapest if weighted). */
+    optimal?: boolean;
+    /** Path: takes mud (cell cost) into account. */
+    weighted?: boolean;
+    group?: AlgorithmGroup;
 };
 
 export type AlgorithmMetric = {

@@ -6,100 +6,125 @@ type StepWorkerStartPayload = {
     maxStep?: number;
 };
 
-type StepWorkerChangePayload = {
-    step: number;
+type StepWorkerConfigPayload = {
+    interval?: number;
+    maxStep?: number;
 };
 
-type WorkerScope = {
-    postMessage: (message: unknown) => void;
+type StepWorkerChangePayload = {
+    step: number;
 };
 
 type StepWorkerMessage =
     | { type: "tab"; payload: string | number }
     | { type: "start"; payload: StepWorkerStartPayload }
+    | { type: "config"; payload: StepWorkerConfigPayload }
     | { type: "stop" }
     | { type: "change"; payload: StepWorkerChangePayload };
 
+/*
+ * The playback clock. Steps advance by elapsed time, not by timer calls:
+ * the timer wakes every frame (16ms) and moves as many steps as the
+ * interval says have passed. A 1ms speed therefore means ~16 steps
+ * per tick instead of 1000 messages a second that nobody can draw.
+ */
+
+const TICK_MS = 16;
+/* After a stall (hidden tab, GC) don't jump more than this much time. */
+const MAX_CATCH_UP_MS = 250;
+/* Never cap below one full interval, or slow speeds could never step. */
+const catchUpLimit = (): number => Math.max(MAX_CATCH_UP_MS, interval * 2);
+
 let sharedIndex: Int32Array | null = null;
-let localStep: number = 0;
-let interval: number = 100; // default ms
-let maxStep: number = 100;
+let localStep = 0;
+let interval = 100;
+let maxStep = 100;
 let timerId: ReturnType<typeof setInterval> | null = null;
+let lastTime = 0;
+let carry = 0;
 let channel: BroadcastChannel | undefined;
-let tabId: string | number | undefined;
+
+function readStep(): number {
+    return sharedIndex ? Atomics.load(sharedIndex, 0) : localStep;
+}
+
+function writeStep(step: number): void {
+    if (sharedIndex) Atomics.store(sharedIndex, 0, step);
+    localStep = step;
+}
+
+function stopTimer(): void {
+    if (timerId !== null) {
+        clearInterval(timerId);
+        timerId = null;
+    }
+}
+
+function startTimer(): void {
+    stopTimer();
+    lastTime = performance.now();
+    carry = 0;
+    // Always wake every frame: a 500ms timer that fires 0.1ms early would
+    // round down to zero steps and silently halve the speed.
+    timerId = setInterval(tick, TICK_MS);
+}
+
+function publish(step: number): void {
+    channel?.postMessage({ step });
+    postMessage({ type: "ticked", payload: { step } });
+}
+
+function tick(): void {
+    const now = performance.now();
+    carry = Math.min(carry + (now - lastTime), catchUpLimit());
+    lastTime = now;
+    const steps = Math.floor(carry / interval);
+    if (steps < 1) return;
+    carry -= steps * interval;
+
+    const next = Math.min(maxStep, readStep() + steps);
+    writeStep(next);
+    publish(next);
+    if (next >= maxStep) stopTimer();
+}
 
 onmessage = (event: MessageEvent<StepWorkerMessage>): void => {
     const message = event.data;
-    console.log("step: ", message.type);
+
     if (message.type === "tab") {
-        tabId = message.payload;
-        channel = new BroadcastChannel(`animation-tick:${tabId}`);
+        channel = new BroadcastChannel(`animation-tick:${message.payload}`);
+        return;
     }
 
     if (message.type === "start") {
         const {
             sharedBuffer,
-            interval: passedInterval,
-            maxStep: passedMaxStep,
+            interval: nextInterval,
+            maxStep: nextMax,
         } = message.payload;
-
         if (sharedBuffer) sharedIndex = new Int32Array(sharedBuffer);
-        if (passedInterval) interval = passedInterval;
-        if (passedMaxStep) maxStep = passedMaxStep;
-        if (!timerId) {
-            const workerScope = self as unknown as WorkerScope;
-            timerId = setInterval(() => tick(workerScope), interval);
-        }
+        if (nextInterval) interval = nextInterval;
+        if (typeof nextMax === "number") maxStep = nextMax;
+        if (readStep() < maxStep) startTimer();
+        return;
+    }
+
+    // Speed or length changed mid-play: retune without losing the position.
+    if (message.type === "config") {
+        const { interval: nextInterval, maxStep: nextMax } = message.payload;
+        if (nextInterval) interval = nextInterval;
+        if (typeof nextMax === "number") maxStep = nextMax;
+        if (timerId !== null) startTimer();
+        return;
     }
 
     if (message.type === "stop") {
-        if (timerId !== null) {
-            clearInterval(timerId);
-            timerId = null;
-        }
+        stopTimer();
+        return;
     }
 
     if (message.type === "change") {
-        const { step } = message.payload;
-        changeIndex(step);
-        channel!.postMessage({ step });
+        writeStep(message.payload.step);
+        channel?.postMessage({ step: message.payload.step });
     }
 };
-
-function changeIndex(index: number): number {
-    if (sharedIndex) {
-        Atomics.store(sharedIndex, 0, index);
-        return Atomics.load(sharedIndex, 0);
-    }
-    localStep = index;
-    return localStep;
-}
-
-function tick(workerScope: WorkerScope): void {
-    let step: number;
-    if (sharedIndex) {
-        const current = Atomics.load(sharedIndex, 0);
-        if (current < maxStep) {
-            Atomics.store(sharedIndex, 0, current + 1);
-        } else {
-            // Stop automatically if reached maxStep
-            if (timerId !== null) {
-                clearInterval(timerId);
-                timerId = null;
-            }
-        }
-        step = Atomics.load(sharedIndex, 0);
-    } else {
-        if (localStep < maxStep) {
-            localStep += 1;
-        } else {
-            if (timerId !== null) {
-                clearInterval(timerId);
-                timerId = null;
-            }
-        }
-        step = localStep;
-    }
-    channel!.postMessage({ step });
-    workerScope.postMessage({ type: "ticked", payload: { step } });
-}

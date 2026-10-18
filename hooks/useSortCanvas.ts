@@ -20,7 +20,7 @@ type StepColors = Record<string, string>;
 type SortCanvasApi = {
     worker: Worker | null;
     renderAlgorithm: (
-        input: number[],
+        input: unknown,
         options: SortCanvasRenderOptions,
         rect: SortCanvasRect
     ) => void;
@@ -30,11 +30,16 @@ type SortCanvasApi = {
     onStatusType: (type: string, cb?: (payload: unknown) => void) => void;
 };
 
+/*
+ * Bridge to a canvas worker. Sorting and path finding share the same
+ * protocol; only the worker file differs.
+ */
 function useSortCanvas(
     canvasRef: RefObject<HTMLCanvasElement | null>,
-    id: string
+    id: string,
+    workerName: "sortCanvasWorker.ts" | "pathCanvasWorker.ts" = "sortCanvasWorker.ts"
 ): SortCanvasApi {
-    const { worker, onMessageType } = useWorker("sortCanvasWorker.ts");
+    const { worker, onMessageType } = useWorker(workerName);
     const offscreenRef = useRef<OffscreenCanvas | null>(null);
 
     useEffect(() => {
@@ -103,7 +108,7 @@ function useSortCanvas(
 
     const renderAlgorithm = useCallback(
         (
-            input: number[],
+            input: unknown,
             options: SortCanvasRenderOptions,
             rect: SortCanvasRect
         ): void => {
@@ -141,10 +146,19 @@ function getCssVar(name: string): string {
         .trim();
 }
 
-function getStepColors(): StepColors {
+export function getStepColors(): StepColors {
     const stepColors: StepColors = {};
     for (const type of sortStepTypes) {
         stepColors[type] = getCssVar(`--color-step-${type}`);
+    }
+    stepColors.default = getCssVar("--color-step-default");
+    stepColors.label = getCssVar("--color-step-label");
+    // Path finding: step colors plus the grid's own materials.
+    for (const type of ["frontier", "visit", "current", "path"]) {
+        stepColors[type] = getCssVar(`--color-step-${type}`);
+    }
+    for (const kind of ["empty", "wall", "mud", "mud-dot", "start", "end"]) {
+        stepColors[`path-${kind}`] = getCssVar(`--color-path-${kind}`);
     }
     return stepColors;
 }

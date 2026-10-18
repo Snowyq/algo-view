@@ -47,7 +47,6 @@ function PlaybackTicker(): JSX.Element | null {
     const updateStep = (value: number): void => {
         const state = store.getState();
         if (state.play.animation.status !== "playing") return;
-        console.log(value);
         dispatch(changeStep({ value, trigger: "tick" }));
     };
 
@@ -98,6 +97,17 @@ function PlaybackTicker(): JSX.Element | null {
                 break;
         }
     }, [animationStatus, dispatch, animationIntervalValue, worker, maxStep]);
+
+    // Speed or length changed while playing: retune the running clock.
+    // (Adding a longer algorithm mid-run used to leave the worker stopped
+    // at the old end while the UI still said "playing".)
+    useEffect((): void => {
+        if (store.getState().play.animation.status !== "playing") return;
+        worker?.postMessage({
+            type: "config",
+            payload: { interval: animationIntervalValue, maxStep },
+        });
+    }, [animationIntervalValue, maxStep, worker, store]);
 
     // Auto stop after animation is finished
     useEffect((): void => {

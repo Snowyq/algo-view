@@ -1,161 +1,142 @@
 import { createGlobalStyle } from "styled-components";
 
+/*
+ * Design system: "Phosphor Trace"
+ * The accent palette IS the sorting legend: every highlight on the page
+ * uses the same color a step type gets on the canvas.
+ */
 const GlobalStyles = createGlobalStyle`
 :root {
+  color-scheme: dark;
 
-  --color-brand-0: var(--color-cyan-0);
-  --color-brand-50: var(--color-cyan-50);
-  --color-brand-100: var(--color-cyan-100);
-  --color-brand-200: var(--color-cyan-200);
-  --color-brand-300: var(--color-cyan-300);
-  --color-brand-400: var(--color-cyan-400);
-  --color-brand-500: var(--color-cyan-500);
-  --color-brand-600: var(--color-cyan-600);
-  --color-brand-700: var(--color-cyan-700);
-  --color-brand-800: var(--color-cyan-800);
-  --color-brand-900: var(--color-cyan-900);
-  --color-brand-950: var(--color-cyan-950);
+  /* ---------- Core surfaces ---------- */
+  --ink-950: #0a0c12;   /* app background */
+  --ink-900: #10131b;   /* panels, canvas wells */
+  --ink-850: #151924;   /* raised surfaces */
+  --ink-800: #1b2030;   /* controls, hover surfaces */
+  --ink-700: #262c3e;   /* hairlines */
+  --ink-600: #353d54;   /* strong lines, idle data */
 
-  /* Grey */
-  --color-grey-0: #fff;
-  --color-grey-50: #f9fafb;
-  --color-grey-100: #f3f4f6;
-  --color-grey-200: #e5e7eb;
-  --color-grey-300: #d1d5db;
-  --color-grey-400: #9ca3af;
-  --color-grey-500: #6b7280;
-  --color-grey-600: #4b5563;
-  --color-grey-700: #374151;
-  --color-grey-800: #1f2937;
-  --color-grey-900: #111827;
-  --color-grey-950: #030712;
+  --text: #e8ebf4;          /* 16.4:1 on ink-950 */
+  --text-soft: #c2c8d8;     /* 11.6:1 */
+  --text-muted: #949db4;    /* 7.0:1 */
+  --text-faint: #7a839a;    /* 4.6:1 on ink-850, not for ink-800 */
 
-  --color-grey-0-rgb: 255, 255, 255;
-  --color-grey-50-rgb: 249, 250, 251;
-  --color-grey-100-rgb: 243, 244, 246;
-  --color-grey-200-rgb: 229, 231, 235;
-  --color-grey-300-rgb: 209, 213, 219;
-  --color-grey-400-rgb: 156, 163, 175;
-  --color-grey-500-rgb: 107, 114, 128;
-  --color-grey-600-rgb: 75, 85, 99;
-  --color-grey-700-rgb: 55, 65, 81;
-  --color-grey-800-rgb: 31, 41, 55;
-  --color-grey-900-rgb: 17, 24, 39;
-  --color-grey-950-rgb: 3, 7, 18;
-  
-  --color-cyan-0: #fff;
-  --color-cyan-50: #ecfeff;
-  --color-cyan-100: #cffafe;
-  --color-cyan-200: #a5f3fc;
-  --color-cyan-300: #67e8f9;
-  --color-cyan-400: #22d3ee;
-  --color-cyan-500: #06b6d4;
-  --color-cyan-600: #0891b2;
-  --color-cyan-700: #0e7490;
-  --color-cyan-800: #155e75;
-  --color-cyan-900: #164e63;
-  --color-cyan-950: #083344;
+  /* ---------- Signal colors (= step legend) ---------- */
+  --swap: #6ea8fe;
+  --swap-strong: #93bfff;
+  --select: #f27fb8;
+  --check: #f5c84c;
+  --check-true: #5fe39a;
+  --check-false: #ff7d7d;
+  --finish: #3dd9d6;
+  --danger: #ff8f8f;
 
- --color-yellow-0:  #fff;
---color-yellow-50: #fefce8;
---color-yellow-100:#fef9c3;
---color-yellow-200:#fef08a;
---color-yellow-300:#fde047;
---color-yellow-400:#facc15;
---color-yellow-500:#eab308;
---color-yellow-600:#ca8a04;
---color-yellow-700:#a16207;
---color-yellow-800:#854d0e;
---color-yellow-900:#713f12;
---color-yellow-950:#422006;
---color-blue-0:    #fff;
---color-blue-50:   #eff6ff;
---color-blue-100:  #dbeafe;
---color-blue-200:  #bfdbfe;
---color-blue-300:  #93c5fd;
---color-blue-400:  #60a5fa;
---color-blue-500:  #3b82f6;
---color-blue-600:  #2563eb;
---color-blue-700:  #1d4ed8;
---color-blue-800:  #1e40af;
---color-blue-900:  #1e3a8a;
---color-blue-950:  #172554;
---color-red-0:     #fff;
---color-red-50:    #fef2f2;
---color-red-100:   #fee2e2;
---color-red-200:   #fecaca;
---color-red-300:   #fca5a5;
---color-red-400:   #f87171;
---color-red-500:   #ef4444;
---color-red-600:   #dc2626;
---color-red-700:   #b91c1c;
---color-red-800:   #991b1b;
---color-red-900:   #7f1d1d;
---color-red-950:   #450a0a;
---color-green-0:    #fff;
---color-green-50:   #f0fdf4;
---color-green-100:  #dcfce7;
---color-green-200:  #bbf7d0;
---color-green-300:  #86efac;
---color-green-400:  #4ade80;
---color-green-500:  #22c55e;
---color-green-600:  #16a34a;
---color-green-700:  #15803d;
---color-green-800:  #166534;
---color-green-900:  #14532d;
---color-green-950:  #052e16;
---color-pink-0:    #fff;
---color-pink-50:   #fdf2f8;
---color-pink-100:  #fce7f3;
---color-pink-200:  #fbcfe8;
---color-pink-300:  #f9a8d4;
---color-pink-400:  #f472b6;
---color-pink-500:  #ec4899;
---color-pink-600:  #db2777;
---color-pink-700:  #be185d;
---color-pink-800:  #9d174d;
---color-pink-900:  #831843;
---color-pink-950:  #500724;
+  --swap-rgb: 110, 168, 254;
+  --finish-rgb: 61, 217, 214;
+  --ink-950-rgb: 10, 12, 18;
 
+  /* ---------- Type ---------- */
+  --font-display-stack: var(--font-display), "Arial Narrow", sans-serif;
+  --font-body-stack: var(--font-sans), system-ui, sans-serif;
+  --font-mono-stack: var(--font-mono), ui-monospace, monospace;
 
+  --text-xs: 1.2rem;
+  --text-sm: 1.4rem;
+  --text-base: 1.6rem;
+  --text-md: 1.8rem;
+  --text-lg: 2.4rem;
+  --text-xl: clamp(2.8rem, 2.2rem + 1.6vw, 4rem);
+  --text-display: clamp(5.6rem, 2.4rem + 8vw, 12rem); /* condensed face reads ~20% smaller */
 
+  --leading-tight: 0.92;
+  --leading-snug: 1.2;
+  --leading-body: 1.65;
 
-  --color-red-100: #fee2e2;
-  --color-red-700: #b91c1c;
-  --color-red-800: #991b1b;
+  /* ---------- Space (4px base) ---------- */
+  --space-1: 0.4rem;
+  --space-2: 0.8rem;
+  --space-3: 1.2rem;
+  --space-4: 1.6rem;
+  --space-5: 2.4rem;
+  --space-6: 3.2rem;
+  --space-7: 4.8rem;
+  --space-8: 6.4rem;
+  --space-9: 9.6rem;
+  --space-10: 14.4rem;
+  --gutter: clamp(1.6rem, 1rem + 2.4vw, 4.8rem);
+  --content-max: 128rem;
 
-  --backdrop-color: rgba(255, 255, 255, 0.1);
+  /* ---------- Radius ---------- */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-md: 0px 0.6rem 2.4rem rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 2.4rem 3.2rem rgba(0, 0, 0, 0.12);
+  /* ---------- Elevation (offset + blur, never halos) ---------- */
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 0.8rem 2.4rem -0.8rem rgba(0, 0, 0, 0.6);
+  --shadow-3: 0 2.4rem 6.4rem -1.6rem rgba(0, 0, 0, 0.75);
 
-  --border-radius-tiny: 3px;
-  --border-radius-sm: 5px;
-  --border-radius-md: 7px;
-  --border-radius-lg: 9px;
+  /* ---------- Motion ---------- */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast: 140ms;
+  --dur-base: 240ms;
+  --dur-slow: 520ms;
 
-  /* For dark mode */
-  --image-grayscale: 0;
-  --image-opacity: 100%;
+  --nav-height: 6rem;
+  /* Sidebar toggle tab; the panel grid reserves this much on its right. */
+  --sidebar-tab-width: 4rem;
 
+  /* ---------- Legacy scale, remapped to the dark system ---------- */
+  --color-grey-0: var(--ink-950);
+  --color-grey-50: var(--ink-900);
+  --color-grey-100: var(--ink-850);
+  --color-grey-200: var(--ink-800);
+  --color-grey-300: var(--ink-700);
+  --color-grey-400: var(--ink-600);
+  --color-grey-500: var(--text-faint);
+  --color-grey-600: var(--text-muted);
+  --color-grey-700: var(--text-soft);
+  --color-grey-800: var(--text);
+  --color-grey-900: var(--text);
+  --color-grey-950: #ffffff;
+  --color-grey-300-rgb: 38, 44, 62;
 
-  --nav-height: 5rem;
-  
+  --color-brand-50: var(--ink-950);
+  --color-brand-600: var(--swap);
+  --color-brand-700: var(--swap-strong);
 
-    /* Step colors for canvas or animation types */
-  --color-step-swap: var(--color-blue-400);         /* #60a5fa */
-  --color-step-select: var(--color-pink-400);       /* #f472b6 */
-  --color-step-check: var(--color-yellow-400);      /* #facc15 */
-  --color-step-check-true: var(--color-green-400);  /* #4ade80 */
-  --color-step-check-false: var(--color-red-400);   /* #f87171 */
-  --color-step-check-value: var(--color-yellow-400);      /* same as --check */
-  --color-step-check-value-true: var(--color-green-400);  /* same as --check:true */
-  --color-step-check-value-false: var(--color-red-400);   /* same as --check:false */
-  --color-step-assign: #000;
-  --color-step-copy: #888;
-  --color-step-copy-to: #444;
-  --color-step-finish: var(--color-cyan-400);       /* #22d3ee */
+  --color-red-100: rgba(255, 125, 125, 0.12);
+  --color-red-200: rgba(255, 125, 125, 0.2);
+  --color-red-400: rgba(255, 125, 125, 0.24);
+  --color-red-500: var(--check-false);
+  --color-red-600: var(--danger);
+  --color-red-700: #e05a5a;
+  --color-red-800: #c94848;
+
+  --shadow-sm: var(--shadow-1);
+  --shadow-md: var(--shadow-2);
+  --shadow-lg: var(--shadow-3);
+  --border-radius-sm: var(--radius-sm);
+
+  /* ---------- Canvas step colors (read by useSortCanvas) ---------- */
+  --color-step-default: #606b8a;       /* 3.5:1 on canvas well */
+  --color-step-label: var(--text-muted);
+  --color-step-swap: var(--swap);
+  --color-step-select: var(--select);
+  --color-step-check: var(--check);
+  --color-step-check-true: var(--check-true);
+  --color-step-check-false: var(--check-false);
+  --color-step-check-value: var(--check);
+  --color-step-check-value-true: var(--check-true);
+  --color-step-check-value-false: var(--check-false);
+  --color-step-assign: #f4f6fb;
+  --color-step-copy: #b9c1d6;
+  --color-step-copy-to: #7d89a8;
+  --color-step-finish: var(--finish);
 }
 
 *,
@@ -164,25 +145,58 @@ const GlobalStyles = createGlobalStyle`
   box-sizing: border-box;
   padding: 0;
   margin: 0;
-
-  /* Creating animations for dark mode */
-  /* transition: background-color 0.3s, border 0.3s; */
 }
 
 html {
   font-size: 62.5%;
-  
+  background-color: var(--ink-950);
 }
 
 body {
   position: fixed;
-  font-family: "Open Sans", sans-serif;
-  color: var(--color-grey-700);
-/* overflow: hidden; */
-  transition: color 0.3s, background-color 0.3s;
-  min-height: 100vh;
+  font-family: var(--font-body-stack);
+  font-size: var(--text-base);
   line-height: 1.5;
-  font-size: 1.6rem;
+  color: var(--text-soft);
+  background-color: var(--ink-950);
+  min-height: 100vh;
+  font-feature-settings: "ss01";
+  caret-color: var(--swap);
+}
+
+::selection {
+  background-color: rgba(var(--finish-rgb), 0.28);
+  color: var(--text);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--ink-600) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--ink-600);
+  border: 3px solid var(--ink-950);
+  border-radius: var(--radius-pill);
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  color: var(--text);
+  font-weight: 600;
+  line-height: var(--leading-snug);
+  text-wrap: balance;
 }
 
 input,
@@ -193,8 +207,18 @@ select {
   color: inherit;
 }
 
+button,
+a,
+label {
+  touch-action: manipulation;
+}
+
 button {
   cursor: pointer;
+}
+
+main:focus {
+  outline: none;
 }
 
 *:disabled {
@@ -203,16 +227,24 @@ button {
 
 select:disabled,
 input:disabled {
-  background-color: var(--color-grey-200);
-  color: var(--color-grey-500);
+  background-color: var(--ink-850);
+  color: var(--text-faint);
 }
 
-input:focus,
-button:focus,
-textarea:focus,
-select:focus {
-  outline: 2px solid var(--color-brand-600);
-  outline-offset: -1px;
+:focus {
+  outline: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--finish);
+  outline-offset: 3px;
+  border-radius: var(--radius-xs);
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline-offset: 1px;
 }
 
 button:has(svg) {
@@ -236,13 +268,31 @@ h4,
 h5,
 h6 {
   overflow-wrap: break-word;
-  hyphens: auto;
+  hyphens: manual;
+}
+
+p {
+  text-wrap: pretty;
 }
 
 img {
-   max-width: 100%;  
+  max-width: 100%;
 }
 
+option {
+  background-color: var(--ink-850);
+  color: var(--text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}
 `;
 
 export default GlobalStyles;

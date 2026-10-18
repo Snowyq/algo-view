@@ -12,6 +12,10 @@ const workerFactories: Record<string, WorkerFactory> = {
         new Worker(new URL("../workers/sortCanvasWorker.ts", import.meta.url), {
             type: workerType,
         }),
+    "pathCanvasWorker.ts": (workerType: WorkerOptions["type"] = "module") =>
+        new Worker(new URL("../workers/pathCanvasWorker.ts", import.meta.url), {
+            type: workerType,
+        }),
 };
 
 type WorkerName = keyof typeof workerFactories;
