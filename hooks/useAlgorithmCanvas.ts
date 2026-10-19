@@ -1,44 +1,39 @@
 import { useCallback, useEffect, useRef, type RefObject } from "react";
+import type { WorkerName } from "../algorithms/categoryData";
 import { sortStepTypes } from "../algorithms/sort/SortAlgorithm";
 import { SharedBufferAPI } from "../utils/sharedBufferAPI";
 import useWorker from "./useWorker";
 
-type SortCanvasSettings = {
-    blockProportion?: number;
-    upperBlockMargin?: number;
-    textDisplayThreshold?: number;
-};
+type CanvasRect = Pick<DOMRectReadOnly, "width" | "height">;
 
-type SortCanvasRect = Pick<DOMRectReadOnly, "width" | "height">;
-
-type SortCanvasRenderOptions = {
+type CanvasRenderOptions = {
     stepTypes?: typeof sortStepTypes;
+    [key: string]: unknown;
 };
 
 type StepColors = Record<string, string>;
 
-type SortCanvasApi = {
+type AlgorithmCanvasApi = {
     worker: Worker | null;
     renderAlgorithm: (
         input: unknown,
-        options: SortCanvasRenderOptions,
-        rect: SortCanvasRect
+        options: CanvasRenderOptions,
+        rect: CanvasRect
     ) => void;
-    changeSettings: (settings: SortCanvasSettings) => void;
-    changeSize: (parentRect: SortCanvasRect) => void;
+    changeSize: (parentRect: CanvasRect) => void;
     changeColors: (colors: StepColors) => void;
     onStatusType: (type: string, cb?: (payload: unknown) => void) => void;
 };
 
 /*
- * Bridge to a canvas worker. Sorting and path finding share the same
- * protocol; only the worker file differs.
+ * Bridge to a canvas worker. Every category's worker speaks the same
+ * protocol (workers/runtime/canvasWorker.ts); only the file differs.
  */
-function useSortCanvas(
+function useAlgorithmCanvas(
     canvasRef: RefObject<HTMLCanvasElement | null>,
     id: string,
-    workerName: "sortCanvasWorker.ts" | "pathCanvasWorker.ts" = "sortCanvasWorker.ts"
-): SortCanvasApi {
+    workerName: WorkerName
+): AlgorithmCanvasApi {
     const { worker, onMessageType } = useWorker(workerName);
     const offscreenRef = useRef<OffscreenCanvas | null>(null);
 
@@ -70,20 +65,8 @@ function useSortCanvas(
 
     // Callbacks
 
-    const changeSettings = useCallback(
-        (settings: SortCanvasSettings) => {
-            if (!worker) return;
-            const devicePixelRatio = getDevicePixelRatio();
-            worker.postMessage({
-                type: "settings",
-                payload: { settings, devicePixelRatio },
-            });
-        },
-        [worker]
-    );
-
     const changeSize = useCallback(
-        (parentRect: SortCanvasRect) => {
+        (parentRect: CanvasRect) => {
             if (!worker) return;
             const devicePixelRatio = getDevicePixelRatio();
             const { width, height } = parentRect;
@@ -109,8 +92,8 @@ function useSortCanvas(
     const renderAlgorithm = useCallback(
         (
             input: unknown,
-            options: SortCanvasRenderOptions,
-            rect: SortCanvasRect
+            options: CanvasRenderOptions,
+            rect: CanvasRect
         ): void => {
             if (!worker) return;
 
@@ -126,7 +109,6 @@ function useSortCanvas(
     return {
         worker,
         renderAlgorithm,
-        changeSettings,
         changeSize,
         changeColors,
         onStatusType: onMessageType,
@@ -160,7 +142,9 @@ export function getStepColors(): StepColors {
     for (const kind of ["empty", "wall", "mud", "mud-dot", "start", "end"]) {
         stepColors[`path-${kind}`] = getCssVar(`--color-path-${kind}`);
     }
+    // Searching: the target line.
+    stepColors["find-target"] = getCssVar("--color-find-target");
     return stepColors;
 }
 
-export default useSortCanvas;
+export default useAlgorithmCanvas;

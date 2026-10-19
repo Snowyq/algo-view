@@ -33,7 +33,10 @@ export class RandomWalk extends PathAlgorithm {
 
     static getInstructions(): AlgorithmInstructions {
         return {
-            r0: { line: "for (let tries = 0; tries < patience; tries++) {", indent: 0 },
+            r0: {
+                line: "for (let tries = 0; tries < patience; tries++) {",
+                indent: 0,
+            },
             r1: { line: "cell = randomNeighbor(cell);", indent: 1 },
             r2: { line: "if (cell === end) return trace(cell);", indent: 1 },
             re0: { line: "}", indent: 0 },

@@ -1,7 +1,7 @@
 import { clamp } from "../../utils/values";
 import { Algorithm, type CompareOperator } from "../Algorithm";
 import { CacheManager } from "../CacheManager";
-import type { AlgorithmInstructions } from "../types";
+import type { AlgorithmInstructions, StepAlgorithm } from "../types";
 
 export type SortStepType =
     | "initial"
@@ -95,7 +95,10 @@ export const sortStepTypes: SortStepType[] = [
 
 // Class
 
-export class SortAlgorithm extends Algorithm {
+export class SortAlgorithm
+    extends Algorithm
+    implements StepAlgorithm<SortStep, number[]>
+{
     // support instances
     cacheManager!: CacheManager<number[], SortOperation>;
     //

@@ -55,7 +55,11 @@ export function gridSize(cols: number): { cols: number; rows: number } {
     return { cols: c, rows: odd(Math.max(9, Math.round(c * 0.56))) };
 }
 
-export function generateGrid({ preset, cols: wanted, seed }: GridConfig): GridInput {
+export function generateGrid({
+    preset,
+    cols: wanted,
+    seed,
+}: GridConfig): GridInput {
     const rng = createRng(seed);
     const { cols, rows } = gridSize(wanted);
     const n = cols * rows;
@@ -141,13 +145,16 @@ export function generateGrid({ preset, cols: wanted, seed }: GridConfig): GridIn
             const room = 6;
             for (let y = 0; y < rows; y += 1) {
                 for (let x = 0; x < cols; x += 1) {
-                    if (x % room === 0 || y % room === 0) cells[at(x, y)] = CELL_WALL;
+                    if (x % room === 0 || y % room === 0)
+                        cells[at(x, y)] = CELL_WALL;
                 }
             }
             for (let ry = 0; ry * room < rows; ry += 1) {
                 for (let rx = 0; rx * room < cols; rx += 1) {
-                    const doorX = rx * room + 1 + Math.floor(rng() * (room - 1));
-                    const doorY = ry * room + 1 + Math.floor(rng() * (room - 1));
+                    const doorX =
+                        rx * room + 1 + Math.floor(rng() * (room - 1));
+                    const doorY =
+                        ry * room + 1 + Math.floor(rng() * (room - 1));
                     if ((rx + 1) * room < cols && doorY < rows) {
                         cells[at((rx + 1) * room, doorY)] = CELL_EMPTY;
                     }
@@ -212,7 +219,10 @@ export function encodeCells(cells: number[]): string {
     });
     let binary = "";
     bytes.forEach((b) => (binary += String.fromCharCode(b)));
-    return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    return btoa(binary)
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/, "");
 }
 
 export function decodeCells(text: string, length: number): number[] | null {
