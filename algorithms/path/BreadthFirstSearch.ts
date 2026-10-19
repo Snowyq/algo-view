@@ -27,7 +27,9 @@ export class BreadthFirstSearch extends PathAlgorithm {
                 queue.push(next);
                 added.push(next);
             }
-            this.frontier(added, queue.length - head, { instructionId: ["b6", "b7"] });
+            this.frontier(added, queue.length - head, {
+                instructionId: ["b6", "b7"],
+            });
         }
         this.noPath();
     }

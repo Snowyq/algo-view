@@ -47,7 +47,10 @@ export class Dijkstra extends PathAlgorithm {
             j4: { line: "for (const next of neighbors(cell)) {", indent: 1 },
             j5: { line: "const cost = dist[cell] + weight(next);", indent: 2 },
             j6: { line: "if (cost < dist[next]) {", indent: 2 },
-            j7: { line: "dist[next] = cost; heap.push(next, cost);", indent: 3 },
+            j7: {
+                line: "dist[next] = cost; heap.push(next, cost);",
+                indent: 3,
+            },
             je6: { line: "}", indent: 2 },
             je4: { line: "}", indent: 1 },
             je1: { line: "}", indent: 0 },

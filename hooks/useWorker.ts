@@ -16,6 +16,51 @@ const workerFactories: Record<string, WorkerFactory> = {
         new Worker(new URL("../workers/pathCanvasWorker.ts", import.meta.url), {
             type: workerType,
         }),
+    "findCanvasWorker.ts": (workerType: WorkerOptions["type"] = "module") =>
+        new Worker(new URL("../workers/findCanvasWorker.ts", import.meta.url), {
+            type: workerType,
+        }),
+    "mazeCanvasWorker.ts": (workerType: WorkerOptions["type"] = "module") =>
+        new Worker(new URL("../workers/mazeCanvasWorker.ts", import.meta.url), {
+            type: workerType,
+        }),
+    "dpCanvasWorker.ts": (workerType: WorkerOptions["type"] = "module") =>
+        new Worker(new URL("../workers/dpCanvasWorker.ts", import.meta.url), {
+            type: workerType,
+        }),
+    "lifeCanvasWorker.ts": (workerType: WorkerOptions["type"] = "module") =>
+        new Worker(new URL("../workers/lifeCanvasWorker.ts", import.meta.url), {
+            type: workerType,
+        }),
+    "fillCanvasWorker.ts": (workerType: WorkerOptions["type"] = "module") =>
+        new Worker(new URL("../workers/fillCanvasWorker.ts", import.meta.url), {
+            type: workerType,
+        }),
+    "geometryCanvasWorker.ts": (workerType: WorkerOptions["type"] = "module") =>
+        new Worker(
+            new URL("../workers/geometryCanvasWorker.ts", import.meta.url),
+            {
+                type: workerType,
+            }
+        ),
+    "treeCanvasWorker.ts": (workerType: WorkerOptions["type"] = "module") =>
+        new Worker(new URL("../workers/treeCanvasWorker.ts", import.meta.url), {
+            type: workerType,
+        }),
+    "graphCanvasWorker.ts": (workerType: WorkerOptions["type"] = "module") =>
+        new Worker(
+            new URL("../workers/graphCanvasWorker.ts", import.meta.url),
+            {
+                type: workerType,
+            }
+        ),
+    "stringsCanvasWorker.ts": (workerType: WorkerOptions["type"] = "module") =>
+        new Worker(
+            new URL("../workers/stringsCanvasWorker.ts", import.meta.url),
+            {
+                type: workerType,
+            }
+        ),
 };
 
 type WorkerName = keyof typeof workerFactories;

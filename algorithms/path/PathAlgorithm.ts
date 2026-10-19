@@ -5,7 +5,7 @@ import {
     type GridInput,
 } from "../../utils/grid";
 import { Algorithm } from "../Algorithm";
-import type { AlgorithmInstructions } from "../types";
+import type { AlgorithmInstructions, StepAlgorithm } from "../types";
 
 export type PathStepType = "initial" | "frontier" | "visit" | "path" | "finish";
 
@@ -45,7 +45,10 @@ const SNAPSHOT_EVERY = 32;
  * are computed once in the worker; drawing step k rebuilds the overlay
  * from the nearest snapshot.
  */
-export abstract class PathAlgorithm extends Algorithm {
+export abstract class PathAlgorithm
+    extends Algorithm
+    implements StepAlgorithm<PathStep, PathState>
+{
     grid: GridInput;
     steps: PathStep[] = [];
     protected overlay: Uint8Array;
@@ -117,15 +120,22 @@ export abstract class PathAlgorithm extends Algorithm {
 
     /** The search expands this cell. */
     protected visit(cell: number, options: StepOptions = {}): void {
-        if (this.overlay[cell] !== OVERLAY_VISITED) this.count("visited", "Visited");
+        if (this.overlay[cell] !== OVERLAY_VISITED)
+            this.count("visited", "Visited");
         this.overlay[cell] = OVERLAY_VISITED;
         this.current = cell;
         this.pushStep("visit", [cell], OVERLAY_VISITED, options);
     }
 
     /** New cells join the open set (queue, stack or heap). */
-    protected frontier(cells: number[], openSize: number, options: StepOptions = {}): void {
-        const fresh = cells.filter((cell) => this.overlay[cell] === OVERLAY_NONE);
+    protected frontier(
+        cells: number[],
+        openSize: number,
+        options: StepOptions = {}
+    ): void {
+        const fresh = cells.filter(
+            (cell) => this.overlay[cell] === OVERLAY_NONE
+        );
         fresh.forEach((cell) => (this.overlay[cell] = OVERLAY_FRONTIER));
         this.setCount("open", openSize);
         if (fresh.length > 0) {
@@ -221,7 +231,9 @@ export abstract class PathAlgorithm extends Algorithm {
     getStateByStepsIndex(index: number): PathState {
         const last = Math.max(0, Math.min(index, this.steps.length - 1));
         const base = last - (last % SNAPSHOT_EVERY);
-        const overlay = (this.snapshots.get(base) ?? new Uint8Array(this.size)).slice();
+        const overlay = (
+            this.snapshots.get(base) ?? new Uint8Array(this.size)
+        ).slice();
         for (let i = base + 1; i <= last; i += 1) {
             const step = this.steps[i];
             step.cells.forEach((cell) => (overlay[cell] = step.overlay));

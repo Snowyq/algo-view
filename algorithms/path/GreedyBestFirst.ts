@@ -42,7 +42,10 @@ export class GreedyBestFirst extends PathAlgorithm {
             g3: { line: "if (cell === end) return trace(cell);", indent: 1 },
             g4: { line: "for (const next of neighbors(cell)) {", indent: 1 },
             g5: { line: "if (seen.has(next)) continue;", indent: 2 },
-            g6: { line: "from[next] = cell; heap.push(next, h(next));", indent: 2 },
+            g6: {
+                line: "from[next] = cell; heap.push(next, h(next));",
+                indent: 2,
+            },
             ge4: { line: "}", indent: 1 },
             ge1: { line: "}", indent: 0 },
         };
