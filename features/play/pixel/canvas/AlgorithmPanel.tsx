@@ -6,7 +6,7 @@ import {
     useState,
     type MouseEvent,
 } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch, useSelector, useStore } from "react-redux";
 import styled, { css, keyframes } from "styled-components";
 import type {
     AlgorithmMetrics,
@@ -14,22 +14,15 @@ import type {
 } from "../../../../algorithms/types";
 import useSizeFlag from "../../../../hooks/useSizeFlag";
 import type { AppDispatch, RootState } from "../../../../store";
-import AlgorithmInfo from "../../AlgorithmInfo";
-import CodePanel from "../../CodePanel";
 import {
     closeAlgorithm,
-    getAllCodeVisible,
-    getAllMetricsVisible,
     getHighlightedPanelId,
     getActiveCategory,
     getInput,
-    observeAlgorithm,
-    showCodeInSidebar,
-    showInfoInSidebar,
+    getWindowAlgorithmId,
+    openAlgorithmWindow,
 } from "../../playSlice";
-import PathVisualizerCanvas from "../../PathVisualizerCanvas";
-import SortVisualizerCanvas from "../../SortVisualizerCanvas";
-import { algorithmTraits } from "../../traits";
+import { categoryOf } from "../../categories";
 import type { StepInfo } from "../../stepLegend";
 import {
     publishGaveUp,
@@ -37,7 +30,6 @@ import {
     publishStepMetrics,
     useCodeSnapshot,
 } from "../../stepInfoStore";
-import useSideCodeFits from "../../useSideCodeFits";
 import PixelButton from "../primitives/PixelButton";
 import PixelIcon from "../primitives/PixelIcon";
 import PixelTooltip from "../primitives/PixelTooltip";
@@ -45,11 +37,14 @@ import { DICE } from "../primitives/icons";
 import { labelText, pixelFrame } from "../primitives/pixel";
 import PixelMetrics from "./PixelMetrics";
 
-/* Clicks on the panel's own controls keep their job; anywhere else observes. */
+/* Clicks on the panel's own controls keep their job; anywhere else follows
+   the algorithm in the Details sidebar (its code and description). */
 const INTERACTIVE =
     "button, a, input, select, textarea, [role='slider'], [data-no-observe]";
 
-const COMPACT_MAX_HEIGHT = 220;
+/* Below every category's minimum panel height, so compact mode only
+   kicks in when a panel truly has no room (e.g. a very short window). */
+const COMPACT_MAX_HEIGHT = 200;
 const isCompactPanel = (_w: number, height: number): boolean =>
     height < COMPACT_MAX_HEIGHT;
 
@@ -81,6 +76,10 @@ const Frame = styled.article<{ $observed: boolean }>`
     background-color: var(--surface);
     cursor: pointer;
     ${pixelFrame("var(--line)")};
+
+    &[data-focused="true"] {
+        cursor: default;
+    }
 
     @media (hover: hover) {
         &:hover {
@@ -243,6 +242,10 @@ const Actions = styled.div`
     align-items: center;
     gap: 0.2rem;
     flex: 0 0 auto;
+
+    &[hidden] {
+        display: none;
+    }
 `;
 
 const MetricsBar = styled.div`
@@ -254,38 +257,13 @@ const MetricsBar = styled.div`
     }
 `;
 
-const Main = styled.div<{ $withSide: boolean }>`
-    display: grid;
-    grid-template-columns: ${({ $withSide }) =>
-        $withSide ? "minmax(0, 1fr) minmax(28rem, 0.85fr)" : "minmax(0, 1fr)"};
-    grid-template-rows: minmax(0, 1fr);
-    gap: 1.2rem;
-    flex: 1;
-    min-height: 0;
-    width: 100%;
-`;
-
 const ChartCell = styled.div`
+    flex: 1;
     display: flex;
     flex-direction: column;
     min-width: 0;
     min-height: 0;
 `;
-
-const InfoCard = styled.section`
-    min-width: 0;
-    min-height: 0;
-    height: 100%;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    padding: 1.6rem;
-    margin: var(--b);
-    background-color: var(--bg-2);
-    cursor: auto;
-    ${pixelFrame("var(--line)")};
-`;
-
-type SideView = "code" | "info" | null;
 
 /* Rolling die for the random sorts, sparkle for the miracle. */
 function AlgorithmEgg({ id }: { id: string }): JSX.Element | null {
@@ -330,22 +308,17 @@ type AlgorithmPanelProps = {
 
 function AlgorithmPanel({ registry }: AlgorithmPanelProps): JSX.Element {
     const dispatch = useDispatch<AppDispatch>();
+    const store = useStore<RootState>();
     const { id, meta } = registry;
-    const instructions = registry.algorithm.instructions;
-    const canShowCode = Boolean(instructions);
 
     const [totals, setTotals] = useState<AlgorithmMetrics | null>(null);
-    const allMetricsVisible = useSelector<RootState, boolean>(
-        getAllMetricsVisible
-    );
-    const allCodeVisible = useSelector<RootState, boolean>(getAllCodeVisible);
     const observed =
         useSelector<RootState, string | null>(getHighlightedPanelId) === id;
     const input = useSelector<RootState, number[]>(getInput);
     const category = useSelector<RootState, string>(getActiveCategory);
-    const isPath = category === "path";
-    const hasInput = isPath || input.length > 0;
-    const Visualizer = isPath ? PathVisualizerCanvas : SortVisualizerCanvas;
+    const def = categoryOf(category);
+    const hasInput = category !== "sort" || input.length > 0;
+    const Visualizer = def.Visualizer;
     const { gaveUp } = useCodeSnapshot(id);
 
     // Finished = the global step reached this algorithm's last step.
@@ -355,28 +328,8 @@ function AlgorithmPanel({ registry }: AlgorithmPanelProps): JSX.Element {
         return state.play.animation.step.value >= algo.stepsLength - 1;
     });
 
-    // One side column, showing code or info. The global code toggle
-    // drives it too: on → code, off → closes it if it was showing code.
-    const [sideView, setSideView] = useState<SideView>(
-        allCodeVisible ? "code" : null
-    );
-    const [prevAllCode, setPrevAllCode] = useState<boolean>(allCodeVisible);
-    if (allCodeVisible !== prevAllCode) {
-        setPrevAllCode(allCodeVisible);
-        if (allCodeVisible) setSideView("code");
-        else if (sideView === "code") setSideView(null);
-    }
-
     const frameRef = useRef<HTMLElement | null>(null);
-    const mainRef = useRef<HTMLDivElement | null>(null);
-    const sideFits = useSideCodeFits(mainRef);
     const compact = useSizeFlag(frameRef, isCompactPanel);
-    const inlineView: SideView = sideFits
-        ? sideView === "code" && !canShowCode
-            ? null
-            : sideView
-        : null;
-
     // Step position feeds every code view of this algorithm.
     const handleStepInfo = useCallback(
         (info: StepInfo | null) => publishStepInfo(id, info),
@@ -421,26 +374,20 @@ function AlgorithmPanel({ registry }: AlgorithmPanelProps): JSX.Element {
         return () => clearTimeout(timer);
     }, [input]);
 
-    const viewLabel = (view: "code" | "info"): string =>
-        !sideFits
-            ? `Show ${view} in Inspector`
-            : inlineView === view
-              ? `Hide ${view}`
-              : `Show ${view}`;
+    // In focus mode the window owns the controls (back, tabs): the panel
+    // itself is just the picture.
+    const focused =
+        useSelector<RootState, string | null>(getWindowAlgorithmId) === id;
 
-    const handleView = (view: "code" | "info"): void => {
-        if (sideFits) {
-            setSideView((current) => (current === view ? null : view));
-            return;
-        }
-        dispatch(
-            view === "code" ? showCodeInSidebar(id) : showInfoInSidebar(id)
-        );
+    // Focus mode: this panel alone, with its code, about and stats.
+    const follow = (): void => {
+        dispatch(openAlgorithmWindow(id));
     };
 
     const handleFrameClick = (event: MouseEvent<HTMLElement>): void => {
+        if (focused) return;
         if ((event.target as HTMLElement).closest(INTERACTIVE)) return;
-        dispatch(observeAlgorithm(id));
+        follow();
     };
 
     return (
@@ -448,6 +395,7 @@ function AlgorithmPanel({ registry }: AlgorithmPanelProps): JSX.Element {
             ref={frameRef}
             $observed={observed}
             data-compact={compact}
+            data-focused={focused}
             data-flash={flash}
             data-glitch={glitch}
             onClick={handleFrameClick}
@@ -456,13 +404,7 @@ function AlgorithmPanel({ registry }: AlgorithmPanelProps): JSX.Element {
             <Header>
                 <TitleBlock>
                     <TitleLine>
-                        <TitleButton
-                            type="button"
-                            onClick={() => dispatch(observeAlgorithm(id))}
-                            aria-label={`Follow ${meta.name} in the Inspector`}
-                        >
-                            {meta.name}
-                        </TitleButton>
+                        <TitleButton as="h3">{meta.name}</TitleButton>
                         <AlgorithmEgg id={id} />
                         {done && (
                             <DoneBadge data-gave-up={gaveUp || undefined}>
@@ -470,13 +412,7 @@ function AlgorithmPanel({ registry }: AlgorithmPanelProps): JSX.Element {
                                     name={gaveUp ? "close" : "check"}
                                     scale={1}
                                 />
-                                {gaveUp
-                                    ? totals?.noPath?.count
-                                        ? "No path"
-                                        : "Gave up"
-                                    : isPath
-                                      ? "Found"
-                                      : "Sorted"}
+                                {gaveUp ? def.failLabel(totals) : def.doneLabel}
                             </DoneBadge>
                         )}
                     </TitleLine>
@@ -489,46 +425,41 @@ function AlgorithmPanel({ registry }: AlgorithmPanelProps): JSX.Element {
                             <dt>worst</dt>
                             <dd>{meta.worstCase}</dd>
                         </div>
-                        <div>
-                            <dt>space</dt>
-                            <dd>{meta.auxiliarySpace}</dd>
-                        </div>
-                        {algorithmTraits(meta).map((trait) => (
-                            <div key={trait.short}>
-                                <dt>{trait.short}</dt>
-                            </div>
-                        ))}
                     </Meta>
                 </TitleBlock>
-                <Actions>
-                    {canShowCode && (
-                        <PixelTooltip label={viewLabel("code")} side="bottom">
+                <Actions hidden={focused}>
+                    {def.panelAction && (
+                        <PixelTooltip
+                            label={def.panelAction.label}
+                            side="bottom"
+                        >
                             <PixelButton
                                 type="button"
                                 $variant="ghost"
                                 $size="sm"
                                 $square
-                                aria-pressed={
-                                    sideFits ? inlineView === "code" : undefined
+                                aria-label={`${def.panelAction.label}: ${meta.name}`}
+                                onClick={() =>
+                                    def.panelAction
+                                        ?.run(id, store.getState().play)
+                                        .forEach((action) => dispatch(action))
                                 }
-                                aria-label={`${viewLabel("code")}: ${meta.name}`}
-                                onClick={() => handleView("code")}
                             >
-                                <PixelIcon name="code" scale={2} />
+                                <PixelIcon
+                                    name={def.panelAction.icon}
+                                    scale={2}
+                                />
                             </PixelButton>
                         </PixelTooltip>
                     )}
-                    <PixelTooltip label={viewLabel("info")} side="bottom">
+                    <PixelTooltip label="Code · About" side="bottom">
                         <PixelButton
                             type="button"
                             $variant="ghost"
                             $size="sm"
                             $square
-                            aria-pressed={
-                                sideFits ? inlineView === "info" : undefined
-                            }
-                            aria-label={`${viewLabel("info")}: ${meta.name}`}
-                            onClick={() => handleView("info")}
+                            aria-label={`Code and description of ${meta.name}`}
+                            onClick={() => dispatch(openAlgorithmWindow(id))}
                         >
                             <PixelIcon name="info" scale={2} />
                         </PixelButton>
@@ -547,38 +478,19 @@ function AlgorithmPanel({ registry }: AlgorithmPanelProps): JSX.Element {
                     </PixelTooltip>
                 </Actions>
             </Header>
-            {allMetricsVisible && hasInput && (
-                <MetricsBar>
+            {hasInput && (
+                <MetricsBar data-metrics-bar>
                     <PixelMetrics id={id} totals={totals} />
                 </MetricsBar>
             )}
-            <Main
-                ref={mainRef}
-                $withSide={inlineView !== null}
-                data-side-view={inlineView ?? undefined}
-            >
-                <ChartCell data-chart>
-                    <Visualizer
-                        registry={registry}
-                        onMetricsUpdate={setTotals}
-                        onStepMetricsUpdate={handleStepMetrics}
-                        onStepInfoUpdate={handleStepInfo}
-                    />
-                </ChartCell>
-                {inlineView === "code" && instructions && (
-                    <CodePanel
-                        algorithmId={id}
-                        name={meta.name}
-                        instructions={instructions}
-                        description={meta.description}
-                    />
-                )}
-                {inlineView === "info" && (
-                    <InfoCard data-no-observe aria-label={`${meta.name} info`}>
-                        <AlgorithmInfo registry={registry} showTitle={false} />
-                    </InfoCard>
-                )}
-            </Main>
+            <ChartCell data-chart>
+                <Visualizer
+                    registry={registry}
+                    onMetricsUpdate={setTotals}
+                    onStepMetricsUpdate={handleStepMetrics}
+                    onStepInfoUpdate={handleStepInfo}
+                />
+            </ChartCell>
         </Frame>
     );
 }

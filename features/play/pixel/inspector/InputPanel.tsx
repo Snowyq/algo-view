@@ -9,6 +9,7 @@ import {
 } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import styled, { css, keyframes } from "styled-components";
+import InputLayout from "./InputLayout";
 import {
     SORT_DEFAULT_MAX_INPUT_LENGTH,
     SORT_INPUT_BLOCK_DELAY_MS,
@@ -25,10 +26,10 @@ import {
     type InputPreset,
 } from "../../../../utils/randoms";
 import {
-    applyInputConfig,
+    applyInput,
     getActiveAlgorithms,
     getInputConfig,
-    getSortWorkerLoading,
+    getCanvasWorkerLoading,
     getStepWorkerReady,
     type ActiveAlgorithm,
 } from "../../playSlice";
@@ -282,7 +283,7 @@ function InputPanel(): JSX.Element {
     );
     const stepWorkerReady = useSelector<RootState, boolean>(getStepWorkerReady);
     const sortWorkerLoading = useSelector<RootState, boolean>(
-        getSortWorkerLoading
+        getCanvasWorkerLoading
     );
     const lengthId = useId();
 
@@ -347,7 +348,7 @@ function InputPanel(): JSX.Element {
 
     const generate = (preset: InputPreset = config.preset): void => {
         if (blocked) return;
-        dispatch(applyInputConfig(buildConfig(preset)));
+        dispatch(applyInput({ category: "sort", config: buildConfig(preset) }));
         setFace(Math.floor(Math.random() * 6));
         setRolling(true);
         if (rollTimer.current) clearTimeout(rollTimer.current);
@@ -381,154 +382,161 @@ function InputPanel(): JSX.Element {
     const strained = lengthValue >= SORT_MAX_INPUT_LENGTH;
 
     return (
-        <Form>
-            <Field aria-labelledby={`${lengthId}-shape`}>
-                <FieldHead>
-                    <FieldLabel id={`${lengthId}-shape`}>Shape</FieldLabel>
-                </FieldHead>
-                <Presets>
-                    {INPUT_PRESETS.map((preset) => (
-                        <Preset
-                            key={preset}
-                            type="button"
-                            aria-pressed={config.preset === preset}
-                            disabled={blocked}
-                            onClick={() => generate(preset)}
-                        >
-                            <PresetThumb preset={preset} />
-                            {PRESET_LABELS[preset]}
-                        </Preset>
-                    ))}
-                </Presets>
-            </Field>
+        <InputLayout
+            action={
+                <GenerateButton
+                    type="button"
+                    $variant="primary"
+                    $size="lg"
+                    disabled={blocked}
+                    data-rolling={rolling}
+                    onClick={() => generate()}
+                >
+                    <PixelIcon name={DICE[face]} scale={2} />
+                    Generate · G
+                </GenerateButton>
+            }
+        >
+            <Form>
+                <Field aria-labelledby={`${lengthId}-shape`}>
+                    <FieldHead>
+                        <FieldLabel id={`${lengthId}-shape`}>Shape</FieldLabel>
+                    </FieldHead>
+                    <Presets>
+                        {INPUT_PRESETS.map((preset) => (
+                            <Preset
+                                key={preset}
+                                type="button"
+                                aria-pressed={config.preset === preset}
+                                disabled={blocked}
+                                onClick={() => generate(preset)}
+                            >
+                                <PresetThumb preset={preset} />
+                                {PRESET_LABELS[preset]}
+                            </Preset>
+                        ))}
+                    </Presets>
+                </Field>
 
-            <Field>
-                <FieldHead>
-                    <FieldLabel as="label" htmlFor={lengthId}>
-                        Values
-                    </FieldLabel>
-                    <BigValue htmlFor={lengthId}>{lengthValue}</BigValue>
-                </FieldHead>
-                <PixelSlider
-                    min={SORT_MIN_INPUT_LENGTH}
-                    max={maxLength}
-                    values={[lengthValue]}
-                    labels={["Number of values"]}
-                    onChange={([value]) => setLength(value)}
-                    renderThumb={() => (
-                        <Stack $strain={strained}>
-                            {Array.from({ length: stackBlocks }, (_, i) => (
-                                <i key={i} />
-                            ))}
-                        </Stack>
-                    )}
-                />
-                <Inputs>
-                    <NumberField>
-                        <span>Exact</span>
-                        <NumberInput
-                            {...numericInputProps}
-                            id={lengthId}
-                            value={length}
-                            onChange={(
-                                event: ChangeEvent<HTMLInputElement>
-                            ) => {
-                                const next = toNumber(event.target.value);
-                                setLength(
-                                    typeof next === "number"
-                                        ? Math.min(next, maxLength)
-                                        : next
-                                );
-                            }}
-                            onBlur={() =>
-                                setLength(
-                                    typeof length === "number"
-                                        ? clamp(
-                                              length,
-                                              SORT_MIN_INPUT_LENGTH,
-                                              maxLength
-                                          )
-                                        : config.length
-                                )
-                            }
-                        />
-                    </NumberField>
-                </Inputs>
-                <PixelToggle checked={allowLarge} onChange={handleAllowLarge}>
-                    <span>
-                        Up to {SORT_MAX_INPUT_LENGTH}{" "}
-                        <Warning>
-                            <PixelIcon name="warning" scale={1} />
-                            may stutter
-                        </Warning>
-                    </span>
-                </PixelToggle>
-            </Field>
+                <Field>
+                    <FieldHead>
+                        <FieldLabel as="label" htmlFor={lengthId}>
+                            Values
+                        </FieldLabel>
+                        <BigValue htmlFor={lengthId}>{lengthValue}</BigValue>
+                    </FieldHead>
+                    <PixelSlider
+                        min={SORT_MIN_INPUT_LENGTH}
+                        max={maxLength}
+                        values={[lengthValue]}
+                        labels={["Number of values"]}
+                        onChange={([value]) => setLength(value)}
+                        renderThumb={() => (
+                            <Stack $strain={strained}>
+                                {Array.from({ length: stackBlocks }, (_, i) => (
+                                    <i key={i} />
+                                ))}
+                            </Stack>
+                        )}
+                    />
+                    <Inputs>
+                        <NumberField>
+                            <span>Exact</span>
+                            <NumberInput
+                                {...numericInputProps}
+                                id={lengthId}
+                                value={length}
+                                onChange={(
+                                    event: ChangeEvent<HTMLInputElement>
+                                ) => {
+                                    const next = toNumber(event.target.value);
+                                    setLength(
+                                        typeof next === "number"
+                                            ? Math.min(next, maxLength)
+                                            : next
+                                    );
+                                }}
+                                onBlur={() =>
+                                    setLength(
+                                        typeof length === "number"
+                                            ? clamp(
+                                                  length,
+                                                  SORT_MIN_INPUT_LENGTH,
+                                                  maxLength
+                                              )
+                                            : config.length
+                                    )
+                                }
+                            />
+                        </NumberField>
+                    </Inputs>
+                    <PixelToggle
+                        checked={allowLarge}
+                        onChange={handleAllowLarge}
+                    >
+                        <span>
+                            Up to {SORT_MAX_INPUT_LENGTH}{" "}
+                            <Warning>
+                                <PixelIcon name="warning" scale={1} />
+                                may stutter
+                            </Warning>
+                        </span>
+                    </PixelToggle>
+                </Field>
 
-            <Field>
-                <FieldHead>
-                    <FieldLabel>Range</FieldLabel>
-                    <BigValue>
-                        {Math.min(lo, hi)}–{Math.max(lo, hi)}
-                    </BigValue>
-                </FieldHead>
-                <PixelSlider
-                    min={rangeLo}
-                    max={rangeHi}
-                    values={[Math.min(lo, hi), Math.max(lo, hi)]}
-                    labels={["Smallest value", "Largest value"]}
-                    onChange={([a, b]) => {
-                        setMinValue(a);
-                        setMaxValue(b);
-                    }}
-                    renderThumb={({ index }) => (
-                        <RangeThumb $tall={index === 1} />
-                    )}
-                />
-                <Inputs>
-                    <NumberField>
-                        <span>Min</span>
-                        <NumberInput
-                            {...numericInputProps}
-                            value={minValue}
-                            onChange={(event) =>
-                                setMinValue(toNumber(event.target.value))
-                            }
-                            onBlur={() => {
-                                setMinValue(lo);
-                                if (lo > hi) setMaxValue(lo);
-                            }}
-                        />
-                    </NumberField>
-                    <NumberField>
-                        <span>Max</span>
-                        <NumberInput
-                            {...numericInputProps}
-                            value={maxValue}
-                            onChange={(event) =>
-                                setMaxValue(toNumber(event.target.value))
-                            }
-                            onBlur={() => {
-                                setMaxValue(hi);
-                                if (hi < lo) setMinValue(hi);
-                            }}
-                        />
-                    </NumberField>
-                </Inputs>
-            </Field>
-
-            <GenerateButton
-                type="button"
-                $variant="primary"
-                $size="lg"
-                disabled={blocked}
-                data-rolling={rolling}
-                onClick={() => generate()}
-            >
-                <PixelIcon name={DICE[face]} scale={2} />
-                Generate · G
-            </GenerateButton>
-        </Form>
+                <Field>
+                    <FieldHead>
+                        <FieldLabel>Range</FieldLabel>
+                        <BigValue>
+                            {Math.min(lo, hi)}–{Math.max(lo, hi)}
+                        </BigValue>
+                    </FieldHead>
+                    <PixelSlider
+                        min={rangeLo}
+                        max={rangeHi}
+                        values={[Math.min(lo, hi), Math.max(lo, hi)]}
+                        labels={["Smallest value", "Largest value"]}
+                        onChange={([a, b]) => {
+                            setMinValue(a);
+                            setMaxValue(b);
+                        }}
+                        renderThumb={({ index }) => (
+                            <RangeThumb $tall={index === 1} />
+                        )}
+                    />
+                    <Inputs>
+                        <NumberField>
+                            <span>Min</span>
+                            <NumberInput
+                                {...numericInputProps}
+                                value={minValue}
+                                onChange={(event) =>
+                                    setMinValue(toNumber(event.target.value))
+                                }
+                                onBlur={() => {
+                                    setMinValue(lo);
+                                    if (lo > hi) setMaxValue(lo);
+                                }}
+                            />
+                        </NumberField>
+                        <NumberField>
+                            <span>Max</span>
+                            <NumberInput
+                                {...numericInputProps}
+                                value={maxValue}
+                                onChange={(event) =>
+                                    setMaxValue(toNumber(event.target.value))
+                                }
+                                onBlur={() => {
+                                    setMaxValue(hi);
+                                    if (hi < lo) setMinValue(hi);
+                                }}
+                            />
+                        </NumberField>
+                    </Inputs>
+                </Field>
+            </Form>
+        </InputLayout>
     );
 }
 

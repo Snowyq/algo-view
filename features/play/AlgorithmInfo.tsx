@@ -6,13 +6,8 @@ import type { RootState } from "../../store";
 import { labelText, pixelFrame } from "./pixel/primitives/pixel";
 import { algorithmTraits } from "./traits";
 import type { ActiveAlgorithm } from "./playSlice";
-import {
-    getActiveAlgorithms,
-    getActiveCategory,
-    getGrid,
-    getInput,
-} from "./playSlice";
-import type { GridInput } from "../../utils/grid";
+import { categoryOf } from "./categories";
+import { getActiveAlgorithms } from "./playSlice";
 
 /*
  * Spec card for one algorithm, as implemented here. Rendered in the
@@ -148,10 +143,16 @@ function AlgorithmInfo({
     const active = useSelector<RootState, ActiveAlgorithm[]>(
         getActiveAlgorithms
     );
-    const input = useSelector<RootState, number[]>(getInput);
-    const grid = useSelector<RootState, GridInput>(getGrid);
-    const isPath =
-        useSelector<RootState, string>(getActiveCategory) === "path";
+    // A string key keeps this from re-rendering on every playback step.
+    const factsKey = useSelector((state: RootState) =>
+        JSON.stringify(
+            categoryOf(state.play.active.category).runFacts(state.play)
+        )
+    );
+    const runFacts = JSON.parse(factsKey) as Array<{
+        name: string;
+        value: string;
+    }>;
     const { meta } = registry;
     const running = active.find((algo) => algo.id === registry.id);
     const group = meta.group === "fun" ? "Just for fun" : "Classic";
@@ -186,17 +187,13 @@ function AlgorithmInfo({
             <Section>
                 <SectionTitle>This run</SectionTitle>
                 <dl>
-                    {isPath ? (
+                    {runFacts.map((fact) => (
                         <FactRow
-                            name="Grid"
-                            value={`${grid.cols}×${grid.rows}`}
+                            key={fact.name}
+                            name={fact.name}
+                            value={fact.value}
                         />
-                    ) : (
-                        <FactRow
-                            name="Input size"
-                            value={numberFormat.format(input.length)}
-                        />
-                    )}
+                    ))}
                     <FactRow
                         name="Steps"
                         value={

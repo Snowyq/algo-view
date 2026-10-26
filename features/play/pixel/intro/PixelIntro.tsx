@@ -4,8 +4,8 @@ import styled from "styled-components";
 import type { RootState } from "../../../../store";
 import {
     getActiveAlgorithms,
-    getSortWorkerLoading,
-    getSortWorkerReady,
+    getCanvasWorkerLoading,
+    getCanvasWorkerReady,
     getStepWorkerReady,
     type ActiveAlgorithm,
 } from "../../playSlice";
@@ -113,8 +113,8 @@ function PixelIntro(): JSX.Element | null {
     const leavingRef = useRef<boolean>(false);
 
     const stepReady = useSelector<RootState, boolean>(getStepWorkerReady);
-    const sortReady = useSelector<RootState, boolean>(getSortWorkerReady);
-    const sortLoading = useSelector<RootState, boolean>(getSortWorkerLoading);
+    const sortReady = useSelector<RootState, boolean>(getCanvasWorkerReady);
+    const sortLoading = useSelector<RootState, boolean>(getCanvasWorkerLoading);
     const hasPanels =
         useSelector<RootState, ActiveAlgorithm[]>(getActiveAlgorithms).length >
         0;

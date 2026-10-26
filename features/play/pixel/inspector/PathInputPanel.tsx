@@ -1,6 +1,7 @@
 import { JSX, useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import styled from "styled-components";
+import InputLayout from "./InputLayout";
 import type { AppDispatch, RootState } from "../../../../store";
 import {
     CELL_MUD,
@@ -15,12 +16,12 @@ import {
 } from "../../../../utils/grid";
 import { randomSeed } from "../../../../utils/randoms";
 import {
-    applyGridConfig,
+    applyInput,
     getActiveAlgorithms,
     getBrush,
     getGridConfig,
     getGridEdited,
-    getSortWorkerLoading,
+    getCanvasWorkerLoading,
     setBrush,
     type ActiveAlgorithm,
     type GridBrush,
@@ -206,7 +207,14 @@ function PresetThumb({ preset }: { preset: GridPreset }): JSX.Element {
                               ? "var(--color-path-mud-dot)"
                               : "var(--color-path-empty)";
                 return (
-                    <rect key={i} x={x} y={y} width={1} height={1} fill={fill} />
+                    <rect
+                        key={i}
+                        x={x}
+                        y={y}
+                        width={1}
+                        height={1}
+                        fill={fill}
+                    />
                 );
             })}
         </svg>
@@ -218,7 +226,7 @@ function PathInputPanel(): JSX.Element {
     const config = useSelector<RootState, GridConfig>(getGridConfig);
     const edited = useSelector<RootState, boolean>(getGridEdited);
     const brush = useSelector<RootState, GridBrush>(getBrush);
-    const loading = useSelector<RootState, boolean>(getSortWorkerLoading);
+    const loading = useSelector<RootState, boolean>(getCanvasWorkerLoading);
     const panels = useSelector<RootState, ActiveAlgorithm[]>(
         getActiveAlgorithms
     ).length;
@@ -236,7 +244,12 @@ function PathInputPanel(): JSX.Element {
     const apply = (preset: GridPreset, size = cols): void => {
         if (busy) return;
         const seed = randomSeed();
-        dispatch(applyGridConfig({ preset, cols: size, seed }));
+        dispatch(
+            applyInput({
+                category: "path",
+                config: { preset, cols: size, seed },
+            })
+        );
         // The die shows a face picked by the new map's own seed.
         setFace(seed % 6);
     };
@@ -247,7 +260,10 @@ function PathInputPanel(): JSX.Element {
         const id = setTimeout(
             () =>
                 dispatch(
-                    applyGridConfig({ ...config, cols, seed: randomSeed() })
+                    applyInput({
+                        category: "path",
+                        config: { ...config, cols, seed: randomSeed() },
+                    })
                 ),
             250
         );
@@ -257,96 +273,107 @@ function PathInputPanel(): JSX.Element {
     const { cols: realCols, rows } = gridSize(cols);
 
     return (
-        <Form>
-            <Field>
-                <FieldHead>
-                    <FieldLabel>Map</FieldLabel>
-                    {edited && <Edited>Edited by hand</Edited>}
-                </FieldHead>
-                <Presets>
-                    {GRID_PRESETS.map((preset) => (
-                        <Choice
-                            key={preset}
-                            type="button"
-                            aria-pressed={config.preset === preset && !edited}
-                            disabled={busy}
-                            onClick={() => apply(preset)}
-                        >
-                            <PresetThumb preset={preset} />
-                            {PRESET_LABELS[preset]}
-                        </Choice>
-                    ))}
-                </Presets>
-            </Field>
+        <InputLayout
+            action={
+                <Actions>
+                    <PixelButton
+                        type="button"
+                        $size="lg"
+                        disabled={busy}
+                        onClick={() => apply("empty")}
+                    >
+                        <PixelIcon name="trash" scale={2} />
+                        Clear
+                    </PixelButton>
+                    <PixelButton
+                        type="button"
+                        $variant="primary"
+                        $size="lg"
+                        disabled={busy}
+                        onClick={() => apply(config.preset)}
+                    >
+                        <PixelIcon name={DICE[face]} scale={2} />
+                        New map · G
+                    </PixelButton>
+                </Actions>
+            }
+        >
+            <Form>
+                <Field>
+                    <FieldHead>
+                        <FieldLabel>Map</FieldLabel>
+                        {edited && <Edited>Edited by hand</Edited>}
+                    </FieldHead>
+                    <Presets>
+                        {GRID_PRESETS.map((preset) => (
+                            <Choice
+                                key={preset}
+                                type="button"
+                                aria-pressed={
+                                    config.preset === preset && !edited
+                                }
+                                disabled={busy}
+                                onClick={() => apply(preset)}
+                            >
+                                <PresetThumb preset={preset} />
+                                {PRESET_LABELS[preset]}
+                            </Choice>
+                        ))}
+                    </Presets>
+                </Field>
 
-            <Field>
-                <FieldHead>
-                    <FieldLabel>Size</FieldLabel>
-                    <BigValue>
-                        {realCols}×{rows}
-                    </BigValue>
-                </FieldHead>
-                <PixelSlider
-                    min={GRID_MIN_COLS}
-                    max={GRID_MAX_COLS}
-                    step={2}
-                    values={[cols]}
-                    labels={["Grid width in cells"]}
-                    onChange={([value]) => setCols(value)}
-                />
-            </Field>
+                <Field>
+                    <FieldHead>
+                        <FieldLabel>Size</FieldLabel>
+                        <BigValue>
+                            {realCols}×{rows}
+                        </BigValue>
+                    </FieldHead>
+                    <PixelSlider
+                        min={GRID_MIN_COLS}
+                        max={GRID_MAX_COLS}
+                        step={2}
+                        values={[cols]}
+                        labels={["Grid width in cells"]}
+                        onChange={([value]) => setCols(value)}
+                    />
+                </Field>
 
-            <Field>
-                <FieldHead>
-                    <FieldLabel>Brush</FieldLabel>
-                </FieldHead>
-                <Brushes role="radiogroup" aria-label="Brush">
-                    {BRUSHES.map((item) => (
-                        <Choice
-                            key={item.id}
-                            type="button"
-                            role="radio"
-                            aria-checked={brush === item.id}
-                            onClick={() => dispatch(setBrush(item.id))}
-                        >
-                            <Swatch $kind={item.id} aria-hidden="true" />
-                            {item.label}
-                            <small>{item.hint}</small>
-                        </Choice>
-                    ))}
-                </Brushes>
-                <Help>
-                    <b>Drag on any panel</b> to paint. Drag the
-                    <i style={{ background: "var(--color-path-start)" }} />
-                    <b>start</b> or the
-                    <i style={{ boxShadow: "inset 0 0 0 2px var(--color-path-end)" }} />
-                    <b>end</b> to move them. Painting over a cell of the same
-                    kind clears it.
-                </Help>
-            </Field>
-
-            <Actions>
-                <PixelButton
-                    type="button"
-                    $size="lg"
-                    disabled={busy}
-                    onClick={() => apply("empty")}
-                >
-                    <PixelIcon name="trash" scale={2} />
-                    Clear
-                </PixelButton>
-                <PixelButton
-                    type="button"
-                    $variant="primary"
-                    $size="lg"
-                    disabled={busy}
-                    onClick={() => apply(config.preset)}
-                >
-                    <PixelIcon name={DICE[face]} scale={2} />
-                    New map · G
-                </PixelButton>
-            </Actions>
-        </Form>
+                <Field>
+                    <FieldHead>
+                        <FieldLabel>Brush</FieldLabel>
+                    </FieldHead>
+                    <Brushes role="radiogroup" aria-label="Brush">
+                        {BRUSHES.map((item) => (
+                            <Choice
+                                key={item.id}
+                                type="button"
+                                role="radio"
+                                aria-checked={brush === item.id}
+                                onClick={() => dispatch(setBrush(item.id))}
+                            >
+                                <Swatch $kind={item.id} aria-hidden="true" />
+                                {item.label}
+                                <small>{item.hint}</small>
+                            </Choice>
+                        ))}
+                    </Brushes>
+                    <Help>
+                        <b>Drag on any panel</b> to paint. Drag the
+                        <i style={{ background: "var(--color-path-start)" }} />
+                        <b>start</b> or the
+                        <i
+                            style={{
+                                boxShadow:
+                                    "inset 0 0 0 2px var(--color-path-end)",
+                            }}
+                        />
+                        <b>end</b> to move them. Painting over a cell of the
+                        same kind clears it.
+                    </Help>
+                </Field>
+            </Form>
+        </InputLayout>
     );
 }
 

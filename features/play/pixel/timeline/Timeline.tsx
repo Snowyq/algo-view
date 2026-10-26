@@ -1,11 +1,14 @@
 import { JSX } from "react";
-import { useSelector } from "react-redux";
 import styled from "styled-components";
+import { useSelector } from "react-redux";
+import { PLAY_LAYOUT_BREAKPOINT } from "../../../../constants/breakpoints";
 import type { RootState } from "../../../../store";
-import PlaybackTicker from "../../PlaybackTicker";
 import { getMaxStep } from "../../playSlice";
-import { labelText } from "../primitives/pixel";
+import { NARROW, SHORT, TINY } from "../media";
+import PlaybackTicker from "../../PlaybackTicker";
 import BlockProgress from "./BlockProgress";
+import Legend from "./Legend";
+import StepCounter from "./StepCounter";
 import LegendMenu from "./LegendMenu";
 import SpeedMenu from "./SpeedMenu";
 import TimelineRunner from "./TimelineRunner";
@@ -21,8 +24,18 @@ const Dock = styled.section`
     background-color: var(--bg-2);
     border-top: var(--b) solid var(--line);
 
-    @media (max-width: 640px) {
+    @media ${NARROW} {
         padding: 0.4rem 1.2rem 1rem;
+    }
+    @media ${SHORT} {
+        gap: 0;
+        padding: 0 1.6rem 0.6rem;
+    }
+
+    /* Nothing to play: no disabled transport, no 0 / 0 counter; the empty
+       stage's "Try…" button is the one thing to do. */
+    &[data-empty="true"] {
+        display: none;
     }
 `;
 
@@ -39,20 +52,27 @@ const Controls = styled.div`
             display: none;
         }
     }
+    @media ${TINY} {
+        gap: 0.4rem;
+    }
 `;
 
-const Hint = styled.p`
-    ${labelText};
-    font-size: 1rem;
-    color: var(--fg-4);
+/* Inline legend where it fits on one or two lines; a button elsewhere. */
+const LegendCell = styled.div`
+    min-width: 0;
 
-    kbd {
-        display: inline-block;
-        padding: 0.2rem 0.4rem;
-        margin: 0 0.2rem;
-        background-color: var(--surface-2);
-        color: var(--fg-3);
-        font-family: inherit;
+    @media (max-width: ${PLAY_LAYOUT_BREAKPOINT}) {
+        & > * {
+            display: none;
+        }
+    }
+`;
+
+const NarrowOnly = styled.span`
+    display: none;
+
+    @media (max-width: ${PLAY_LAYOUT_BREAKPOINT}) {
+        display: contents;
     }
 `;
 
@@ -64,27 +84,22 @@ const Right = styled.div`
 `;
 
 function Timeline(): JSX.Element {
-    const maxStep = useSelector<RootState, number>(getMaxStep);
+    const empty = useSelector<RootState, number>(getMaxStep) <= 0;
     return (
-        <Dock aria-label="Timeline" data-dock>
+        <Dock aria-label="Timeline" data-dock data-empty={empty}>
             <PlaybackTicker />
-            <BlockProgress>
+            <BlockProgress lead={<StepCounter />}>
                 <TimelineRunner />
             </BlockProgress>
             <Controls>
-                <Hint>
-                    {maxStep > 0 ? (
-                        <>
-                            <kbd>space</kbd> play <kbd>←</kbd>
-                            <kbd>→</kbd> step <kbd>?</kbd> keys
-                        </>
-                    ) : (
-                        "Add an algorithm to start"
-                    )}
-                </Hint>
+                <LegendCell>
+                    <Legend />
+                </LegendCell>
                 <Transport />
                 <Right>
-                    <LegendMenu />
+                    <NarrowOnly>
+                        <LegendMenu />
+                    </NarrowOnly>
                     <SpeedMenu />
                 </Right>
             </Controls>

@@ -41,6 +41,67 @@ export const STEP_LEGEND: Record<string, StepLegendItem> = {
     mud: { label: "Mud (×5 cost)", colorVar: "--color-path-mud-dot" },
     start: { label: "Start", colorVar: "--color-path-start" },
     end: { label: "End", colorVar: "--color-path-end" },
+    // Maze generation
+    carve: { label: "Carve", colorVar: "--color-step-visit" },
+    walk: { label: "Open path / walk", colorVar: "--color-step-path" },
+    rock: { label: "Rock", colorVar: "--color-path-wall" },
+    passage: { label: "Passage", colorVar: "--color-path-empty" },
+    // Dynamic programming
+    fill: { label: "Filled", colorVar: "--color-step-visit" },
+    read: { label: "Read from", colorVar: "--color-step-check" },
+    trace: { label: "Answer", colorVar: "--color-step-finish" },
+    // Automata
+    alive: { label: "Alive", colorVar: "--color-path-end" },
+    born: { label: "Born this generation", colorVar: "--color-step-frontier" },
+    died: { label: "Just died", colorVar: "--color-step-check-false" },
+    dying: { label: "Dying (Brian's Brain)", colorVar: "--color-step-select" },
+    ant: { label: "Ant", colorVar: "--color-step-current" },
+    // Fill
+    queued: { label: "Waiting", colorVar: "--color-step-frontier" },
+    paint: { label: "Painted", colorVar: "--color-step-path" },
+    // Geometry
+    "hull-edge": { label: "Hull so far", colorVar: "--color-step-path" },
+    "hull-test": { label: "Line tested", colorVar: "--color-step-check" },
+    "turn-left": {
+        label: "Left turn: keep",
+        colorVar: "--color-step-check-true",
+    },
+    "turn-right": {
+        label: "Right turn: drop",
+        colorVar: "--color-step-check-false",
+    },
+    discarded: { label: "Inside", colorVar: "--color-path-wall" },
+    // Trees
+    "tree-insert": { label: "New node", colorVar: "--color-step-finish" },
+    "tree-rotate": { label: "Rotation pivot", colorVar: "--color-step-swap" },
+    "tree-key": { label: "Key on its way", colorVar: "--color-step-select" },
+    "tree-red": { label: "Red node", colorVar: "--color-step-check-false" },
+    // Graphs
+    tree: { label: "Tree edge", colorVar: "--color-step-path" },
+    "edge-seen": { label: "Edge considered", colorVar: "--color-step-check" },
+    "edge-reject": {
+        label: "Edge dropped",
+        colorVar: "--color-step-check-false",
+    },
+    // Pattern matching
+    compare: { label: "Compare", colorVar: "--color-step-check" },
+    "compare-true": {
+        label: "Letters match",
+        colorVar: "--color-step-check-true",
+    },
+    "compare-false": {
+        label: "Mismatch",
+        colorVar: "--color-step-check-false",
+    },
+    shift: { label: "Shift", colorVar: "--color-step-swap" },
+    match: { label: "Occurrence", colorVar: "--color-step-finish" },
+    table: { label: "Helper table", colorVar: "--color-step-select" },
+    // Searching
+    probe: { label: "Probe", colorVar: "--color-step-probe" },
+    narrow: { label: "Range", colorVar: "--color-step-narrow" },
+    found: { label: "Found", colorVar: "--color-step-found" },
+    miss: { label: "Not found", colorVar: "--color-step-miss" },
+    target: { label: "Target", colorVar: "--color-find-target" },
 };
 
 /** Order shown in the sidebar legend (check-value shares check's colors). */
@@ -55,19 +116,3 @@ export const LEGEND_ORDER = [
     "copy-to",
     "finish",
 ];
-
-/** Path-finding legend: search states, then the grid's materials. */
-export const PATH_LEGEND_ORDER = [
-    "frontier",
-    "visit",
-    "current",
-    "path",
-    "wall",
-    "mud",
-    "start",
-    "end",
-];
-
-export function legendOrderFor(category: string): string[] {
-    return category === "path" ? PATH_LEGEND_ORDER : LEGEND_ORDER;
-}
