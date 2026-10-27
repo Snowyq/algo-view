@@ -1,6 +1,7 @@
 import { createSelector, createSlice } from "@reduxjs/toolkit";
 import registryApi from "../../algorithms/algorithmsRegistryApi";
 import {
+    CATEGORY_DATA,
     generateFor,
     initialInputs,
     type CategoryId,
@@ -73,6 +74,8 @@ type PlayState = {
         windowAlgorithmId: string | null;
         /** The full-screen category overview (welcome / category picker). */
         overviewOpen: boolean;
+        /** The data editor over the stage. */
+        editorOpen: boolean;
         /** How many panels fit on the stage right now (measured by the grid). */
         panelCapacity: number;
         /** Last algorithm closed automatically to make room (seq bumps). */
@@ -94,29 +97,22 @@ type PlayState = {
 
 function getInitialState(): PlayState {
     const defaultCategory: CategoryId = "sort";
-    const defaultAlgorithmId = "selectionSort";
     const categories = registryApi.getCategoriesIds() || [];
     const speeds = SORT_ANIMATION_SPEEDS;
-    const defaultSpeed = speeds.includes(SORT_DEFAULT_ANIMATION_SPEED)
-        ? SORT_DEFAULT_ANIMATION_SPEED
-        : speeds[0] || 100;
+    // The first category's own pace (see CATEGORY_DATA.defaultSpeed).
+    const preferred = CATEGORY_DATA[defaultCategory].defaultSpeed;
+    const defaultSpeed = speeds.includes(preferred)
+        ? preferred
+        : speeds.includes(SORT_DEFAULT_ANIMATION_SPEED)
+          ? SORT_DEFAULT_ANIMATION_SPEED
+          : speeds[0] || 100;
     const defaultStepTypes = SORT_DEFAULT_STEP_TYPES as SortStepType[];
-    const defaultRegistry = registryApi.getAlgorithmRegistry(
-        defaultCategory,
-        defaultAlgorithmId
-    );
     const algorithmsInCategory =
         registryApi.getAlgorithmsInCategory(defaultCategory) ?? [];
-    const initialAlgorithms = defaultRegistry
-        ? [
-              {
-                  id: defaultAlgorithmId,
-                  info: defaultRegistry.meta,
-                  stepsLength: 0,
-                  metrics: undefined,
-              },
-          ]
-        : [];
+    // Nothing open at start: the playground opens instantly, with no worker
+    // run in the way; the category overview or a shared link picks what to
+    // show.
+    const initialAlgorithms: ActiveAlgorithm[] = [];
     const initialMaxStep = findMaxStep(initialAlgorithms);
 
     return {
@@ -143,6 +139,7 @@ function getInitialState(): PlayState {
             observedAlgorithmId: null,
             windowAlgorithmId: null,
             overviewOpen: false,
+            editorOpen: false,
             panelCapacity: UNLIMITED,
             evicted: null,
             stepWorkerReady: false,
@@ -285,6 +282,11 @@ const playSlice = createSlice({
             state.ui.overviewOpen = action.payload;
         },
 
+        setEditorOpen(state, action: { payload: boolean }) {
+            state.ui.editorOpen = action.payload;
+            if (action.payload) state.ui.windowAlgorithmId = null;
+        },
+
         setPanelCapacity(state, action: { payload: number }) {
             const capacity = Math.max(1, Math.floor(action.payload));
             if (state.ui.panelCapacity === capacity) return;
@@ -341,6 +343,7 @@ const playSlice = createSlice({
             state.animation.step = { value: 0, trigger: "changeCategory" };
             state.animation.status = "stopped";
             state.animation.isPlaying = false;
+            state.animation.speed = CATEGORY_DATA[category].defaultSpeed;
         },
 
         // Path grid
@@ -539,6 +542,7 @@ export const {
     closeAlgorithmWindow,
     setPanelCapacity,
     setOverviewOpen,
+    setEditorOpen,
     setStepWorkerReady,
     setCanvasWorkerReady,
     incrementCanvasWorkerLoading,
@@ -613,6 +617,8 @@ export const getWindowAlgorithmId = (state: RootState): string | null => {
 };
 export const getOverviewOpen = (state: RootState): boolean =>
     state.play.ui.overviewOpen;
+export const getEditorOpen = (state: RootState): boolean =>
+    state.play.ui.editorOpen;
 export const getPanelCapacity = (state: RootState): number =>
     state.play.ui.panelCapacity;
 /** Algorithms with a panel on the stage (the first `capacity`). */

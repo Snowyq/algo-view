@@ -98,6 +98,9 @@ const Preset = styled.button`
     background-color: var(--bg-2);
     color: var(--fg-3);
     font-size: 1.3rem;
+    /* Overrides the global button:has(svg) line-height: 0, which stacks
+       two-word labels on top of each other when they wrap. */
+    line-height: 1.2;
     text-align: left;
     ${pixelFrame("var(--line)")};
 

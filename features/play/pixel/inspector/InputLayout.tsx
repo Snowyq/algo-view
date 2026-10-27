@@ -37,6 +37,9 @@ const Frame = styled.div`
 const Scroll = styled.div`
     height: 100%;
     overflow-y: auto;
+    /* Room for the scrollbar is always kept, so its appearing never
+       shifts the content sideways. */
+    scrollbar-gutter: stable;
     overscroll-behavior: contain;
     padding: 1.2rem 1.6rem 2.4rem;
 `;

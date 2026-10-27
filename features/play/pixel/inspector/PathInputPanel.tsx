@@ -18,13 +18,11 @@ import { randomSeed } from "../../../../utils/randoms";
 import {
     applyInput,
     getActiveAlgorithms,
-    getBrush,
     getGridConfig,
     getGridEdited,
     getCanvasWorkerLoading,
-    setBrush,
+    setEditorOpen,
     type ActiveAlgorithm,
-    type GridBrush,
 } from "../../playSlice";
 import PixelButton from "../primitives/PixelButton";
 import PixelIcon from "../primitives/PixelIcon";
@@ -39,12 +37,6 @@ const PRESET_LABELS: Record<GridPreset, string> = {
     mud: "Mud",
     rooms: "Rooms",
 };
-
-const BRUSHES: Array<{ id: GridBrush; label: string; hint: string }> = [
-    { id: "wall", label: "Wall", hint: "blocks the way" },
-    { id: "mud", label: "Mud", hint: "costs ×5" },
-    { id: "erase", label: "Erase", hint: "clears cells" },
-];
 
 const Form = styled.div`
     display: flex;
@@ -119,29 +111,6 @@ const Choice = styled.button`
         font-size: 1rem;
         color: var(--fg-4);
     }
-`;
-
-const Brushes = styled.div`
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.8rem;
-`;
-
-const Swatch = styled.span<{ $kind: GridBrush }>`
-    width: 2rem;
-    height: 2rem;
-    background-color: ${({ $kind }) =>
-        $kind === "wall"
-            ? "var(--color-path-wall)"
-            : $kind === "mud"
-              ? "var(--color-path-mud)"
-              : "var(--color-path-empty)"};
-    box-shadow: ${({ $kind }) =>
-        $kind === "mud"
-            ? "inset 4px 8px 0 -2px var(--color-path-mud-dot)"
-            : $kind === "erase"
-              ? "inset 0 0 0 2px var(--line-2)"
-              : "inset 0 2px 0 rgba(255,255,255,0.28)"};
 `;
 
 const Help = styled.p`
@@ -225,7 +194,6 @@ function PathInputPanel(): JSX.Element {
     const dispatch = useDispatch<AppDispatch>();
     const config = useSelector<RootState, GridConfig>(getGridConfig);
     const edited = useSelector<RootState, boolean>(getGridEdited);
-    const brush = useSelector<RootState, GridBrush>(getBrush);
     const loading = useSelector<RootState, boolean>(getCanvasWorkerLoading);
     const panels = useSelector<RootState, ActiveAlgorithm[]>(
         getActiveAlgorithms
@@ -341,36 +309,20 @@ function PathInputPanel(): JSX.Element {
 
                 <Field>
                     <FieldHead>
-                        <FieldLabel>Brush</FieldLabel>
+                        <FieldLabel>Your own map</FieldLabel>
                     </FieldHead>
-                    <Brushes role="radiogroup" aria-label="Brush">
-                        {BRUSHES.map((item) => (
-                            <Choice
-                                key={item.id}
-                                type="button"
-                                role="radio"
-                                aria-checked={brush === item.id}
-                                onClick={() => dispatch(setBrush(item.id))}
-                            >
-                                <Swatch $kind={item.id} aria-hidden="true" />
-                                {item.label}
-                                <small>{item.hint}</small>
-                            </Choice>
-                        ))}
-                    </Brushes>
                     <Help>
-                        <b>Drag on any panel</b> to paint. Drag the
-                        <i style={{ background: "var(--color-path-start)" }} />
-                        <b>start</b> or the
-                        <i
-                            style={{
-                                boxShadow:
-                                    "inset 0 0 0 2px var(--color-path-end)",
-                            }}
-                        />
-                        <b>end</b> to move them. Painting over a cell of the
-                        same kind clears it.
+                        Draw walls and mud, and move the start and end, in the
+                        editor over the panels.
                     </Help>
+                    <PixelButton
+                        type="button"
+                        $variant="ghost"
+                        onClick={() => dispatch(setEditorOpen(true))}
+                    >
+                        <PixelIcon name="edit" scale={2} />
+                        Edit data · E
+                    </PixelButton>
                 </Field>
             </Form>
         </InputLayout>

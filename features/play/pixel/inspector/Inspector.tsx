@@ -26,16 +26,7 @@ const Panel = styled.aside`
     height: 100%;
     background-color: var(--bg-2);
     border-left: var(--b) solid var(--line);
-    animation: px-wipe-left 160ms steps(4) both;
-
-    @keyframes px-wipe-left {
-        from {
-            clip-path: inset(0 0 0 100%);
-        }
-        to {
-            clip-path: inset(0 0 0 0);
-        }
-    }
+    animation: px-dither-in 160ms steps(4) both;
 
     @media (max-width: ${PLAY_LAYOUT_BREAKPOINT}) {
         position: fixed;
@@ -46,16 +37,7 @@ const Panel = styled.aside`
         height: min(78svh, 64rem);
         border-left: 0;
         border-top: var(--b) solid var(--line-2);
-        animation: px-sheet-in 200ms steps(5) both;
-
-        @keyframes px-sheet-in {
-            from {
-                transform: translateY(100%);
-            }
-            to {
-                transform: translateY(0);
-            }
-        }
+        animation: px-dither-in 200ms steps(5) both;
     }
 `;
 
@@ -137,7 +119,7 @@ function Inspector(): JSX.Element | null {
                     </PixelButton>
                 </Head>
                 <Body>
-                    <CategoryInput />
+                    <CategoryInput key={def.id} />
                 </Body>
             </Panel>
         </>

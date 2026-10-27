@@ -6,6 +6,8 @@
 export type StepInfo = {
     type: string;
     instructionId: string[];
+    /** Plain-language sentence for this step (from the worker). */
+    caption?: string;
 };
 
 type StepLegendItem = { label: string; colorVar: string };

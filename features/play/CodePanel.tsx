@@ -9,6 +9,11 @@ import {
 import { useSelector } from "react-redux";
 import styled from "styled-components";
 import { CODE_NOTES } from "../../algorithms/codeNotes";
+import {
+    clearBreakpoints,
+    toggleBreakpoint,
+    useBreakpoints,
+} from "./breakpoints";
 import type { AlgorithmInstructions } from "../../algorithms/types";
 import useReducedMotion from "../../hooks/useReducedMotion";
 import type { RootState } from "../../store";
@@ -203,12 +208,63 @@ const Line = styled.span<{ $active: boolean; $color: string }>`
     }
 `;
 
-const LineNumber = styled.span<{ $active: boolean }>`
-    padding-right: 1.2rem;
+/* The gutter is a button: click a line number to pause whenever that line
+   runs. A breakpoint shows as a red block in front of the number. */
+const LineNumber = styled.button<{ $active: boolean }>`
+    position: relative;
+    height: 100%;
+    padding: 0 1.2rem 0 0;
+    border: 0;
+    background: none;
+    font: inherit;
     text-align: right;
     color: ${({ $active }) => ($active ? "var(--fg-2)" : "var(--fg-4)")};
     font-variant-numeric: tabular-nums;
     user-select: none;
+    cursor: pointer;
+
+    &::after {
+        content: "";
+        position: absolute;
+        left: 0.4rem;
+        top: 50%;
+        width: 0.8rem;
+        height: 0.8rem;
+        translate: 0 -50%;
+        background-color: var(--danger);
+        opacity: 0;
+    }
+    &[aria-pressed="true"] {
+        color: var(--danger);
+    }
+    &[aria-pressed="true"]::after {
+        opacity: 1;
+        animation: px-dither-in 140ms both;
+    }
+    @media (hover: hover) {
+        &:hover::after {
+            opacity: 0.4;
+        }
+        &[aria-pressed="true"]:hover::after {
+            opacity: 1;
+        }
+    }
+`;
+
+const BreakInfo = styled.span`
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    color: var(--danger);
+
+    button {
+        border: 0;
+        padding: 0;
+        background: none;
+        color: var(--fg-3);
+        font: inherit;
+        text-decoration: underline;
+    }
 `;
 
 const LineCode = styled.span<{ $indent: number }>`
@@ -272,6 +328,10 @@ function CodePanel({
     const notes = CODE_NOTES[algorithmId] ?? {};
     const hasNotes = Object.keys(notes).length > 0;
     const [notesVisible, toggleNotes] = useNotesVisible();
+    const breakpoints = useBreakpoints();
+    const breaks = new Set(
+        breakpoints.algorithmId === algorithmId ? breakpoints.lines : []
+    );
     const scrollerRef = useRef<HTMLDivElement | null>(null);
     const reduced = useReducedMotion();
     const speed = useSelector<RootState, number>(getCurrentSpeed);
@@ -333,6 +393,17 @@ function CodePanel({
                 {status && (
                     <Status $color={status.color}>{status.label}</Status>
                 )}
+                {breaks.size > 0 && (
+                    <BreakInfo>
+                        {breaks.size} breakpoint{breaks.size > 1 ? "s" : ""}
+                        <button
+                            type="button"
+                            onClick={() => clearBreakpoints(algorithmId)}
+                        >
+                            clear
+                        </button>
+                    </BreakInfo>
+                )}
                 {hasNotes && (
                     <NotesToggle
                         type="button"
@@ -369,7 +440,19 @@ function CodePanel({
                                             active ? "true" : undefined
                                         }
                                     >
-                                        <LineNumber $active={active}>
+                                        <LineNumber
+                                            type="button"
+                                            $active={active}
+                                            aria-pressed={breaks.has(id)}
+                                            aria-label={`Pause on line ${index + 1}`}
+                                            title="Pause here"
+                                            onClick={() =>
+                                                toggleBreakpoint(
+                                                    algorithmId,
+                                                    id
+                                                )
+                                            }
+                                        >
                                             {index + 1}
                                         </LineNumber>
                                         <LineCode $indent={indent}>
