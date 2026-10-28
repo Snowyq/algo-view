@@ -1,30 +1,30 @@
-import { createSlice } from "@reduxjs/toolkit";
+import { createSelector, createSlice } from "@reduxjs/toolkit";
 import registryApi from "../../algorithms/algorithmsRegistryApi";
+import {
+    CATEGORY_DATA,
+    generateFor,
+    initialInputs,
+    type CategoryId,
+    type CategoryInputs,
+    type ConfigOf,
+    type ValueOf,
+} from "../../algorithms/categoryData";
 import type { SortStepType } from "../../algorithms/sort/SortAlgorithm";
 import type { AlgorithmMeta, AlgorithmMetrics } from "../../algorithms/types";
 import {
     SORT_ANIMATION_SPEEDS,
     SORT_DEFAULT_ANIMATION_SPEED,
-    SORT_DEFAULT_INPUT_LENGTH,
-    SORT_DEFAULT_INPUT_VALUE_RANGE,
     SORT_DEFAULT_STEP_TYPES,
-    SORT_MAX_INPUT_LENGTH,
-    SORT_MIN_INPUT_LENGTH,
 } from "../../config/sort";
 import type { RootState } from "../../store";
-import {
-    generateInput,
-    randomSeed,
-    type InputConfig,
-} from "../../utils/randoms";
+import type { FindConfig, FindInput } from "../../utils/findInput";
 import {
     CELL_EMPTY,
     CELL_WALL,
-    GRID_DEFAULT_COLS,
-    generateGrid,
     type GridConfig,
     type GridInput,
 } from "../../utils/grid";
+import type { InputConfig } from "../../utils/randoms";
 import { clamp } from "../../utils/values";
 
 type AnimationStatus = "stopped" | "playing" | "freezed";
@@ -46,21 +46,16 @@ export type GridBrush = "wall" | "mud" | "erase";
 /** Tabs that show one algorithm (and outline its panel). */
 export const PER_ALGORITHM_TABS: SidebarTab[] = ["code", "info"];
 
+/** No measured limit yet (before the stage has a size). */
+const UNLIMITED = 99;
+
 type PlayState = {
     active: {
-        category: string;
+        category: CategoryId;
         algorithms: ActiveAlgorithm[];
     };
-    input: number[];
-    /** Recipe of the current input: same config, same array. */
-    inputConfig: InputConfig;
-    /** Path-finding input and the recipe it came from. */
-    grid: GridInput;
-    gridConfig: GridConfig;
-    /** Hand edits on top of the recipe (walls drawn, markers moved). */
-    gridEdited: boolean;
-    allMetricsVisible: boolean;
-    allCodeVisible: boolean;
+    /** One input per category: its recipe, its value, whether hand-edited. */
+    inputs: CategoryInputs;
     registry: {
         categories: string[];
         algorithms: RegistryAlgorithm[];
@@ -75,9 +70,20 @@ type PlayState = {
         sidebarTab: SidebarTab;
         /** Algorithm followed by the Code/Info tabs (null = none). */
         observedAlgorithmId: string | null;
+        /** Phones: the algorithm whose code/about window covers the stage. */
+        windowAlgorithmId: string | null;
+        /** The full-screen category overview (welcome / category picker). */
+        overviewOpen: boolean;
+        /** The data editor over the stage. */
+        editorOpen: boolean;
+        /** How many panels fit on the stage right now (measured by the grid). */
+        panelCapacity: number;
+        /** Last algorithm closed automatically to make room (seq bumps). */
+        evicted: { name: string; seq: number } | null;
         stepWorkerReady: boolean;
-        sortWorkerReady: boolean;
-        sortWorkerLoadingCount: number;
+        canvasWorkerReady: boolean;
+        /** Canvas workers still computing a run (any category). */
+        canvasWorkerLoadingCount: number;
     };
     animation: {
         status: AnimationStatus;
@@ -90,43 +96,23 @@ type PlayState = {
 };
 
 function getInitialState(): PlayState {
-    const defaultCategory = "sort";
-    const defaultAlgorithmId = "selectionSort";
+    const defaultCategory: CategoryId = "sort";
     const categories = registryApi.getCategoriesIds() || [];
     const speeds = SORT_ANIMATION_SPEEDS;
-    const defaultSpeed = speeds.includes(SORT_DEFAULT_ANIMATION_SPEED)
-        ? SORT_DEFAULT_ANIMATION_SPEED
-        : speeds[0] || 100;
+    // The first category's own pace (see CATEGORY_DATA.defaultSpeed).
+    const preferred = CATEGORY_DATA[defaultCategory].defaultSpeed;
+    const defaultSpeed = speeds.includes(preferred)
+        ? preferred
+        : speeds.includes(SORT_DEFAULT_ANIMATION_SPEED)
+          ? SORT_DEFAULT_ANIMATION_SPEED
+          : speeds[0] || 100;
     const defaultStepTypes = SORT_DEFAULT_STEP_TYPES as SortStepType[];
-    const initialConfig: InputConfig = {
-        preset: "random",
-        length: SORT_DEFAULT_INPUT_LENGTH,
-        min: SORT_DEFAULT_INPUT_VALUE_RANGE[0],
-        max: SORT_DEFAULT_INPUT_VALUE_RANGE[1],
-        seed: randomSeed(),
-    };
-    const initialInput = generateInput(initialConfig);
-    const initialGridConfig: GridConfig = {
-        preset: "maze",
-        cols: GRID_DEFAULT_COLS,
-        seed: randomSeed(),
-    };
-    const defaultRegistry = registryApi.getAlgorithmRegistry(
-        defaultCategory,
-        defaultAlgorithmId
-    );
     const algorithmsInCategory =
         registryApi.getAlgorithmsInCategory(defaultCategory) ?? [];
-    const initialAlgorithms = defaultRegistry
-        ? [
-              {
-                  id: defaultAlgorithmId,
-                  info: defaultRegistry.meta,
-                  stepsLength: 0,
-                  metrics: undefined,
-              },
-          ]
-        : [];
+    // Nothing open at start: the playground opens instantly, with no worker
+    // run in the way; the category overview or a shared link picks what to
+    // show.
+    const initialAlgorithms: ActiveAlgorithm[] = [];
     const initialMaxStep = findMaxStep(initialAlgorithms);
 
     return {
@@ -134,13 +120,7 @@ function getInitialState(): PlayState {
             category: defaultCategory,
             algorithms: initialAlgorithms,
         },
-        input: initialInput,
-        inputConfig: initialConfig,
-        grid: generateGrid(initialGridConfig),
-        gridConfig: initialGridConfig,
-        gridEdited: false,
-        allMetricsVisible: true,
-        allCodeVisible: false,
+        inputs: initialInputs(),
         registry: {
             categories,
             algorithms: algorithmsInCategory.map((algo) => ({
@@ -154,12 +134,17 @@ function getInitialState(): PlayState {
         },
         ui: {
             brush: "wall",
-            sidebarOpen: true,
+            sidebarOpen: false,
             sidebarTab: "input",
             observedAlgorithmId: null,
+            windowAlgorithmId: null,
+            overviewOpen: false,
+            editorOpen: false,
+            panelCapacity: UNLIMITED,
+            evicted: null,
             stepWorkerReady: false,
-            sortWorkerReady: false,
-            sortWorkerLoadingCount: 0,
+            canvasWorkerReady: false,
+            canvasWorkerLoadingCount: 0,
         },
         animation: {
             status: "stopped",
@@ -176,50 +161,48 @@ const playSlice = createSlice({
     name: "play",
     initialState: getInitialState(),
     reducers: {
-        changeInput(
+        /** New input for a category, generated from a recipe. */
+        applyInput(
             state,
             action: {
-                payload: { length: number; min: number; max: number };
+                payload: {
+                    [C in CategoryId]: { category: C; config: ConfigOf<C> };
+                }[CategoryId];
             }
         ) {
-            const { length, min, max } = action.payload;
-            const safeLength = clamp(
-                length,
-                SORT_MIN_INPUT_LENGTH,
-                SORT_MAX_INPUT_LENGTH
-            );
-
-            const config: InputConfig = {
-                preset: "random",
-                length: safeLength,
-                min,
-                max,
-                seed: randomSeed(),
+            const { category, config } = action.payload;
+            const slot = state.inputs[category] as {
+                config: unknown;
+                value: unknown;
+                edited: boolean;
             };
-            state.input = generateInput(config);
-            state.inputConfig = config;
-            state.animation.step = { value: 0, trigger: "changeInput" };
-            state.animation.maxStep = 0;
-            state.animation.status = "stopped";
-            state.animation.isPlaying = false;
+            slot.config = config;
+            slot.value = generateFor(category, config as never);
+            slot.edited = false;
+            if (category === state.active.category) {
+                resetPlayback(state, "changeInput");
+            }
         },
 
-        /** Regenerate the input from a recipe (preset, size, range, seed). */
-        applyInputConfig(state, action: { payload: InputConfig }) {
-            const config: InputConfig = {
-                ...action.payload,
-                length: clamp(
-                    action.payload.length,
-                    SORT_MIN_INPUT_LENGTH,
-                    SORT_MAX_INPUT_LENGTH
-                ),
+        /** Replace a category's input by hand (e.g. a shared, edited map). */
+        setInputValue(
+            state,
+            action: {
+                payload: {
+                    [C in CategoryId]: { category: C; value: ValueOf<C> };
+                }[CategoryId];
+            }
+        ) {
+            const { category, value } = action.payload;
+            const slot = state.inputs[category] as {
+                value: unknown;
+                edited: boolean;
             };
-            state.input = generateInput(config);
-            state.inputConfig = config;
-            state.animation.step = { value: 0, trigger: "changeInput" };
-            state.animation.maxStep = 0;
-            state.animation.status = "stopped";
-            state.animation.isPlaying = false;
+            slot.value = value;
+            slot.edited = true;
+            if (category === state.active.category) {
+                resetPlayback(state, "changeInput");
+            }
         },
 
         // Handle active algorithms
@@ -246,7 +229,7 @@ const playSlice = createSlice({
                 stepsLength,
                 metrics,
             };
-            state.animation.maxStep = findMaxStep(state.active.algorithms);
+            state.animation.maxStep = findMaxStep(visibleOf(state));
             const { maxStep, step } = state.animation;
             state.animation.step = {
                 value: clamp(step.value, 0, maxStep),
@@ -275,7 +258,45 @@ const playSlice = createSlice({
                 stepsLength: 0,
                 metrics: undefined,
             };
-            state.active.algorithms = [...state.active.algorithms, algo];
+            const list = [...state.active.algorithms];
+            const capacity = state.ui.panelCapacity;
+            if (list.length >= capacity) {
+                // Full: the oldest panel makes room, and the new one takes
+                // the last visible slot (parked panels stay parked).
+                const [oldest] = list.splice(0, 1);
+                list.splice(capacity - 1, 0, algo);
+                state.ui.evicted = {
+                    name: oldest.info.name,
+                    seq: (state.ui.evicted?.seq ?? 0) + 1,
+                };
+            } else {
+                list.push(algo);
+            }
+            state.active.algorithms = list;
+            state.animation.maxStep = findMaxStep(visibleOf(state));
+        },
+
+        /** The grid reports how many panels fit; extras are parked, not
+            closed, and come back when the space does. */
+        setOverviewOpen(state, action: { payload: boolean }) {
+            state.ui.overviewOpen = action.payload;
+        },
+
+        setEditorOpen(state, action: { payload: boolean }) {
+            state.ui.editorOpen = action.payload;
+            if (action.payload) state.ui.windowAlgorithmId = null;
+        },
+
+        setPanelCapacity(state, action: { payload: number }) {
+            const capacity = Math.max(1, Math.floor(action.payload));
+            if (state.ui.panelCapacity === capacity) return;
+            state.ui.panelCapacity = capacity;
+            state.animation.maxStep = findMaxStep(visibleOf(state));
+            const { step, maxStep } = state.animation;
+            state.animation.step = {
+                value: clamp(step.value, 0, Math.max(0, maxStep)),
+                trigger: "capacity",
+            };
         },
 
         closeAlgorithm(state, action: { payload: string }) {
@@ -286,7 +307,7 @@ const playSlice = createSlice({
                 (algo) => algo.id !== algoId
             );
 
-            state.animation.maxStep = findMaxStep(state.active.algorithms);
+            state.animation.maxStep = findMaxStep(visibleOf(state));
             const { step, maxStep } = state.animation;
             state.animation.step = {
                 value: clamp(step.value, 0, maxStep),
@@ -296,7 +317,7 @@ const playSlice = createSlice({
 
         closeAllAlgorithms(state) {
             state.active.algorithms = [];
-            state.animation.maxStep = findMaxStep(state.active.algorithms);
+            state.animation.maxStep = findMaxStep(visibleOf(state));
             state.animation.step = {
                 value: 0,
                 trigger: "closeAlgorithm",
@@ -306,8 +327,8 @@ const playSlice = createSlice({
         // Handle category
 
         changeCategory(state, action: { payload: string }) {
-            const category = action.payload;
-            if (!state.registry.categories.includes(category)) return;
+            const category = action.payload as CategoryId;
+            if (!(category in state.inputs)) return;
             if (state.active.category === category) return;
             const items = registryApi.getAlgorithmsInCategory(category) ?? [];
             state.active.category = category;
@@ -322,24 +343,10 @@ const playSlice = createSlice({
             state.animation.step = { value: 0, trigger: "changeCategory" };
             state.animation.status = "stopped";
             state.animation.isPlaying = false;
+            state.animation.speed = CATEGORY_DATA[category].defaultSpeed;
         },
 
         // Path grid
-
-        /** Regenerate the grid from a recipe (preset, size, seed). */
-        applyGridConfig(state, action: { payload: GridConfig }) {
-            state.gridConfig = action.payload;
-            state.grid = generateGrid(action.payload);
-            state.gridEdited = false;
-            resetPlayback(state, "changeInput");
-        },
-
-        /** Replace the whole grid (e.g. decoded from a shared link). */
-        setGrid(state, action: { payload: GridInput }) {
-            state.grid = action.payload;
-            state.gridEdited = true;
-            resetPlayback(state, "changeInput");
-        },
 
         /** Paint cells; start and end are never painted over. */
         paintGridCells(
@@ -347,17 +354,18 @@ const playSlice = createSlice({
             action: { payload: { cells: number[]; value: number } }
         ) {
             const { cells, value } = action.payload;
-            const { start, end } = state.grid;
+            const slot = state.inputs.path;
+            const { start, end } = slot.value;
             let changed = false;
             cells.forEach((cell) => {
                 if (cell === start || cell === end) return;
-                if (cell < 0 || cell >= state.grid.cells.length) return;
-                if (state.grid.cells[cell] === value) return;
-                state.grid.cells[cell] = value;
+                if (cell < 0 || cell >= slot.value.cells.length) return;
+                if (slot.value.cells[cell] === value) return;
+                slot.value.cells[cell] = value;
                 changed = true;
             });
             if (!changed) return;
-            state.gridEdited = true;
+            slot.edited = true;
             resetPlayback(state, "changeInput");
         },
 
@@ -367,12 +375,12 @@ const playSlice = createSlice({
             action: { payload: { marker: "start" | "end"; cell: number } }
         ) {
             const { marker, cell } = action.payload;
-            const grid = state.grid;
+            const grid = state.inputs.path.value;
             if (cell < 0 || cell >= grid.cells.length) return;
             if (cell === grid.start || cell === grid.end) return;
             if (grid.cells[cell] === CELL_WALL) grid.cells[cell] = CELL_EMPTY;
             grid[marker] = cell;
-            state.gridEdited = true;
+            state.inputs.path.edited = true;
             resetPlayback(state, "changeInput");
         },
 
@@ -421,16 +429,6 @@ const playSlice = createSlice({
 
         // Handle all metrics state
 
-        toggleMetrics(state) {
-            state.allMetricsVisible = !state.allMetricsVisible;
-        },
-
-        // Handle all code views state
-
-        toggleCode(state) {
-            state.allCodeVisible = !state.allCodeVisible;
-        },
-
         // UI state
 
         toggleSidebar(state) {
@@ -449,47 +447,48 @@ const playSlice = createSlice({
             state.ui.observedAlgorithmId = action.payload;
         },
 
-        /** Clicked panel: observe it; Input/Selection show nothing per algorithm. */
+        /** Clicked panel: follow it. Shows its code, unless the open
+            Details tab already follows algorithms (Code / About). */
         observeAlgorithm(state, action: { payload: string }) {
             state.ui.observedAlgorithmId = action.payload;
+            if (
+                !state.ui.sidebarOpen ||
+                !PER_ALGORITHM_TABS.includes(state.ui.sidebarTab)
+            )
+                state.ui.sidebarTab = "code";
             state.ui.sidebarOpen = true;
-            if (!PER_ALGORITHM_TABS.includes(state.ui.sidebarTab))
-                state.ui.sidebarTab = "info";
         },
 
         /** Click on empty space between panels: stop following. */
+        openAlgorithmWindow(state, action: { payload: string }) {
+            state.ui.windowAlgorithmId = action.payload;
+            state.ui.observedAlgorithmId = action.payload;
+        },
+
+        closeAlgorithmWindow(state) {
+            state.ui.windowAlgorithmId = null;
+        },
+
         clearObservedAlgorithm(state) {
             state.ui.observedAlgorithmId = null;
-        },
-
-        showInfoInSidebar(state, action: { payload: string }) {
-            state.ui.observedAlgorithmId = action.payload;
-            state.ui.sidebarTab = "info";
-            state.ui.sidebarOpen = true;
-        },
-
-        showCodeInSidebar(state, action: { payload: string }) {
-            state.ui.observedAlgorithmId = action.payload;
-            state.ui.sidebarTab = "code";
-            state.ui.sidebarOpen = true;
         },
 
         setStepWorkerReady(state, action: { payload: boolean }) {
             state.ui.stepWorkerReady = Boolean(action.payload);
         },
 
-        setSortWorkerReady(state, action: { payload: boolean }) {
-            state.ui.sortWorkerReady = Boolean(action.payload);
+        setCanvasWorkerReady(state, action: { payload: boolean }) {
+            state.ui.canvasWorkerReady = Boolean(action.payload);
         },
 
-        incrementSortWorkerLoading(state) {
-            state.ui.sortWorkerLoadingCount += 1;
+        incrementCanvasWorkerLoading(state) {
+            state.ui.canvasWorkerLoadingCount += 1;
         },
 
-        decrementSortWorkerLoading(state) {
-            state.ui.sortWorkerLoadingCount = Math.max(
+        decrementCanvasWorkerLoading(state) {
+            state.ui.canvasWorkerLoadingCount = Math.max(
                 0,
-                state.ui.sortWorkerLoadingCount - 1
+                state.ui.canvasWorkerLoadingCount - 1
             );
         },
 
@@ -533,28 +532,27 @@ export const {
     changeCategory,
     closeAlgorithm,
     closeAllAlgorithms,
-    toggleMetrics,
-    toggleCode,
     toggleSidebar,
     setSidebarOpen,
     setSidebarTab,
     setObservedAlgorithm,
-    showCodeInSidebar,
-    showInfoInSidebar,
     clearObservedAlgorithm,
     observeAlgorithm,
+    openAlgorithmWindow,
+    closeAlgorithmWindow,
+    setPanelCapacity,
+    setOverviewOpen,
+    setEditorOpen,
     setStepWorkerReady,
-    setSortWorkerReady,
-    incrementSortWorkerLoading,
-    decrementSortWorkerLoading,
+    setCanvasWorkerReady,
+    incrementCanvasWorkerLoading,
+    decrementCanvasWorkerLoading,
     stopAnimation,
     changeSpeed,
     startAnimation,
     freezeAnimation,
-    changeInput,
-    applyInputConfig,
-    applyGridConfig,
-    setGrid,
+    applyInput,
+    setInputValue,
     paintGridCells,
     moveGridMarker,
     setBrush,
@@ -578,36 +576,70 @@ export const getCurrentSpeed = (state: RootState): number =>
     state.play.animation.speed;
 export const getDefaultStepTypes = (state: RootState) =>
     state.play.options.defaultStepTypes;
-export const getActiveCategory = (state: RootState): string =>
+export const getActiveCategory = (state: RootState): CategoryId =>
     state.play.active.category;
 export const getActiveAlgorithms = (state: RootState): ActiveAlgorithm[] =>
     state.play.active.algorithms;
-export const getInput = (state: RootState): number[] => state.play.input;
+/* Typed shortcuts into the per-category inputs. */
+export const getInput = (state: RootState): number[] =>
+    state.play.inputs.sort.value;
 export const getInputConfig = (state: RootState): InputConfig =>
-    state.play.inputConfig;
-export const getGrid = (state: RootState): GridInput => state.play.grid;
+    state.play.inputs.sort.config;
+export const getGrid = (state: RootState): GridInput =>
+    state.play.inputs.path.value;
 export const getGridConfig = (state: RootState): GridConfig =>
-    state.play.gridConfig;
+    state.play.inputs.path.config;
 export const getGridEdited = (state: RootState): boolean =>
-    state.play.gridEdited;
+    state.play.inputs.path.edited;
+export const getFindInput = (state: RootState): FindInput =>
+    state.play.inputs.find.value;
+export const getFindConfig = (state: RootState): FindConfig =>
+    state.play.inputs.find.config;
 export const getBrush = (state: RootState): GridBrush => state.play.ui.brush;
-export const getAllMetricsVisible = (state: RootState): boolean =>
-    state.play.allMetricsVisible;
-export const getAllCodeVisible = (state: RootState): boolean =>
-    state.play.allCodeVisible;
 export const getSidebarOpen = (state: RootState): boolean =>
     state.play.ui.sidebarOpen;
 export const getSidebarTab = (state: RootState): SidebarTab =>
     state.play.ui.sidebarTab;
-/** The followed algorithm, or null when none is chosen or it was closed. */
+/** The followed algorithm: the one picked, else the first one open. */
 export const getObservedAlgorithmId = (state: RootState): string | null => {
+    const { algorithms } = state.play.active;
     const chosen = state.play.ui.observedAlgorithmId;
-    if (!chosen) return null;
-    return state.play.active.algorithms.some((algo) => algo.id === chosen)
-        ? chosen
-        : null;
+    if (chosen && algorithms.some((algo) => algo.id === chosen)) return chosen;
+    return algorithms[0]?.id ?? null;
 };
 /** The panel to outline: only while the sidebar shows a per-algorithm tab. */
+/** The window's algorithm, or null once it is closed or the window is. */
+export const getWindowAlgorithmId = (state: RootState): string | null => {
+    const id = state.play.ui.windowAlgorithmId;
+    return id && state.play.active.algorithms.some((algo) => algo.id === id)
+        ? id
+        : null;
+};
+export const getOverviewOpen = (state: RootState): boolean =>
+    state.play.ui.overviewOpen;
+export const getEditorOpen = (state: RootState): boolean =>
+    state.play.ui.editorOpen;
+export const getPanelCapacity = (state: RootState): number =>
+    state.play.ui.panelCapacity;
+/** Algorithms with a panel on the stage (the first `capacity`). */
+export const getVisibleAlgorithms = createSelector(
+    [
+        (state: RootState) => state.play.active.algorithms,
+        (state: RootState) => state.play.ui.panelCapacity,
+    ],
+    (algorithms, capacity) => algorithms.slice(0, capacity)
+);
+/** Open but parked for lack of room. */
+export const getParkedAlgorithms = createSelector(
+    [
+        (state: RootState) => state.play.active.algorithms,
+        (state: RootState) => state.play.ui.panelCapacity,
+    ],
+    (algorithms, capacity) => algorithms.slice(capacity)
+);
+export const getEvicted = (
+    state: RootState
+): { name: string; seq: number } | null => state.play.ui.evicted;
 export const getHighlightedPanelId = (state: RootState): string | null => {
     const { sidebarOpen, sidebarTab } = state.play.ui;
     if (!sidebarOpen || !PER_ALGORITHM_TABS.includes(sidebarTab)) return null;
@@ -615,10 +647,10 @@ export const getHighlightedPanelId = (state: RootState): string | null => {
 };
 export const getStepWorkerReady = (state: RootState): boolean =>
     state.play.ui.stepWorkerReady;
-export const getSortWorkerReady = (state: RootState): boolean =>
-    state.play.ui.sortWorkerReady;
-export const getSortWorkerLoading = (state: RootState): boolean =>
-    state.play.ui.sortWorkerLoadingCount > 0;
+export const getCanvasWorkerReady = (state: RootState): boolean =>
+    state.play.ui.canvasWorkerReady;
+export const getCanvasWorkerLoading = (state: RootState): boolean =>
+    state.play.ui.canvasWorkerLoadingCount > 0;
 
 // Helpers
 
@@ -628,6 +660,11 @@ function resetPlayback(state: PlayState, trigger: string): void {
     state.animation.maxStep = 0;
     state.animation.status = "stopped";
     state.animation.isPlaying = false;
+}
+
+/** Panels that get a slot on the stage; the rest are parked. */
+function visibleOf(state: PlayState): ActiveAlgorithm[] {
+    return state.active.algorithms.slice(0, state.ui.panelCapacity);
 }
 
 function findMaxStep(algorithms: ActiveAlgorithm[]): number {

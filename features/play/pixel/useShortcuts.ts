@@ -1,10 +1,7 @@
 import { useEffect } from "react";
 import { useDispatch, useStore } from "react-redux";
 import type { AppDispatch, RootState } from "../../../store";
-import { randomSeed } from "../../../utils/randoms";
 import {
-    applyGridConfig,
-    applyInputConfig,
     changeSpeed,
     changeStep,
     decreaseStep,
@@ -13,6 +10,7 @@ import {
     stopAnimation,
     toggleSidebar,
 } from "../playSlice";
+import { regenerateInput } from "../categories";
 import { getFx, setFx } from "./fx/fxStore";
 
 /* Typing in a field or driving a widget owns its own keys. */
@@ -81,23 +79,9 @@ function useShortcuts(): void {
                 return;
             }
             if (key === "g" || key === "G") {
-                const { stepWorkerReady, sortWorkerLoadingCount } = play.ui;
-                if (!stepWorkerReady || sortWorkerLoadingCount > 0) return;
-                if (play.active.category === "path") {
-                    dispatch(
-                        applyGridConfig({
-                            ...play.gridConfig,
-                            seed: randomSeed(),
-                        })
-                    );
-                } else {
-                    dispatch(
-                        applyInputConfig({
-                            ...play.inputConfig,
-                            seed: randomSeed(),
-                        })
-                    );
-                }
+                const { stepWorkerReady, canvasWorkerLoadingCount } = play.ui;
+                if (!stepWorkerReady || canvasWorkerLoadingCount > 0) return;
+                dispatch(regenerateInput(play));
                 return;
             }
             if (key === "i" || key === "I") {

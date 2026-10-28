@@ -63,6 +63,13 @@ const PlayTheme = createGlobalStyle`
   --color-path-start: #e8825c;
   --color-path-end: #f4ede0;
 
+  /* Searching: the value being looked for. */
+  --color-find-target: #e8825c;
+  --color-step-probe: var(--color-step-check);
+  --color-step-narrow: var(--color-step-select);
+  --color-step-found: var(--color-step-finish);
+  --color-step-miss: var(--color-step-check-false);
+
   /* Legacy names some shared pieces still read. */
   --swap: var(--color-step-swap);
   --finish: var(--color-step-finish);
@@ -152,6 +159,13 @@ canvas, svg[data-pixel] {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* Phones in landscape and other short windows: thinner chrome. */
+@media (max-height: 520px) {
+  :root:root {
+    --toolbar-h: 4.4rem;
   }
 }
 `;

@@ -16,13 +16,14 @@ import type { AppDispatch, RootState } from "../../../../store";
 import {
     changeStep,
     freezeAnimation,
-    getActiveAlgorithms,
+    getVisibleAlgorithms,
     getMaxStep,
     getStep,
     startAnimation,
     type ActiveAlgorithm,
 } from "../../playSlice";
 import { setFx } from "../fx/fxStore";
+import { NARROW, SHORT } from "../media";
 import PixelIcon from "../primitives/PixelIcon";
 import { blockPattern, labelText, pixelFrame } from "../primitives/pixel";
 
@@ -30,9 +31,27 @@ const BLOCK = 6;
 const GAP = 2;
 const UNIT = BLOCK + GAP;
 
+/* Optional lead (the step counter) on the left, level with the bar; the
+   runner lane, bar and markers share the right column. */
 const Root = styled.div`
     position: relative;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: 1.6rem;
     width: 100%;
+
+    & > * {
+        grid-column: 2;
+    }
+    & > [data-lead] {
+        grid-column: 1;
+        grid-row: 2;
+        align-self: center;
+    }
+
+    @media ${NARROW} {
+        column-gap: 1rem;
+    }
 `;
 
 const Hit = styled.div`
@@ -105,6 +124,11 @@ const Markers = styled.div`
     height: 2.4rem;
     margin-top: 0.4rem;
     pointer-events: none;
+
+    /* Landscape phones: the bar itself is enough; save the two rows. */
+    @media ${SHORT} {
+        display: none;
+    }
 `;
 
 const Marker = styled.span<{ $row: number; $done: boolean }>`
@@ -137,6 +161,8 @@ type MarkerInfo = {
     id: string;
     name: string;
     at: number;
+    /** Last finish among the algorithms sharing this label. */
+    doneAt: number;
     row: number;
     align: "start" | "end";
 };
@@ -159,15 +185,18 @@ function useWidth(ref: RefObject<HTMLElement | null>): number {
 type BlockProgressProps = {
     /** Rendered over the bar, positioned by the caller (the runner). */
     children?: ReactNode;
+    /** Shown left of the bar, level with it (the step counter). */
+    lead?: ReactNode;
 };
 
-function BlockProgress({ children }: BlockProgressProps): JSX.Element {
+function BlockProgress({ children, lead }: BlockProgressProps): JSX.Element {
     const dispatch = useDispatch<AppDispatch>();
     const store = useStore<RootState>();
     const { value: step } = useSelector<RootState, { value: number }>(getStep);
     const maxStep = useSelector<RootState, number>(getMaxStep);
+    // Markers only for panels on the stage; parked ones don't play.
     const active = useSelector<RootState, ActiveAlgorithm[]>(
-        getActiveAlgorithms
+        getVisibleAlgorithms
     );
     const barRef = useRef<HTMLDivElement | null>(null);
     const ghostRef = useRef<HTMLDivElement | null>(null);
@@ -251,7 +280,8 @@ function BlockProgress({ children }: BlockProgressProps): JSX.Element {
         dispatch(changeStep({ value: map[event.key] }));
     };
 
-    // Where each algorithm finishes; labels that would collide take a row.
+    // Where each algorithm finishes; labels that would collide take the
+    // second row, and when both rows are taken they share one label.
     const markers = useMemo<MarkerInfo[]>(() => {
         if (safeMax <= 0 || active.length < 2) return [];
         const list = active
@@ -263,20 +293,30 @@ function BlockProgress({ children }: BlockProgressProps): JSX.Element {
             }))
             .sort((a, b) => a.at - b.at);
         const lastX: number[] = [-Infinity, -Infinity];
-        return list.map((item) => {
+        const out: MarkerInfo[] = [];
+        list.forEach((item) => {
             const x = item.at * width;
-            const row = x - lastX[0] > 90 ? 0 : x - lastX[1] > 90 ? 1 : 0;
+            const row = x - lastX[0] > 90 ? 0 : x - lastX[1] > 90 ? 1 : -1;
+            if (row < 0) {
+                const previous = out[out.length - 1];
+                previous.name = `${previous.name} · ${item.name}`;
+                previous.doneAt = item.at;
+                return;
+            }
             lastX[row] = x;
-            return {
+            out.push({
                 ...item,
+                doneAt: item.at,
                 row,
-                align: item.at > 0.85 ? ("end" as const) : ("start" as const),
-            };
+                align: item.at > 0.85 ? "end" : "start",
+            });
         });
+        return out;
     }, [active, safeMax, width]);
 
     return (
         <Root>
+            {lead && <div data-lead>{lead}</div>}
             {children}
             <Hit
                 role="slider"
@@ -304,7 +344,7 @@ function BlockProgress({ children }: BlockProgressProps): JSX.Element {
             </Hit>
             <Markers aria-label="Finish points">
                 {markers.map((marker) => {
-                    const done = step >= marker.at * safeMax;
+                    const done = step >= marker.doneAt * safeMax;
                     return (
                         <Marker
                             key={marker.id}

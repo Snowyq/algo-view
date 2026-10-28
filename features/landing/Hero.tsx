@@ -10,6 +10,13 @@ import { labelText } from "../play/pixel/primitives/pixel";
 import InteractiveWordmark from "./InteractiveWordmark";
 import SortStrip from "./SortStrip";
 import SplitWords from "./SplitWords";
+import registryApi from "../../algorithms/algorithmsRegistryApi";
+
+const FAMILIES = registryApi.registry.data.length;
+const TOTAL = registryApi.registry.data.reduce(
+    (sum, category) => sum + category.items.length,
+    0
+);
 
 gsap.registerPlugin(useGSAP);
 
@@ -138,9 +145,11 @@ function Hero(): JSX.Element {
         <Section ref={rootRef} aria-labelledby="hero-title">
             <Meta data-hero-fade>
                 <span>
-                    <b>●</b> Sorting visualizer, step by step
+                    <b>●</b> Algorithm visualizer, step by step
                 </span>
-                <span>19 algorithms · 9 speeds · 1 shared input</span>
+                <span>
+                    {TOTAL} algorithms · {FAMILIES} families · 9 speeds
+                </span>
             </Meta>
             <InteractiveWordmark />
             <Copy>
@@ -148,13 +157,14 @@ function Hero(): JSX.Element {
                     as={Title}
                     id="hero-title"
                     reveal="hero"
-                    text="Watch sorting algorithms think."
+                    text="Watch algorithms think."
                 />
                 <Aside>
                     <Lead data-hero-fade>
-                        Run several sorts side by side on the same input and
-                        step through every comparison and swap. Canvas and Web
-                        Workers draw; React only drives the controls.
+                        Run several algorithms side by side on the same input
+                        and step through every compare, swap, carve and fill.
+                        Canvas and Web Workers draw; React only drives the
+                        controls.
                     </Lead>
                     <Actions data-hero-fade>
                         <PixelButton

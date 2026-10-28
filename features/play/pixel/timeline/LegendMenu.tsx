@@ -4,7 +4,8 @@ import useClickOutside from "../../../../hooks/useClickOutside";
 import { useSelector } from "react-redux";
 import type { RootState } from "../../../../store";
 import { getActiveCategory } from "../../playSlice";
-import { legendOrderFor, STEP_LEGEND } from "../../stepLegend";
+import { categoryOf } from "../../categories";
+import { STEP_LEGEND } from "../../stepLegend";
 import PixelButton from "../primitives/PixelButton";
 import PixelIcon from "../primitives/PixelIcon";
 import PixelTooltip from "../primitives/PixelTooltip";
@@ -55,11 +56,10 @@ const Swatch = styled.span<{ $colorVar: string }>`
     box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.28);
 `;
 
-
 function LegendMenu(): JSX.Element {
     const [open, setOpen] = useState<boolean>(false);
     const category = useSelector<RootState, string>(getActiveCategory);
-    const items = legendOrderFor(category).map((type) => ({
+    const items = categoryOf(category).legend.map((type) => ({
         type,
         ...STEP_LEGEND[type],
     }));

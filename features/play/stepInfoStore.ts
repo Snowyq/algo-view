@@ -99,3 +99,34 @@ export function useStepMetrics(id: string): MetricsMap | null {
     );
     return useSyncExternalStore(subscribe, getSnapshot, () => null);
 }
+
+/*
+ * Per-algorithm plain-language caption of the current step ("Compare 23
+ * and 9: yes."), worked out in the worker. Only the caption line under
+ * each panel listens.
+ */
+
+const captions = new Map<string, string>();
+const captionListeners = new Map<string, Set<() => void>>();
+
+export function publishCaption(id: string, caption: string): void {
+    if (captions.get(id) === caption) return;
+    captions.set(id, caption);
+    captionListeners.get(id)?.forEach((listener) => listener());
+}
+
+export function useCaption(id: string): string {
+    const subscribe = useCallback(
+        (listener: () => void) => {
+            const set = captionListeners.get(id) ?? new Set<() => void>();
+            set.add(listener);
+            captionListeners.set(id, set);
+            return () => {
+                set.delete(listener);
+            };
+        },
+        [id]
+    );
+    const getSnapshot = useCallback(() => captions.get(id) ?? "", [id]);
+    return useSyncExternalStore(subscribe, getSnapshot, () => "");
+}

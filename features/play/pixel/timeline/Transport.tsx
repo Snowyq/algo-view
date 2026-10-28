@@ -12,6 +12,7 @@ import {
     stopAnimation,
 } from "../../playSlice";
 import PixelButton from "../primitives/PixelButton";
+import { TINY } from "../media";
 import PixelIcon from "../primitives/PixelIcon";
 import PixelTooltip from "../primitives/PixelTooltip";
 import type { IconName } from "../primitives/icons";
@@ -50,6 +51,11 @@ const StepButton = styled(PixelButton)`
 const PlayButton = styled(PixelButton)`
     width: 7.2rem;
     margin: var(--b) 0.6rem;
+
+    @media ${TINY} {
+        width: 5.6rem;
+        margin: var(--b) 0.2rem;
+    }
 `;
 
 /* play → half → pause, one frame each: the icon rebuilds pixel by pixel. */
@@ -120,6 +126,12 @@ function Transport(): JSX.Element {
     const status = useSelector<RootState, string>(getAnimationStatus);
     const maxStep = useSelector<RootState, number>(getMaxStep);
     const playing = status === "playing";
+    // Boolean, so the button re-renders only when it flips, not per step.
+    const atEnd = useSelector<RootState, boolean>(
+        (state) =>
+            state.play.animation.maxStep > 0 &&
+            state.play.animation.step.value >= state.play.animation.maxStep
+    );
     const empty = maxStep <= 0;
 
     const toggle = (): void => {
@@ -158,16 +170,28 @@ function Transport(): JSX.Element {
                 disabled={empty}
                 onPress={() => dispatch(decreaseStep({ value: 1 }))}
             />
-            <PixelTooltip label={playing ? "Pause · space" : "Play · space"}>
+            <PixelTooltip
+                label={
+                    playing
+                        ? "Pause · space"
+                        : atEnd
+                          ? "Replay from the start · space"
+                          : "Play · space"
+                }
+            >
                 <PlayButton
                     type="button"
                     $variant="primary"
                     $size="lg"
                     onClick={toggle}
                     disabled={empty}
-                    aria-label={playing ? "Pause" : "Play"}
+                    aria-label={playing ? "Pause" : atEnd ? "Replay" : "Play"}
                 >
-                    <MorphIcon playing={playing} />
+                    {atEnd && !playing ? (
+                        <PixelIcon name="replay" scale={3} />
+                    ) : (
+                        <MorphIcon playing={playing} />
+                    )}
                 </PlayButton>
             </PixelTooltip>
             <Jump

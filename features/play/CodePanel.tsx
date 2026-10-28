@@ -1,9 +1,23 @@
-import { JSX, useLayoutEffect, useRef, type ReactNode } from "react";
+import {
+    Fragment,
+    JSX,
+    useLayoutEffect,
+    useRef,
+    useState,
+    type ReactNode,
+} from "react";
 import { useSelector } from "react-redux";
 import styled from "styled-components";
+import { CODE_NOTES } from "../../algorithms/codeNotes";
+import {
+    clearBreakpoints,
+    toggleBreakpoint,
+    useBreakpoints,
+} from "./breakpoints";
 import type { AlgorithmInstructions } from "../../algorithms/types";
 import useReducedMotion from "../../hooks/useReducedMotion";
 import type { RootState } from "../../store";
+import { categoryOf } from "./categories";
 import { getActiveCategory, getCurrentSpeed } from "./playSlice";
 import { STEP_LEGEND } from "./stepLegend";
 import { useCodeSnapshot } from "./stepInfoStore";
@@ -73,20 +87,91 @@ const Scroller = styled.div`
     padding: 0.8rem 0;
 `;
 
-/* The description reads as a doc comment above the code, unnumbered. */
-const DocComment = styled.p`
-    margin: 0 0 0.8rem;
-    padding: 0 1.2rem 0 calc(3.6rem + 1.2rem);
+/* A plain-language note above its line: unnumbered, wraps, and lights
+   up in the step color while its line is the one running. */
+const Note = styled.span<{ $indent: number; $active: boolean; $color: string }>`
+    display: block;
+    max-width: 52ch;
+    padding: 0.4rem 1.2rem 0 calc(3.6rem + ${({ $indent }) => $indent * 2}ch);
     font-family: var(--f-mono);
-    font-size: 1.2rem;
-    line-height: 1.6;
-    color: var(--fg-4);
-    text-wrap: pretty;
+    font-size: 1.15rem;
+    line-height: 1.5;
+    white-space: normal;
+    /* Lit in the step color while its line runs; a finished run has no
+       step color (transparent), so fall back to plain readable text. */
+    color: ${({ $active, $color }) =>
+        $active && $color !== "transparent"
+            ? $color
+            : $active
+              ? "var(--fg-2)"
+              : "var(--fg-4)"};
 
     &::before {
         content: "// ";
     }
 `;
+
+/* Comments on/off: a small pixel switch in the caption. */
+const NotesToggle = styled.button`
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.2rem 0;
+    border: 0;
+    background: none;
+    color: var(--fg-3);
+    ${labelText};
+    font-size: 1rem;
+
+    i {
+        position: relative;
+        width: 2.4rem;
+        height: 1.2rem;
+        background-color: var(--bg);
+        ${pixelFrame("var(--line-2)")};
+    }
+    i::after {
+        content: "";
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 0.8rem;
+        height: calc(100% - 4px);
+        background-color: var(--fg-4);
+        transition: transform 120ms steps(2);
+    }
+    &[aria-pressed="true"] i::after {
+        background-color: var(--accent);
+        transform: translateX(1.2rem);
+    }
+    &[aria-pressed="true"] {
+        color: var(--fg);
+    }
+`;
+
+const NOTES_KEY = "algo-view:code-notes";
+
+/* Remembered per browser; storage can be blocked, so default to on. */
+function useNotesVisible(): [boolean, () => void] {
+    const [visible, setVisible] = useState<boolean>(() => {
+        try {
+            return window.localStorage.getItem(NOTES_KEY) !== "off";
+        } catch {
+            return true;
+        }
+    });
+    const toggle = (): void =>
+        setVisible((value) => {
+            const next = !value;
+            try {
+                window.localStorage.setItem(NOTES_KEY, next ? "on" : "off");
+            } catch {
+                // Not remembered, still toggled.
+            }
+            return next;
+        });
+    return [visible, toggle];
+}
 
 const Pre = styled.pre`
     margin: 0;
@@ -123,12 +208,63 @@ const Line = styled.span<{ $active: boolean; $color: string }>`
     }
 `;
 
-const LineNumber = styled.span<{ $active: boolean }>`
-    padding-right: 1.2rem;
+/* The gutter is a button: click a line number to pause whenever that line
+   runs. A breakpoint shows as a red block in front of the number. */
+const LineNumber = styled.button<{ $active: boolean }>`
+    position: relative;
+    height: 100%;
+    padding: 0 1.2rem 0 0;
+    border: 0;
+    background: none;
+    font: inherit;
     text-align: right;
     color: ${({ $active }) => ($active ? "var(--fg-2)" : "var(--fg-4)")};
     font-variant-numeric: tabular-nums;
     user-select: none;
+    cursor: pointer;
+
+    &::after {
+        content: "";
+        position: absolute;
+        left: 0.4rem;
+        top: 50%;
+        width: 0.8rem;
+        height: 0.8rem;
+        translate: 0 -50%;
+        background-color: var(--danger);
+        opacity: 0;
+    }
+    &[aria-pressed="true"] {
+        color: var(--danger);
+    }
+    &[aria-pressed="true"]::after {
+        opacity: 1;
+        animation: px-dither-in 140ms both;
+    }
+    @media (hover: hover) {
+        &:hover::after {
+            opacity: 0.4;
+        }
+        &[aria-pressed="true"]:hover::after {
+            opacity: 1;
+        }
+    }
+`;
+
+const BreakInfo = styled.span`
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    color: var(--danger);
+
+    button {
+        border: 0;
+        padding: 0;
+        background: none;
+        color: var(--fg-3);
+        font: inherit;
+        text-decoration: underline;
+    }
 `;
 
 const LineCode = styled.span<{ $indent: number }>`
@@ -182,15 +318,20 @@ type CodePanelProps = {
     algorithmId: string;
     name: string;
     instructions: AlgorithmInstructions;
-    description?: string;
 };
 
 function CodePanel({
     algorithmId,
     name,
     instructions,
-    description,
 }: CodePanelProps): JSX.Element {
+    const notes = CODE_NOTES[algorithmId] ?? {};
+    const hasNotes = Object.keys(notes).length > 0;
+    const [notesVisible, toggleNotes] = useNotesVisible();
+    const breakpoints = useBreakpoints();
+    const breaks = new Set(
+        breakpoints.algorithmId === algorithmId ? breakpoints.lines : []
+    );
     const scrollerRef = useRef<HTMLDivElement | null>(null);
     const reduced = useReducedMotion();
     const speed = useSelector<RootState, number>(getCurrentSpeed);
@@ -212,7 +353,7 @@ function CodePanel({
     const finished = stepType === "finish";
     const status = finished
         ? {
-              label: gaveUp ? "Stopped" : category === "path" ? "Found" : "Sorted",
+              label: gaveUp ? "Stopped" : categoryOf(category).doneLabel,
               color: gaveUp ? "var(--danger)" : "var(--color-step-finish)",
           }
         : legend
@@ -252,37 +393,82 @@ function CodePanel({
                 {status && (
                     <Status $color={status.color}>{status.label}</Status>
                 )}
+                {breaks.size > 0 && (
+                    <BreakInfo>
+                        {breaks.size} breakpoint{breaks.size > 1 ? "s" : ""}
+                        <button
+                            type="button"
+                            onClick={() => clearBreakpoints(algorithmId)}
+                        >
+                            clear
+                        </button>
+                    </BreakInfo>
+                )}
+                {hasNotes && (
+                    <NotesToggle
+                        type="button"
+                        aria-pressed={notesVisible}
+                        onClick={toggleNotes}
+                    >
+                        <i aria-hidden="true" />
+                        Comments
+                    </NotesToggle>
+                )}
             </Caption>
             <Scroller ref={scrollerRef} tabIndex={0}>
-                {description && <DocComment>{description}</DocComment>}
                 <Pre>
                     <code>
                         {entries.map(([id, { line, indent }], index) => {
                             const active = activeIds.has(id);
+                            const note = notesVisible ? notes[id] : undefined;
                             return (
-                                <Line
-                                    key={id}
-                                    data-line={index}
-                                    $active={active}
-                                    $color={activeColor}
-                                    aria-current={active ? "true" : undefined}
-                                >
-                                    <LineNumber $active={active}>
-                                        {index + 1}
-                                    </LineNumber>
-                                    <LineCode $indent={indent}>
-                                        {highlight(line)}
-                                    </LineCode>
-                                    {active &&
-                                    index === firstActive &&
-                                    legend ? (
-                                        <StepTag $color={activeColor}>
-                                            {legend.label}
-                                        </StepTag>
-                                    ) : (
-                                        <span />
+                                <Fragment key={id}>
+                                    {note && (
+                                        <Note
+                                            $indent={indent}
+                                            $active={active}
+                                            $color={activeColor}
+                                        >
+                                            {note}
+                                        </Note>
                                     )}
-                                </Line>
+                                    <Line
+                                        data-line={index}
+                                        $active={active}
+                                        $color={activeColor}
+                                        aria-current={
+                                            active ? "true" : undefined
+                                        }
+                                    >
+                                        <LineNumber
+                                            type="button"
+                                            $active={active}
+                                            aria-pressed={breaks.has(id)}
+                                            aria-label={`Pause on line ${index + 1}`}
+                                            title="Pause here"
+                                            onClick={() =>
+                                                toggleBreakpoint(
+                                                    algorithmId,
+                                                    id
+                                                )
+                                            }
+                                        >
+                                            {index + 1}
+                                        </LineNumber>
+                                        <LineCode $indent={indent}>
+                                            {highlight(line)}
+                                        </LineCode>
+                                        {active &&
+                                        index === firstActive &&
+                                        legend ? (
+                                            <StepTag $color={activeColor}>
+                                                {legend.label}
+                                            </StepTag>
+                                        ) : (
+                                            <span />
+                                        )}
+                                    </Line>
+                                </Fragment>
                             );
                         })}
                     </code>

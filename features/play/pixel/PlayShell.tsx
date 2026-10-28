@@ -5,19 +5,22 @@ import gsap from "gsap";
 import { JSX, useCallback, useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import styled from "styled-components";
-import { PLAY_LAYOUT_BREAKPOINT } from "../../../constants/breakpoints";
+import {
+    LIBRARY_COLLAPSE,
+    PLAY_LAYOUT_BREAKPOINT,
+} from "../../../constants/breakpoints";
 import useReducedMotion from "../../../hooks/useReducedMotion";
 import type { AppDispatch, RootState } from "../../../store";
 import PlayTheme from "../../../styles/PlayTheme";
 import {
-    applyGridConfig,
-    applyInputConfig,
+    applyInput,
     changeCategory,
-    setGrid,
+    setInputValue,
     changeSpeed,
     closeAllAlgorithms,
     getSidebarOpen,
     openAlgorithm,
+    setOverviewOpen,
     setSidebarOpen,
 } from "../playSlice";
 import PanelGrid from "./canvas/PanelGrid";
@@ -25,6 +28,7 @@ import { getFx, setFx, useFx } from "./fx/fxStore";
 import { setRainbow } from "./fx/rainbow";
 import useKonami from "./fx/useKonami";
 import ShortcutsOverlay from "./help/ShortcutsOverlay";
+import CategoryOverview from "./overview/CategoryOverview";
 import Inspector from "./inspector/Inspector";
 import PixelIntro from "./intro/PixelIntro";
 import Library from "./library/Library";
@@ -82,14 +86,22 @@ const Shell = styled.div<{ $inspector: boolean }>`
         grid-area: dock;
     }
 
+    /* No sidebar here (its lists live in the toolbar), so the panels and
+       Details share the width side by side. */
+    @media (max-width: ${LIBRARY_COLLAPSE}) {
+        grid-template-columns:
+            0px
+            minmax(0, 1fr)
+            ${({ $inspector }) => ($inspector ? "var(--inspector-w)" : "0px")};
+    }
+
     @media (max-width: ${PLAY_LAYOUT_BREAKPOINT}) {
         grid-template-areas:
             "toolbar"
-            "library"
             "stage"
             "dock";
         grid-template-columns: minmax(0, 1fr);
-        grid-template-rows: auto auto minmax(0, 1fr) auto;
+        grid-template-rows: auto minmax(0, 1fr) auto;
     }
 `;
 
@@ -98,13 +110,28 @@ function useSharedSetup(): void {
     const dispatch = useDispatch<AppDispatch>();
     useEffect(() => {
         const setup = parseShareUrl(window.location.search);
-        if (!setup) return;
+        // A bare /play starts at the category overview.
+        if (!setup) {
+            dispatch(setOverviewOpen(true));
+            return;
+        }
         // Category first: switching it clears the open algorithms.
-        if (setup.category) dispatch(changeCategory(setup.category));
-        if (setup.input) dispatch(applyInputConfig(setup.input));
-        if (setup.grid) {
-            dispatch(applyGridConfig(setup.grid.config));
-            if (setup.grid.edited) dispatch(setGrid(setup.grid.edited));
+        dispatch(changeCategory(setup.category));
+        if (setup.input) {
+            const { category, config, value } = setup.input;
+            dispatch(
+                applyInput({ category, config } as Parameters<
+                    typeof applyInput
+                >[0])
+            );
+            // A hand-edited input (e.g. a drawn map) replaces the recipe's.
+            if (value !== undefined) {
+                dispatch(
+                    setInputValue({ category, value } as Parameters<
+                        typeof setInputValue
+                    >[0])
+                );
+            }
         }
         if (setup.speed) dispatch(changeSpeed(setup.speed));
         if (setup.algorithms) {
@@ -181,6 +208,7 @@ function PlayShell(): JSX.Element {
                 <Inspector />
                 <Timeline />
             </Shell>
+            <CategoryOverview />
             <ShortcutsOverlay />
             <PixelIntro />
         </Scope>

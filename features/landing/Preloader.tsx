@@ -216,7 +216,7 @@ function Preloader(): JSX.Element | null {
                                     <i key={i} data-on={i < on} />
                                 ))}
                             </Bar>
-                            <span>Sorting visualizer · press any key</span>
+                            <span>Algorithm visualizer · press any key</span>
                         </Meta>
                     </Foot>
                 </>

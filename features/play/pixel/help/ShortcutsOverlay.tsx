@@ -3,7 +3,8 @@ import { useSelector } from "react-redux";
 import styled from "styled-components";
 import type { RootState } from "../../../../store";
 import { getActiveCategory, getSpeeds } from "../../playSlice";
-import { legendOrderFor, STEP_LEGEND } from "../../stepLegend";
+import { categoryOf } from "../../categories";
+import { STEP_LEGEND } from "../../stepLegend";
 import { setFx, useFx } from "../fx/fxStore";
 import PixelButton from "../primitives/PixelButton";
 import PixelIcon from "../primitives/PixelIcon";
@@ -149,7 +150,7 @@ const SHORTCUTS: Array<{ keys: string[]; what: string }> = [
     { keys: ["Home", "End"], what: "First / last step" },
     { keys: ["1", "…", "9"], what: "Speed, cheetah to sloth" },
     { keys: ["G"], what: "New input, same shape" },
-    { keys: ["I"], what: "Open / close Inspector" },
+    { keys: ["I"], what: "Open / close details (input, code, about)" },
     { keys: ["?"], what: "This screen" },
 ];
 
@@ -243,7 +244,7 @@ function ShortcutsOverlay(): JSX.Element | null {
                     <section>
                         <Heading>Step colors</Heading>
                         <Legend>
-                            {legendOrderFor(category).map((type) => (
+                            {categoryOf(category).legend.map((type) => (
                                 <li key={type}>
                                     <Swatch
                                         $colorVar={STEP_LEGEND[type].colorVar}

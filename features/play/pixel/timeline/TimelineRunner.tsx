@@ -25,6 +25,7 @@ import { ANIMALS, type AnimalId } from "../sprites/animals";
 import { CANVAS_H, CANVAS_W, type SpriteState } from "../sprites/frames";
 import PixelSprite from "../sprites/PixelSprite";
 import { animalForSpeed } from "../sprites/speedAnimals";
+import { COMPACT } from "../media";
 import Parade from "./Parade";
 
 const SCALE = 3;
@@ -39,6 +40,10 @@ const Lane = styled.div`
     height: ${SPRITE_H}px;
     margin-bottom: -2px;
     pointer-events: none;
+
+    @media ${COMPACT} {
+        height: ${Math.round((SPRITE_H * 2) / 3)}px;
+    }
 `;
 
 const Mover = styled.div`
@@ -48,6 +53,12 @@ const Mover = styled.div`
     width: ${SPRITE_W}px;
     height: ${SPRITE_H}px;
     will-change: transform;
+
+    /* Two thirds the size on phones; "scale" leaves GSAP's transform alone. */
+    @media ${COMPACT} {
+        scale: 0.67;
+        transform-origin: 50% 100%;
+    }
 `;
 
 const somersault = keyframes`
