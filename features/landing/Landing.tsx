@@ -1,5 +1,7 @@
 "use client";
 
+import { arrive } from "../play/pixel/fx/pageTransition";
+import { ditherReveal, hideForReveal } from "./ditherReveal";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -54,6 +56,8 @@ const SkipLink = styled.a`
  * animals → how it is built → open the playground.
  */
 function Landing(): JSX.Element {
+    // Arrived through the pixel page transition: clear its cover.
+    useEffect(() => arrive(), []);
     const rootRef = useRef<HTMLElement | null>(null);
     const ready = useFx((fx) => fx.introDone);
     useSmoothScroll();
@@ -65,7 +69,7 @@ function Landing(): JSX.Element {
         []
     );
 
-    // Section headings: words step up out of their masks, once.
+    // Section headings dither in word by word as they arrive, once.
     useGSAP(
         () => {
             if (!ready) return;
@@ -74,16 +78,14 @@ function Landing(): JSX.Element {
                 gsap.utils
                     .toArray<HTMLElement>("[data-reveal='section']")
                     .forEach((heading) => {
-                        gsap.from(heading.querySelectorAll("[data-word]"), {
-                            yPercent: 110,
-                            duration: 0.45,
-                            ease: "steps(6)",
-                            stagger: 0.07,
-                            scrollTrigger: {
-                                trigger: heading,
-                                start: "top 85%",
-                                once: true,
-                            },
+                        const words = heading.querySelectorAll("[data-word]");
+                        hideForReveal(words);
+                        ScrollTrigger.create({
+                            trigger: heading,
+                            start: "top 85%",
+                            once: true,
+                            onEnter: () =>
+                                ditherReveal(words, { stagger: 0.07 }),
                         });
                     });
                 ScrollTrigger.refresh();

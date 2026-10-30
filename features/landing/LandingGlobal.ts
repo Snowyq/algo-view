@@ -1,4 +1,5 @@
 import { createGlobalStyle } from "styled-components";
+import { ditherKeyframes } from "../../styles/dither";
 
 /*
  * The landing page scrolls the document itself (native scrollbar, find in
@@ -6,6 +7,8 @@ import { createGlobalStyle } from "styled-components";
  * this route releases it while mounted.
  */
 const LandingGlobal = createGlobalStyle`
+${ditherKeyframes}
+
 html {
   height: auto;
   scroll-behavior: auto;

@@ -1,6 +1,6 @@
 import { NIL, RED, type TreeAlgorithm } from "../algorithms/tree/TreeAlgorithm";
 import type { TreeInput } from "../utils/treeInput";
-import { createCanvasWorker } from "./runtime/canvasWorker";
+import { createCanvasWorker, type DescribeApi } from "./runtime/canvasWorker";
 import { pixelLine } from "./runtime/pixelLine";
 
 /*
@@ -13,8 +13,41 @@ import { pixelLine } from "./runtime/pixelLine";
 const DARK = "#1d110b";
 const PAD = 18;
 
+/* "Insert 42: 42 < 57, go left". */
+function describeTree({
+    algorithm,
+    input,
+    step,
+}: DescribeApi<TreeInput, TreeAlgorithm>): string {
+    const state = algorithm.getStateByStepsIndex(step);
+    const key = input.keys[state.keyIndex];
+    const at = (slot: number): number | string =>
+        slot >= 0 ? state.keys[slot] : "?";
+    switch (state.type) {
+        case "initial":
+            return `Insert ${input.keys.length} keys, one at a time.`;
+        case "compare":
+            return state.other >= 0
+                ? `Compare ${at(state.other)} with its parent ${at(state.focus)}.`
+                : `Insert ${key}: ${key} ${key < Number(at(state.focus)) ? "<" : ">"} ${at(state.focus)}, go ${key < Number(at(state.focus)) ? "left" : "right"}.`;
+        case "insert":
+            return `${at(state.focus)} takes its place as a new node.`;
+        case "rotate":
+            return `Rotate: ${at(state.focus)} moves up, ${at(state.other)} moves down.`;
+        case "recolor":
+            return "Recolour to keep the red-black rules.";
+        case "swap":
+            return `Swap ${at(state.focus)} and ${at(state.other)}: the smaller goes up.`;
+        case "finish":
+            return `Done: height ${algorithm.getMetrics().height?.count ?? "?"}.`;
+        default:
+            return "";
+    }
+}
+
 createCanvasWorker<TreeInput, TreeAlgorithm>({
     category: "tree",
+    describe: describeTree,
     draw: ({ ctx, width, height, color, algorithm, input, step, reveal }) => {
         const state = algorithm.getStateByStepsIndex(step);
         const { root, keys, left, right, tag, tagKind } = state;

@@ -6,7 +6,7 @@ import {
     type MazeInput,
 } from "../algorithms/maze/MazeAlgorithm";
 import { gridLayout } from "../utils/grid";
-import { createCanvasWorker } from "./runtime/canvasWorker";
+import { createCanvasWorker, type DescribeApi } from "./runtime/canvasWorker";
 
 /*
  * Maze generation: solid rock that gets carved. Passages are drawn in
@@ -14,8 +14,38 @@ import { createCanvasWorker } from "./runtime/canvasWorker";
  * wait in yellow, and the cursor shows where the algorithm is looking.
  */
 
+/* "Carve 2 cells: 140 carved so far". */
+function describeMaze({
+    algorithm,
+    input,
+    step,
+}: DescribeApi<MazeInput, MazeAlgorithm>): string {
+    const info = algorithm.getStepByIndex(step);
+    if (!info) return "";
+    const carved = info.metrics.carved?.count ?? 0;
+    const pos = (cell: number): string =>
+        `(${cell % input.cols}, ${Math.floor(cell / input.cols)})`;
+    switch (info.type) {
+        case "initial":
+            return "Solid rock: nothing carved yet.";
+        case "carve":
+            return `Knock down a wall: ${carved} cells open.`;
+        case "frontier":
+            return `${info.mark.length} room${info.mark.length === 1 ? "" : "s"} join the frontier.`;
+        case "visit":
+            return info.current >= 0 ? `Look around ${pos(info.current)}.` : "";
+        case "walk":
+            return "Random walk: wander until the maze is hit.";
+        case "finish":
+            return `Done: ${carved} cells carved, ${info.metrics.deadEnds?.count ?? 0} dead ends.`;
+        default:
+            return "";
+    }
+}
+
 createCanvasWorker<MazeInput, MazeAlgorithm>({
     category: "maze",
+    describe: describeMaze,
     draw: ({ ctx, width, height, color, algorithm, input, step, reveal }) => {
         const { walls, marks, current } = algorithm.getStateByStepsIndex(step);
         const { cols, rows } = input;

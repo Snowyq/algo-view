@@ -1,7 +1,7 @@
 import type { LifeAlgorithm } from "../algorithms/life/LifeAlgorithm";
 import type { LifeInput } from "../utils/lifeInput";
 import { gridLayout } from "../utils/grid";
-import { createCanvasWorker } from "./runtime/canvasWorker";
+import { createCanvasWorker, type DescribeApi } from "./runtime/canvasWorker";
 
 /*
  * Cellular automata: live cells in cream on the dark floor, cells born
@@ -9,8 +9,30 @@ import { createCanvasWorker } from "./runtime/canvasWorker";
  * Brian's Brain "dying" cells in pink and Langton's ant as a ringed cell.
  */
 
+/* "Generation 12: 140 alive". */
+function describeLife({
+    algorithm,
+    step,
+}: DescribeApi<LifeInput, LifeAlgorithm>): string {
+    const s = algorithm.getStateByStepsIndex(step);
+    const alive = s.metrics.alive?.count ?? 0;
+    switch (s.type) {
+        case "initial":
+            return `Generation 0: ${alive} cells alive.`;
+        case "generation":
+            return `Generation ${s.generation}: ${alive} alive.`;
+        case "finish":
+            return alive === 0
+                ? "Everything died out."
+                : `Stopped at generation ${s.generation}: ${alive} alive.`;
+        default:
+            return "";
+    }
+}
+
 createCanvasWorker<LifeInput, LifeAlgorithm>({
     category: "life",
+    describe: describeLife,
     draw: ({ ctx, width, height, color, algorithm, input, step, reveal }) => {
         const state = algorithm.getStateByStepsIndex(step);
         const { cols, rows } = input;

@@ -1,7 +1,7 @@
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import Link from "next/link";
+import Link from "../play/pixel/fx/TransitionLink";
 import { JSX, useRef, useState } from "react";
 import styled from "styled-components";
 import PixelButton from "../play/pixel/primitives/PixelButton";

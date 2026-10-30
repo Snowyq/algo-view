@@ -1,4 +1,9 @@
 import {
+    receiveBreakpointSteps,
+    refreshBreakpoints,
+    registerBreakpointWorker,
+} from "./breakpoints";
+import {
     JSX,
     useEffect,
     useRef,
@@ -48,9 +53,13 @@ const Sizer = styled.div`
     min-height: 0;
     overflow: hidden;
 
+    /* Shown at the size the worker last drew (set on "resized"), never
+       stretched to the box: when the layout changes, the old picture is
+       clipped for a frame instead of zooming, until the redraw lands. */
     canvas {
         position: absolute;
-        inset: 0;
+        top: 0;
+        left: 0;
         width: 100%;
         height: 100%;
         display: block;
@@ -90,6 +99,7 @@ type StepMetricsPayload = {
     metrics?: AlgorithmMetrics;
     stepType?: string;
     instructionId?: string[];
+    caption?: string;
 };
 
 /*
@@ -137,6 +147,12 @@ function WorkerCanvas({
         dispatch(setCanvasWorkerReady(Boolean(worker)));
     }, [dispatch, worker]);
 
+    // Lets the breakpoint store ask this algorithm's worker for steps.
+    useEffect(() => {
+        if (!worker) return;
+        return registerBreakpointWorker(registry.id, worker);
+    }, [worker, registry.id]);
+
     useEffect((): void => {
         if (!worker || !sizerRef.current || input == null) return;
         const rect = sizerRef.current.getBoundingClientRect();
@@ -171,6 +187,16 @@ function WorkerCanvas({
         onStatusType("canvas-initialized", () =>
             dispatch(setCanvasWorkerReady(true))
         );
+        onStatusType("resized", (payload) => {
+            const { width, height } = (payload ?? {}) as {
+                width?: number;
+                height?: number;
+            };
+            const canvas = canvasRef.current;
+            if (!canvas || !width || !height) return;
+            canvas.style.width = `${width}px`;
+            canvas.style.height = `${height}px`;
+        });
         onStatusType("render-start", () => setIsLoading(true));
         onStatusType("render-done", (payload) => {
             const { stepsLength, metrics } = (payload ??
@@ -182,6 +208,8 @@ function WorkerCanvas({
             }
             onMetricsUpdate?.(metrics ?? null);
             setIsLoading(false);
+            // New run, new step numbers: breakpoints are worked out again.
+            refreshBreakpoints(registry.id);
             if (pendingLoadsRef.current > 0) {
                 pendingLoadsRef.current -= 1;
                 dispatch(decrementCanvasWorkerLoading());
@@ -189,14 +217,22 @@ function WorkerCanvas({
         });
         onStatusType("step-metrics", (payload) => {
             if (!payload) return;
-            const { metrics, stepType, instructionId } =
+            const { metrics, stepType, instructionId, caption } =
                 payload as StepMetricsPayload;
             onStepMetricsUpdate?.(metrics ?? null);
             onStepInfoUpdate?.(
                 stepType
-                    ? { type: stepType, instructionId: instructionId ?? [] }
+                    ? {
+                          type: stepType,
+                          instructionId: instructionId ?? [],
+                          caption,
+                      }
                     : null
             );
+        });
+        onStatusType("line-steps", (payload) => {
+            const steps = (payload as { steps?: number[] } | undefined)?.steps;
+            if (steps) receiveBreakpointSteps(registry.id, steps);
         });
     }, [
         onStatusType,

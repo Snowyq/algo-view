@@ -4,15 +4,13 @@ Features worth adding to the playground (`/play`), ranked by how much
 they help someone understand the algorithms versus the effort. Effort is
 a rough guess: S (a day or less), M (a few days), L (a week or more).
 
-## Next up
+## Done
 
-| #   | Feature                                                                                                                                                                                                           | Why                                                                                                                                                                                                                    | Effort |
-| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
-| 1   | **Step captions.** One line under each panel says what is happening now: "comparing 23 and 9 → swap", "relaxing edge D–H: 7 < 12".                                                                                | Turns the animation into an explanation. Every step already records its type and the cells it touches, so this is mostly text templates per category. The same text can feed an `aria-live` region for screen readers. | M      |
-| 2   | **Results summary at the end.** A small table ranks the algorithms by steps, compares and swaps, with a takeaway such as "Bubble needed 5× more compares than Merge".                                             | Today the end of a run only shows badges.                                                                                                                                                                              | S      |
-| 3   | **Edit the input in every category.** Drag bars (Sort), type your own text and pattern (Strings), place points (Hull), paint walls and cells (Fill, Life), add and remove edges (Graphs). Path already does this. | Lets people test "what happens if I change this".                                                                                                                                                                      | L      |
-| 4   | **Breakpoints in the code.** Click a line number in focus mode; playback pauses every time that line runs.                                                                                                        | Each step already knows the line that produced it (`instructionId`), so this is cheap.                                                                                                                                 | S      |
-| 5   | **Measured growth curves.** In About, run the algorithm in the background for n = 8…512 and plot its counters against n as a pixel chart.                                                                         | Shows O(n²) next to O(n log n) on real numbers, not just as notation.                                                                                                                                                  | M      |
+- **Step captions.** A line under each panel says what the step does, in every category, with the real values ("Compare 23 and 9: yes."). Polite to screen readers while paused.
+- **Results summary.** After a run with two or more panels: a ranking by steps and counters, plus one takeaway sentence.
+- **Your own data.** "Edit data" (E) opens an editor over the stage: draw on Path, Fill and Life, click points for Hull, type values, text, keys, words or edges for the rest. Maze has nothing to edit: it is the output.
+- **Breakpoints.** Click a line number in focus mode; playback stops exactly on every step that runs that line.
+- **Measured growth.** A Growth tab in focus mode runs the algorithm on growing inputs in a worker and fits the exponent ("≈ n^1.19: n log n").
 
 ## Comparing and presenting
 

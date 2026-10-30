@@ -1,10 +1,13 @@
-import Link from "next/link";
+import Link from "../play/pixel/fx/TransitionLink";
 import { JSX, useEffect, useState } from "react";
 import styled from "styled-components";
 import PixelButton from "../play/pixel/primitives/PixelButton";
 import PixelIcon from "../play/pixel/primitives/PixelIcon";
 import { labelText } from "../play/pixel/primitives/pixel";
 import PixelLogo from "../play/pixel/toolbar/PixelLogo";
+
+/** Height of the fixed header; sections below start after it. */
+export const HEADER_H = "6.4rem";
 
 const Bar = styled.header`
     position: fixed;
@@ -15,7 +18,7 @@ const Bar = styled.header`
     display: flex;
     align-items: center;
     gap: 2.4rem;
-    height: 6.4rem;
+    height: ${HEADER_H};
     padding: 0 clamp(1.6rem, 3vw, 3.2rem);
     transition: background-color 160ms steps(3);
 

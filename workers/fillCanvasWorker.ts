@@ -4,7 +4,7 @@ import {
 } from "../algorithms/fill/FillAlgorithm";
 import type { FillInput } from "../utils/fillInput";
 import { gridLayout } from "../utils/grid";
-import { createCanvasWorker } from "./runtime/canvasWorker";
+import { createCanvasWorker, type DescribeApi } from "./runtime/canvasWorker";
 
 /*
  * Flood fill on a bitmap: walls, open floor, cells waiting in the queue
@@ -24,8 +24,38 @@ const LABEL_TOKENS = [
     "check-false",
 ];
 
+/* "Paint (12, 4): 230 painted, 18 waiting". */
+function describeFill({
+    algorithm,
+    input,
+    step,
+}: DescribeApi<FillInput, FillAlgorithm>): string {
+    const info = algorithm.getStepByIndex(step);
+    if (!info) return "";
+    const m = info.metrics;
+    const at = (cell: number): string =>
+        `(${cell % input.cols}, ${Math.floor(cell / input.cols)})`;
+    switch (info.type) {
+        case "initial":
+            return `Pour paint at ${at(input.start)}.`;
+        case "fill":
+            return `Paint ${at(info.cell)}: ${m.filled?.count ?? 0} painted.`;
+        case "span":
+            return `Paint the whole run through ${at(info.cell)}: ${m.filled?.count ?? 0} painted.`;
+        case "label":
+            return `Label ${at(info.cell)}.`;
+        case "merge":
+            return "Second pass: merge labels that touch.";
+        case "finish":
+            return `Done: ${m.filled?.count ?? 0} cells.`;
+        default:
+            return "";
+    }
+}
+
 createCanvasWorker<FillInput, FillAlgorithm>({
     category: "fill",
+    describe: describeFill,
     draw: ({ ctx, width, height, color, algorithm, input, step, reveal }) => {
         const state = algorithm.getStateByStepsIndex(step);
         const { cols, rows, walls, start } = input;

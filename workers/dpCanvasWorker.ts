@@ -1,6 +1,6 @@
 import type { DpAlgorithm } from "../algorithms/dp/DpAlgorithm";
 import type { DpInput } from "../utils/dpInput";
-import { createCanvasWorker } from "./runtime/canvasWorker";
+import { createCanvasWorker, type DescribeApi } from "./runtime/canvasWorker";
 
 /*
  * Dynamic programming: the table with its axis labels. The cell being
@@ -16,8 +16,38 @@ function show(value: number): string {
     return String(value);
 }
 
+/* "[kitten × sit] = 2, from 3 cells". */
+function describeDp({
+    algorithm,
+    step,
+}: DescribeApi<DpInput, DpAlgorithm>): string {
+    const info = algorithm.getStepByIndex(step);
+    if (!info) return "";
+    const { cols, rowLabels, colLabels } = algorithm.table;
+    const where = (cell: number): string => {
+        const r = Math.floor(cell / cols);
+        const c = cell % cols;
+        const row = rowLabels[r] ?? String(r);
+        const col = colLabels[c] ?? String(c);
+        return `row ${row || "∅"}, column ${col || "∅"}`;
+    };
+    switch (info.type) {
+        case "initial":
+            return "Empty table: fill it cell by cell.";
+        case "fill":
+            return `${where(info.cell)} = ${show(info.value)}${info.deps.length ? `, from ${info.deps.length} earlier cell${info.deps.length === 1 ? "" : "s"}` : ""}.`;
+        case "trace":
+            return `Trace back through ${where(info.cell)}.`;
+        case "finish":
+            return `Answer: ${algorithm.getMetrics().answer?.count ?? "?"}.`;
+        default:
+            return "";
+    }
+}
+
 createCanvasWorker<DpInput, DpAlgorithm>({
     category: "dp",
+    describe: describeDp,
     draw: ({ ctx, width, height, color, algorithm, step, reveal }) => {
         const { table, values, traced, cell, deps, type } =
             algorithm.getStateByStepsIndex(step);

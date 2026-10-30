@@ -3,7 +3,7 @@ import styled from "styled-components";
 import { useSelector } from "react-redux";
 import { PLAY_LAYOUT_BREAKPOINT } from "../../../../constants/breakpoints";
 import type { RootState } from "../../../../store";
-import { getMaxStep } from "../../playSlice";
+import { getActiveAlgorithms } from "../../playSlice";
 import { NARROW, SHORT, TINY } from "../media";
 import PlaybackTicker from "../../PlaybackTicker";
 import BlockProgress from "./BlockProgress";
@@ -32,8 +32,10 @@ const Dock = styled.section`
         padding: 0 1.6rem 0.6rem;
     }
 
-    /* Nothing to play: no disabled transport, no 0 / 0 counter; the empty
-       stage's "Try…" button is the one thing to do. */
+    /* Nothing open: no disabled transport, no 0 / 0 counter; the empty
+       stage's "Try…" button is the one thing to do. Keyed to open panels,
+       not to computed steps: hiding the dock while steps are computed
+       would resize the stage under the panels and flip their columns. */
     &[data-empty="true"] {
         display: none;
     }
@@ -84,7 +86,9 @@ const Right = styled.div`
 `;
 
 function Timeline(): JSX.Element {
-    const empty = useSelector<RootState, number>(getMaxStep) <= 0;
+    const empty = useSelector<RootState, boolean>(
+        (state) => getActiveAlgorithms(state).length === 0
+    );
     return (
         <Dock aria-label="Timeline" data-dock data-empty={empty}>
             <PlaybackTicker />

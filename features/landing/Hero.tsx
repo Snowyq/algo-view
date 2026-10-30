@@ -1,6 +1,6 @@
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
-import Link from "next/link";
+import Link from "../play/pixel/fx/TransitionLink";
 import { JSX, useRef } from "react";
 import styled from "styled-components";
 import { useFx } from "../play/pixel/fx/fxStore";
@@ -9,6 +9,8 @@ import PixelIcon from "../play/pixel/primitives/PixelIcon";
 import { labelText } from "../play/pixel/primitives/pixel";
 import InteractiveWordmark from "./InteractiveWordmark";
 import SortStrip from "./SortStrip";
+import { HEADER_H } from "./SiteHeader";
+import { ditherReveal } from "./ditherReveal";
 import SplitWords from "./SplitWords";
 import registryApi from "../../algorithms/algorithmsRegistryApi";
 
@@ -20,13 +22,18 @@ const TOTAL = registryApi.registry.data.reduce(
 
 gsap.registerPlugin(useGSAP);
 
+/* Exactly one screen: it starts below the fixed header (not under it, not
+   a header's height further down) and the strip of bars sits on the
+   bottom edge, so the call to action is always above the fold. */
 const Section = styled.section`
     position: relative;
     display: grid;
     grid-template-rows: auto auto 1fr auto;
-    gap: clamp(2.4rem, 4vh, 4.8rem);
-    min-height: 100svh;
-    padding: 10.4rem clamp(1.6rem, 3vw, 3.2rem) 0;
+    gap: clamp(1.6rem, 3.5vh, 4.8rem);
+    height: 100svh;
+    min-height: 56rem;
+    padding: calc(${HEADER_H} + clamp(1.2rem, 3vh, 3.2rem))
+        clamp(1.6rem, 3vw, 3.2rem) 0;
     overflow: hidden;
     background-image: radial-gradient(var(--line) 1px, transparent 1px);
     background-size: 16px 16px;
@@ -53,6 +60,7 @@ const Copy = styled.div`
     display: grid;
     gap: 2.4rem;
     align-items: end;
+    align-self: center;
 
     @media (min-width: 960px) {
         grid-template-columns: minmax(0, 7fr) minmax(0, 4fr);
@@ -113,29 +121,22 @@ function Hero(): JSX.Element {
     const rootRef = useRef<HTMLElement | null>(null);
     const ready = useFx((fx) => fx.introDone);
 
-    // Words step up out of their masks, then the supporting copy arrives.
+    // The headline dithers in word by word, then the supporting copy.
     useGSAP(
         () => {
             if (!ready) return;
             const mm = gsap.matchMedia();
             mm.add("(prefers-reduced-motion: no-preference)", () => {
-                gsap.timeline({ defaults: { ease: "steps(6)" } })
-                    .from("[data-reveal='hero'] [data-word]", {
-                        yPercent: 110,
-                        duration: 0.5,
-                        stagger: 0.06,
-                    })
-                    .from(
-                        "[data-hero-fade]",
-                        {
-                            opacity: 0,
-                            y: 12,
-                            duration: 0.4,
-                            ease: "steps(4)",
-                            stagger: 0.06,
-                        },
-                        "-=0.2"
-                    );
+                const root = rootRef.current;
+                if (!root) return;
+                const words = root.querySelectorAll(
+                    "[data-reveal='hero'] [data-word]"
+                );
+                ditherReveal(words, { stagger: 0.07, duration: 280 });
+                ditherReveal(root.querySelectorAll("[data-hero-fade]"), {
+                    stagger: 0.07,
+                    delay: words.length * 0.07 + 0.1,
+                });
             });
         },
         { scope: rootRef, dependencies: [ready] }

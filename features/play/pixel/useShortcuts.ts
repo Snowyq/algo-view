@@ -9,6 +9,7 @@ import {
     startAnimation,
     stopAnimation,
     toggleSidebar,
+    setEditorOpen,
 } from "../playSlice";
 import { regenerateInput } from "../categories";
 import { getFx, setFx } from "./fx/fxStore";
@@ -82,6 +83,11 @@ function useShortcuts(): void {
                 const { stepWorkerReady, canvasWorkerLoadingCount } = play.ui;
                 if (!stepWorkerReady || canvasWorkerLoadingCount > 0) return;
                 dispatch(regenerateInput(play));
+                return;
+            }
+            if (key === "e" || key === "E") {
+                event.preventDefault();
+                dispatch(setEditorOpen(!store.getState().play.ui.editorOpen));
                 return;
             }
             if (key === "i" || key === "I") {

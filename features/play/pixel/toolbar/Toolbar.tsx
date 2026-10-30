@@ -1,9 +1,14 @@
-import Link from "next/link";
+import Link from "../fx/TransitionLink";
 import { JSX, useRef, useState } from "react";
 import { useDispatch, useSelector, useStore } from "react-redux";
 import styled from "styled-components";
 import type { AppDispatch, RootState } from "../../../../store";
-import { getSidebarOpen, toggleSidebar } from "../../playSlice";
+import {
+    getEditorOpen,
+    getSidebarOpen,
+    setEditorOpen,
+    toggleSidebar,
+} from "../../playSlice";
 import { setFx } from "../fx/fxStore";
 import { pixelBurst } from "../fx/pixelBurst";
 import PixelButton from "../primitives/PixelButton";
@@ -93,6 +98,7 @@ function Toolbar(): JSX.Element {
     const dispatch = useDispatch<AppDispatch>();
     const store = useStore<RootState>();
     const detailsOpen = useSelector<RootState, boolean>(getSidebarOpen);
+    const editorOpen = useSelector<RootState, boolean>(getEditorOpen);
     const [copied, setCopied] = useState<boolean>(false);
     const shareRef = useRef<HTMLSpanElement | null>(null);
     const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -145,6 +151,22 @@ function Toolbar(): JSX.Element {
                         <Label>{copied ? "Copied" : "Share"}</Label>
                     </PixelButton>
                 </span>
+                <PixelTooltip
+                    label="Draw or type your own data · E"
+                    side="bottom"
+                >
+                    <PixelButton
+                        type="button"
+                        $variant="ghost"
+                        aria-label="Edit data"
+                        aria-keyshortcuts="E"
+                        aria-pressed={editorOpen}
+                        onClick={() => dispatch(setEditorOpen(!editorOpen))}
+                    >
+                        <PixelIcon name="edit" scale={2} />
+                        <Label>Edit data</Label>
+                    </PixelButton>
+                </PixelTooltip>
                 <Desktop>
                     <PixelButton
                         type="button"

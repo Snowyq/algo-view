@@ -42,6 +42,21 @@ const Line = styled.span`
     }
 `;
 
+/* The current step sits over an invisible copy of the widest number it can
+   reach, so its width never changes while playing and never pushes the
+   progress bar sideways. */
+const Slot = styled.span`
+    display: inline-grid;
+    justify-items: end;
+
+    & > * {
+        grid-area: 1 / 1;
+    }
+    & > [data-ghost] {
+        visibility: hidden;
+    }
+`;
+
 const Digits = styled.span`
     display: inline-flex;
     font-family: var(--f-display);
@@ -95,7 +110,14 @@ const StepCounter = memo(function StepCounter(): JSX.Element {
         >
             <small>Step</small>
             <Line>
-                <StepDigits value={has ? value : 0} />
+                <Slot>
+                    <Digits data-ghost aria-hidden="true">
+                        {format
+                            .format(Math.max(0, maxStep))
+                            .replace(/\d/g, "8")}
+                    </Digits>
+                    <StepDigits value={has ? value : 0} />
+                </Slot>
                 <i>/</i>
                 <StepDigits value={Math.max(0, maxStep)} dim />
             </Line>

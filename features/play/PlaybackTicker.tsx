@@ -1,6 +1,7 @@
 import { JSX, useEffect, useRef } from "react";
 import { useDispatch, useSelector, useStore } from "react-redux";
 import useRateLimit from "../../hooks/useRateLimit";
+import { getBreakpoints, subscribeBreakpoints } from "./breakpoints";
 import useWorker from "../../hooks/useWorker";
 import { AppDispatch, RootState } from "../../store";
 import { SharedBufferAPI } from "../../utils/sharedBufferAPI";
@@ -51,6 +52,27 @@ function PlaybackTicker(): JSX.Element | null {
     };
 
     const limitedChangeStep = useRateLimit(updateStep, 50);
+
+    // Breakpoints: the clock gets the steps to stop on, and reports a stop.
+    useEffect(() => {
+        if (!worker) return;
+        const send = (): void =>
+            worker.postMessage({
+                type: "breakpoints",
+                payload: { steps: getBreakpoints().steps },
+            });
+        send();
+        return subscribeBreakpoints(send);
+    }, [worker]);
+
+    useEffect((): void => {
+        onMessageType("break", (payload) => {
+            const at = (payload as { step?: number } | undefined)?.step;
+            if (typeof at !== "number") return;
+            dispatch(changeStep({ value: at, trigger: "break" }));
+            dispatch(stopAnimation());
+        });
+    }, [onMessageType, dispatch]);
 
     // limited stepIndex update in UI
     useEffect((): void => {

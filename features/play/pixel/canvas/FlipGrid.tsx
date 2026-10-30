@@ -1,5 +1,3 @@
-import gsap from "gsap";
-import { Flip } from "gsap/Flip";
 import {
     Component,
     createRef,
@@ -8,17 +6,13 @@ import {
 } from "react";
 import styled from "styled-components";
 import { PLAY_LAYOUT_BREAKPOINT } from "../../../../constants/breakpoints";
+import { ditherIn } from "../fx/dither";
 import { pixelWipe } from "../fx/pixelWipe";
-
-gsap.registerPlugin(Flip);
 
 /* Spacing in CSS px; PanelGrid needs the same numbers to do the maths. */
 export const GRID_GAP = 20;
 export const GRID_PAD = 24;
 export const GRID_GAP_SMALL = 12;
-
-/* Panels glide into freed space on a stepped ease: motion in pixel frames. */
-const MOVE = { duration: 0.42, ease: "steps(9)" };
 
 /* Columns come from panelColumns (see PanelGrid); rows always share the
    stage height, so the stage never scrolls. */
@@ -56,7 +50,7 @@ export function revealPanels(elements: Element[], stagger = 0): void {
                 mode: "reveal",
                 color: "--bg",
                 block: 16,
-                duration: 420,
+                duration: 280,
                 frames: 8,
             });
         };
@@ -66,36 +60,41 @@ export function revealPanels(elements: Element[], stagger = 0): void {
 }
 
 /*
- * getSnapshotBeforeUpdate is the one React API that runs after render but
- * before the DOM changes, which is exactly when FLIP needs to measure.
+ * Layout changes (a panel added, closed, or the column count) do not slide
+ * panels across the stage: the ones that stay dither in at their new slot
+ * and new ones build up from blocks. getSnapshotBeforeUpdate records which
+ * panels were there before the DOM changes.
  */
 class FlipGrid extends Component<FlipGridProps> {
     gridRef = createRef<HTMLDivElement>();
 
-    getSnapshotBeforeUpdate(prevProps: FlipGridProps): Flip.FlipState | null {
+    getSnapshotBeforeUpdate(prevProps: FlipGridProps): Set<string> | null {
         const grid = this.gridRef.current;
         if (!grid || this.props.reduced) return null;
         if (prevProps.flipKey === this.props.flipKey) return null;
-        return Flip.getState(grid.children);
+        return new Set(
+            Array.from(
+                grid.children,
+                (el) => (el as HTMLElement).dataset.flipId ?? ""
+            )
+        );
     }
 
     componentDidUpdate(
         _prevProps: FlipGridProps,
         _prevState: unknown,
-        snapshot: Flip.FlipState | null
+        before: Set<string> | null
     ): void {
         const grid = this.gridRef.current;
-        if (!grid || !snapshot) return;
-        Flip.from(snapshot, {
-            targets: grid.children,
-            ...MOVE,
-            onEnter: (elements) => revealPanels(elements),
+        if (!grid || !before) return;
+        const entering: Element[] = [];
+        Array.from(grid.children).forEach((el) => {
+            const host = el as HTMLElement;
+            if (host.dataset.exiting === "true") return;
+            if (before.has(host.dataset.flipId ?? "")) ditherIn(host);
+            else entering.push(el);
         });
-    }
-
-    componentWillUnmount(): void {
-        const grid = this.gridRef.current;
-        if (grid) gsap.killTweensOf(grid.children);
+        revealPanels(entering);
     }
 
     render(): ReactNode {

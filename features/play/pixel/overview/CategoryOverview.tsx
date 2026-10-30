@@ -18,7 +18,8 @@ import {
 } from "../../playSlice";
 import PixelButton from "../primitives/PixelButton";
 import PixelIcon from "../primitives/PixelIcon";
-import { labelText, pixelFrame } from "../primitives/pixel";
+import { labelText, pixelCorners, pixelFrame } from "../primitives/pixel";
+import PixelSprite from "../sprites/PixelSprite";
 
 /*
  * The playground's front door and its category picker: every family on
@@ -41,12 +42,15 @@ const Overlay = styled.section`
     bottom: 0;
     z-index: 55;
     overflow-y: auto;
+    /* Room for the scrollbar is always kept, so its appearing never
+       shifts the content sideways. */
+    scrollbar-gutter: stable;
     overscroll-behavior: contain;
     padding: 4rem clamp(1.6rem, 4vw, 4.8rem) 6.4rem;
     background-color: var(--bg);
     background-image: radial-gradient(var(--line) 1px, transparent 1px);
     background-size: 16px 16px;
-    animation: px-drop-in 180ms steps(4) both;
+    animation: px-dither-in 180ms steps(4) both;
 `;
 
 const Head = styled.header`
@@ -58,6 +62,9 @@ const Head = styled.header`
     margin: 0 auto 3.2rem;
 
     p {
+        display: flex;
+        align-items: flex-end;
+        gap: 1rem;
         ${labelText};
         color: var(--accent);
         margin-bottom: 1.2rem;
@@ -73,7 +80,12 @@ const Title = styled.h1`
     color: var(--fg);
 `;
 
+/* Cards dither in one after another when the overview opens. */
 const Grid = styled.ul`
+    & > li {
+        animation: px-dither-in 220ms both;
+    }
+
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(min(100%, 27rem), 1fr));
     gap: 1.6rem;
@@ -96,7 +108,6 @@ const Card = styled.button`
     color: var(--fg-2);
     text-align: left;
     ${pixelFrame("var(--line)")};
-    transition: transform 120ms steps(2);
 
     canvas {
         image-rendering: pixelated;
@@ -130,11 +141,8 @@ const Card = styled.button`
     &[aria-current="true"] {
         ${pixelFrame("var(--accent)")};
     }
+    ${pixelCorners()};
     @media (hover: hover) {
-        &:hover {
-            transform: translateY(-4px);
-            ${pixelFrame("var(--fg-3)")};
-        }
         &:hover [data-go] {
             opacity: 1;
         }
@@ -294,6 +302,7 @@ function CategoryOverview(): JSX.Element | null {
             <Head>
                 <div>
                     <p>
+                        <PixelSprite animal="cat" state="sit" scale={2} />
                         {CATEGORIES.length} families · {total} algorithms
                     </p>
                     <Title id="overview-title">
@@ -312,7 +321,7 @@ function CategoryOverview(): JSX.Element | null {
                 )}
             </Head>
             <Grid>
-                {CATEGORIES.map((def) => {
+                {CATEGORIES.map((def, index) => {
                     const preview =
                         CATEGORY_PREVIEW[
                             def.id as keyof typeof CATEGORY_PREVIEW
@@ -326,7 +335,10 @@ function CategoryOverview(): JSX.Element | null {
                     const cols = preview.motif[0].length;
                     const rows = preview.motif.length;
                     return (
-                        <li key={def.id}>
+                        <li
+                            key={def.id}
+                            style={{ animationDelay: `${index * 35}ms` }}
+                        >
                             <Card
                                 type="button"
                                 aria-current={def.id === current || undefined}
