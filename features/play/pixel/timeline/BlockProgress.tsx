@@ -20,6 +20,7 @@ import {
     getMaxStep,
     getStep,
     startAnimation,
+    stopAnimation,
     type ActiveAlgorithm,
 } from "../../playSlice";
 import { setFx } from "../fx/fxStore";
@@ -131,8 +132,20 @@ const Markers = styled.div`
     }
 `;
 
-const Marker = styled.span<{ $row: number; $done: boolean }>`
+/* The check dithers in the moment its algorithm finishes. */
+const Tick = styled.span`
+    display: inline-flex;
+    animation: px-dither-in 200ms both;
+`;
+
+/* A finish point: click it to jump to where that algorithm ends. */
+const Marker = styled.button<{ $row: number; $done: boolean }>`
     position: absolute;
+    padding: 0;
+    border: 0;
+    background: none;
+    pointer-events: auto;
+    cursor: pointer;
     top: ${({ $row }) => $row * 1.2}rem;
     display: inline-flex;
     align-items: center;
@@ -154,6 +167,16 @@ const Marker = styled.span<{ $row: number; $done: boolean }>`
     &[data-align="end"] {
         translate: -100% 0;
         flex-direction: row-reverse;
+    }
+    @media (hover: hover) {
+        &:hover {
+            color: var(--fg);
+        }
+        &:hover::before {
+            box-shadow:
+                -2px 0 0 currentColor,
+                2px 0 0 currentColor;
+        }
     }
 `;
 
@@ -280,6 +303,14 @@ function BlockProgress({ children, lead }: BlockProgressProps): JSX.Element {
         dispatch(changeStep({ value: map[event.key] }));
     };
 
+    // Click a finish point: pause there.
+    const jumpTo = (at: number): void => {
+        if (store.getState().play.animation.status === "playing") {
+            dispatch(stopAnimation());
+        }
+        dispatch(changeStep({ value: Math.round(at * safeMax) }));
+    };
+
     // Where each algorithm finishes; labels that would collide take the
     // second row, and when both rows are taken they share one label.
     const markers = useMemo<MarkerInfo[]>(() => {
@@ -352,9 +383,17 @@ function BlockProgress({ children, lead }: BlockProgressProps): JSX.Element {
                             $done={done}
                             data-align={marker.align}
                             style={{ left: `${marker.at * 100}%` }}
+                            type="button"
+                            aria-label={`Jump to where ${marker.name} finishes`}
+                            title="Jump here"
+                            onClick={() => jumpTo(marker.at)}
                         >
                             {marker.name}
-                            {done && <PixelIcon name="check" scale={1} />}
+                            {done && (
+                                <Tick aria-hidden="true">
+                                    <PixelIcon name="check" scale={1} />
+                                </Tick>
+                            )}
                         </Marker>
                     );
                 })}

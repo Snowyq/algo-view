@@ -1,6 +1,6 @@
 import { JSX } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import styled, { keyframes } from "styled-components";
+import styled from "styled-components";
 import type { AppDispatch, RootState } from "../../../../store";
 import { categoryOf } from "../../categories";
 import { MOTIF_COLORS } from "../../categoryPreview";
@@ -41,7 +41,7 @@ const Card = styled.div`
     margin: auto;
     text-align: center;
     pointer-events: auto;
-    animation: px-drop-in 260ms steps(6) both;
+    animation: px-dither-in 260ms steps(6) both;
 
     /* Phones: the way to start comes right after the heading. */
     @media (max-width: ${PLAY_LAYOUT_BREAKPOINT}), ${SHORT} {
@@ -59,11 +59,6 @@ const Card = styled.div`
     }
 `;
 
-const pop = keyframes`
-    from { transform: scale(0); }
-    to { transform: scale(1); }
-`;
-
 /* The category's motif: a tiny picture of what its canvas will draw,
    blocks popping in along the diagonal. */
 const Motif = styled.div`
@@ -77,7 +72,7 @@ const Motif = styled.div`
 
     i {
         box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.24);
-        animation: ${pop} 200ms steps(3) both;
+        animation: px-dither-in 220ms both;
     }
 `;
 

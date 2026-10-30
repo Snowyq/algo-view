@@ -1,13 +1,14 @@
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import Link from "next/link";
+import Link from "../play/pixel/fx/TransitionLink";
 import { JSX, useRef } from "react";
 import styled from "styled-components";
 import registryApi from "../../algorithms/algorithmsRegistryApi";
 import { CATEGORY_PREVIEW, MOTIF_COLORS } from "../play/categoryPreview";
 import PixelIcon from "../play/pixel/primitives/PixelIcon";
 import { labelText, pixelFrame } from "../play/pixel/primitives/pixel";
+import { ditherReveal, hideForReveal } from "./ditherReveal";
 import SplitWords from "./SplitWords";
 
 gsap.registerPlugin(ScrollTrigger, useGSAP);
@@ -98,7 +99,6 @@ const Tile = styled(Link)`
     background-color: var(--surface);
     color: var(--fg-2);
     ${pixelFrame("var(--line)")};
-    transition: transform 120ms steps(2);
 
     small {
         grid-column: 1 / -1;
@@ -145,8 +145,7 @@ const Tile = styled(Link)`
         padding: 0 1.6rem;
         background-color: var(--accent);
         color: var(--accent-ink);
-        clip-path: inset(100% 0 0 0);
-        transition: clip-path 180ms steps(5);
+        visibility: hidden;
     }
     [data-go] b {
         display: inline-flex;
@@ -177,17 +176,19 @@ const Tile = styled(Link)`
         }
     }
 
+    /* The promise of the click dithers in over the tile. */
     &:focus-visible [data-go] {
-        clip-path: inset(0 0 0 0);
+        visibility: visible;
+        animation: px-dither-in 200ms both;
     }
 
     @media (hover: hover) {
         &:hover {
-            transform: translateY(-4px);
             ${pixelFrame("var(--accent)")};
         }
         &:hover [data-go] {
-            clip-path: inset(0 0 0 0);
+            visibility: visible;
+            animation: px-dither-in 200ms both;
         }
         &:hover small b {
             opacity: 0;
@@ -270,22 +271,16 @@ function FamilyTiles(): JSX.Element {
 function AlgorithmRail(): JSX.Element {
     const rootRef = useRef<HTMLElement | null>(null);
 
-    // Tiles step in as the grid arrives, once.
+    // Tiles dither in as the grid arrives, once.
     useGSAP(
         () => {
             const mm = gsap.matchMedia();
             mm.add("(prefers-reduced-motion: no-preference)", () => {
+                hideForReveal(gsap.utils.toArray("[data-tile]"));
                 ScrollTrigger.batch("[data-tile]", {
                     start: "top 92%",
                     once: true,
-                    onEnter: (batch) =>
-                        gsap.from(batch, {
-                            y: 16,
-                            opacity: 0,
-                            duration: 0.3,
-                            ease: "steps(4)",
-                            stagger: 0.04,
-                        }),
+                    onEnter: (batch) => ditherReveal(batch, { stagger: 0.04 }),
                 });
             });
         },

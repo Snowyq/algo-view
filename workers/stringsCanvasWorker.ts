@@ -1,6 +1,6 @@
 import type { StringAlgorithm } from "../algorithms/strings/StringAlgorithm";
 import type { TextInput } from "../utils/textInput";
-import { createCanvasWorker } from "./runtime/canvasWorker";
+import { createCanvasWorker, type DescribeApi } from "./runtime/canvasWorker";
 
 /*
  * Pattern matching: the text as a row of letter tiles, the pattern
@@ -18,8 +18,36 @@ const PAD = 16;
 const MIN_CELL = 24;
 const MAX_CELL = 44;
 
+/* "text[12] 'r' vs pattern[2] 'r': match". */
+function describeStrings({
+    algorithm,
+    input,
+    step,
+}: DescribeApi<TextInput, StringAlgorithm>): string {
+    const state = algorithm.getStateByStepsIndex(step);
+    const show = (ch: string | undefined): string =>
+        ch === " " ? "·" : (ch ?? "");
+    switch (state.type) {
+        case "initial":
+            return `Find "${input.pattern}" in a ${input.text.length}-letter text.`;
+        case "compare":
+            return `text[${state.i}] '${show(input.text[state.i])}' vs pattern[${state.j}] '${show(input.pattern[state.j])}': ${state.ok ? "match" : "mismatch"}.`;
+        case "shift":
+            return `Slide the pattern to position ${state.shift}.`;
+        case "match":
+            return `Occurrence at position ${state.i}.`;
+        case "table":
+            return `${state.tableLabel || "table"}[${state.tableIndex}] = ${state.tableValue}.`;
+        case "finish":
+            return `${state.matches.length} occurrence${state.matches.length === 1 ? "" : "s"} found.`;
+        default:
+            return "";
+    }
+}
+
 createCanvasWorker<TextInput, StringAlgorithm>({
     category: "strings",
+    describe: describeStrings,
     draw: ({ ctx, width, height, color, algorithm, input, step, reveal }) => {
         const state = algorithm.getStateByStepsIndex(step);
         const { text, pattern } = input;

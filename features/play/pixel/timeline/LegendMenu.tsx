@@ -24,7 +24,7 @@ const Panel = styled.div`
     padding: 1.2rem 1.4rem 1.4rem;
     background-color: var(--surface);
     ${pixelFrame("var(--line-2)")};
-    animation: px-menu-in 140ms steps(4) both;
+    animation: px-dither-in 140ms steps(4) both;
 `;
 
 const Title = styled.p`

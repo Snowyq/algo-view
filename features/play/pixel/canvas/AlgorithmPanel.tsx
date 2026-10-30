@@ -22,12 +22,15 @@ import {
     getWindowAlgorithmId,
     openAlgorithmWindow,
 } from "../../playSlice";
+import { clearBreakpoints } from "../../breakpoints";
 import { categoryOf } from "../../categories";
 import type { StepInfo } from "../../stepLegend";
 import {
     publishGaveUp,
     publishStepInfo,
+    publishCaption,
     publishStepMetrics,
+    useCaption,
     useCodeSnapshot,
 } from "../../stepInfoStore";
 import PixelButton from "../primitives/PixelButton";
@@ -48,6 +51,13 @@ const COMPACT_MAX_HEIGHT = 200;
 const isCompactPanel = (_w: number, height: number): boolean =>
     height < COMPACT_MAX_HEIGHT;
 
+/* Counters need room to be readable: below this, the picture wins and
+   the numbers wait in focus mode (click the panel). */
+const STATS_MIN_HEIGHT = 320;
+const STATS_MIN_WIDTH = 300;
+const isTooSmallForStats = (width: number, height: number): boolean =>
+    height < STATS_MIN_HEIGHT || width < STATS_MIN_WIDTH;
+
 const ants = keyframes`
     to {
         background-position: 8px 0, -8px 100%, 0 -8px, 100% 8px;
@@ -57,12 +67,6 @@ const ants = keyframes`
 const sweep = keyframes`
     from { transform: translateY(-100%); }
     to { transform: translateY(100%); }
-`;
-
-const shift = keyframes`
-    0% { transform: translateX(4px); }
-    50% { transform: translateX(-4px); }
-    100% { transform: translateX(0); }
 `;
 
 const Frame = styled.article<{ $observed: boolean }>`
@@ -142,7 +146,7 @@ const Frame = styled.article<{ $observed: boolean }>`
     }
 
     &[data-glitch="true"] [data-chart] {
-        animation: ${shift} 120ms steps(2) both;
+        animation: px-dither-in 180ms both;
     }
 
     &[data-compact="true"] {
@@ -200,7 +204,7 @@ const DoneBadge = styled.span`
     color: var(--bg);
     ${labelText};
     font-size: 1rem;
-    animation: px-drop-in 160ms steps(4) both;
+    animation: px-dither-in 160ms steps(4) both;
 
     &[data-gave-up] {
         background-color: var(--danger);
@@ -210,31 +214,6 @@ const DoneBadge = styled.span`
 const Egg = styled.span`
     display: inline-flex;
     color: var(--fg-3);
-`;
-
-const Meta = styled.dl`
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.4rem 1.2rem;
-    ${labelText};
-    font-size: 1rem;
-    color: var(--fg-4);
-
-    div {
-        display: flex;
-        gap: 0.5rem;
-    }
-    dd {
-        font-family: var(--f-mono);
-        font-size: 1.15rem;
-        text-transform: none;
-        letter-spacing: 0;
-        color: var(--fg-2);
-    }
-
-    [data-compact="true"] & {
-        display: none;
-    }
 `;
 
 const Actions = styled.div`
@@ -247,6 +226,45 @@ const Actions = styled.div`
         display: none;
     }
 `;
+
+/* What is happening right now, in words. Polite to screen readers only
+   while paused: during playback it would talk non-stop. */
+const CaptionLine = styled.p`
+    flex: 0 0 auto;
+    min-height: 2.2rem;
+    margin-top: 0.8rem;
+    padding-top: 0.6rem;
+    border-top: 2px dashed var(--line);
+    font-family: var(--f-mono);
+    font-size: 1.25rem;
+    line-height: 1.4;
+    color: var(--fg-2);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    [data-compact="true"] & {
+        margin-top: 0.4rem;
+        padding-top: 0.3rem;
+        font-size: 1.1rem;
+    }
+`;
+
+function StepCaption({ id }: { id: string }): JSX.Element {
+    const caption = useCaption(id);
+    const playing = useSelector<RootState, boolean>(
+        (state) => state.play.animation.status === "playing"
+    );
+    return (
+        <CaptionLine
+            aria-live={playing ? "off" : "polite"}
+            title={caption}
+            data-no-observe
+        >
+            {caption || "\u00a0"}
+        </CaptionLine>
+    );
+}
 
 const MetricsBar = styled.div`
     margin-top: 1.2rem;
@@ -330,11 +348,18 @@ function AlgorithmPanel({ registry }: AlgorithmPanelProps): JSX.Element {
 
     const frameRef = useRef<HTMLElement | null>(null);
     const compact = useSizeFlag(frameRef, isCompactPanel);
+    const statsHidden = useSizeFlag(frameRef, isTooSmallForStats);
     // Step position feeds every code view of this algorithm.
     const handleStepInfo = useCallback(
-        (info: StepInfo | null) => publishStepInfo(id, info),
+        (info: StepInfo | null) => {
+            publishStepInfo(id, info);
+            publishCaption(id, info?.caption ?? "");
+        },
         [id]
     );
+
+    // A closed panel takes its breakpoints with it.
+    useEffect(() => () => clearBreakpoints(id), [id]);
     const handleStepMetrics = useCallback(
         (metrics: AlgorithmMetrics | null) => {
             publishStepMetrics(id, metrics);
@@ -416,16 +441,6 @@ function AlgorithmPanel({ registry }: AlgorithmPanelProps): JSX.Element {
                             </DoneBadge>
                         )}
                     </TitleLine>
-                    <Meta aria-label={`${meta.name} properties`}>
-                        <div>
-                            <dt>avg</dt>
-                            <dd>{meta.timeComplexity}</dd>
-                        </div>
-                        <div>
-                            <dt>worst</dt>
-                            <dd>{meta.worstCase}</dd>
-                        </div>
-                    </Meta>
                 </TitleBlock>
                 <Actions hidden={focused}>
                     {def.panelAction && (
@@ -478,7 +493,7 @@ function AlgorithmPanel({ registry }: AlgorithmPanelProps): JSX.Element {
                     </PixelTooltip>
                 </Actions>
             </Header>
-            {hasInput && (
+            {hasInput && !statsHidden && (
                 <MetricsBar data-metrics-bar>
                     <PixelMetrics id={id} totals={totals} />
                 </MetricsBar>
@@ -491,6 +506,7 @@ function AlgorithmPanel({ registry }: AlgorithmPanelProps): JSX.Element {
                     onStepInfoUpdate={handleStepInfo}
                 />
             </ChartCell>
+            <StepCaption id={id} />
         </Frame>
     );
 }

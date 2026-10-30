@@ -1,7 +1,5 @@
 "use client";
 
-import { useGSAP } from "@gsap/react";
-import gsap from "gsap";
 import { JSX, useCallback, useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import styled from "styled-components";
@@ -26,6 +24,7 @@ import {
 import PanelGrid from "./canvas/PanelGrid";
 import { getFx, setFx, useFx } from "./fx/fxStore";
 import { setRainbow } from "./fx/rainbow";
+import { arrive } from "./fx/pageTransition";
 import useKonami from "./fx/useKonami";
 import ShortcutsOverlay from "./help/ShortcutsOverlay";
 import CategoryOverview from "./overview/CategoryOverview";
@@ -36,8 +35,6 @@ import { parseShareUrl } from "./share/shareState";
 import Timeline from "./timeline/Timeline";
 import Toolbar from "./toolbar/Toolbar";
 import useShortcuts from "./useShortcuts";
-
-gsap.registerPlugin(useGSAP);
 
 /* Font tokens resolve here, under the route layout that loads the faces. */
 const Scope = styled.div`
@@ -70,6 +67,17 @@ const Shell = styled.div<{ $inspector: boolean }>`
 
     & > [data-toolbar] {
         grid-area: toolbar;
+    }
+
+    /* Entrance, once the intro has gone: the chrome dithers in, then the
+       algorithm rows one after another. */
+    &[data-enter="true"] > [data-toolbar],
+    &[data-enter="true"] > [data-dock] {
+        animation: px-dither-in 260ms both;
+    }
+    &[data-enter="true"] [data-lib-row] {
+        animation: px-dither-in 200ms both;
+        animation-delay: calc(120ms + var(--i, 0) * 25ms);
     }
     & > [data-library] {
         grid-area: library;
@@ -149,6 +157,8 @@ function PlayShell(): JSX.Element {
     const shellRef = useRef<HTMLDivElement | null>(null);
 
     useSharedSetup();
+    // Arrived through the pixel page transition: clear its cover.
+    useEffect(() => arrive(), []);
     useShortcuts();
 
     // Small screens start with the Inspector closed (it is a bottom sheet).
@@ -173,33 +183,14 @@ function PlayShell(): JSX.Element {
     }, []);
     useKonami(unlock);
 
-    // Entrance: chrome steps in from the edges once the intro has gone.
-    useGSAP(
-        () => {
-            if (!introDone || reduced) return;
-            const tl = gsap.timeline({ defaults: { ease: "steps(5)" } });
-            tl.from("[data-toolbar]", { yPercent: -100, duration: 0.25 })
-                .from("[data-dock]", { yPercent: 100, duration: 0.3 }, "<")
-                .from(
-                    "[data-lib-row]",
-                    {
-                        x: -16,
-                        opacity: 0,
-                        duration: 0.18,
-                        ease: "steps(3)",
-                        stagger: 0.025,
-                        clearProps: "all",
-                    },
-                    "-=0.1"
-                );
-        },
-        { scope: shellRef, dependencies: [introDone, reduced] }
-    );
-
     return (
         <Scope>
             <PlayTheme />
-            <Shell ref={shellRef} $inspector={inspectorOpen}>
+            <Shell
+                ref={shellRef}
+                $inspector={inspectorOpen}
+                data-enter={introDone && !reduced}
+            >
                 <Toolbar />
                 <Library />
                 <main id="main">

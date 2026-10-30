@@ -95,7 +95,7 @@ const Panel = styled.div`
     background-color: var(--surface);
     ${pixelFrame("var(--line-2)")};
     transform-origin: bottom right;
-    animation: px-menu-in 140ms steps(4) both;
+    animation: px-dither-in 140ms steps(4) both;
     /* Never taller than the room above the dock; scroll if it must. */
     max-height: calc(100svh - var(--toolbar-h) - 12rem);
     overflow-y: auto;

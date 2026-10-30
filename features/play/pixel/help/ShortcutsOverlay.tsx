@@ -33,7 +33,7 @@ const Dialog = styled.div`
     padding: 2.4rem 2.8rem 2.8rem;
     background-color: var(--surface);
     ${pixelFrame("var(--line-2)")};
-    animation: px-drop-in 180ms steps(5) both;
+    animation: px-dither-in 180ms steps(5) both;
 `;
 
 const Close = styled.div`
@@ -150,7 +150,8 @@ const SHORTCUTS: Array<{ keys: string[]; what: string }> = [
     { keys: ["Home", "End"], what: "First / last step" },
     { keys: ["1", "…", "9"], what: "Speed, cheetah to sloth" },
     { keys: ["G"], what: "New input, same shape" },
-    { keys: ["I"], what: "Open / close details (input, code, about)" },
+    { keys: ["I"], what: "Open / close the input" },
+    { keys: ["E"], what: "Edit the data: draw or type your own" },
     { keys: ["?"], what: "This screen" },
 ];
 

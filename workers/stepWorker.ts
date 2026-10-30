@@ -16,6 +16,7 @@ type StepWorkerChangePayload = {
 };
 
 type StepWorkerMessage =
+    | { type: "breakpoints"; payload: { steps: number[] } }
     | { type: "tab"; payload: string | number }
     | { type: "start"; payload: StepWorkerStartPayload }
     | { type: "config"; payload: StepWorkerConfigPayload }
@@ -43,6 +44,17 @@ let timerId: ReturnType<typeof setInterval> | null = null;
 let lastTime = 0;
 let carry = 0;
 let channel: BroadcastChannel | undefined;
+/** Steps to pause on (breakpoints), ascending. */
+let stops: number[] = [];
+
+/* First stop in (from, to], or -1. */
+function firstStop(from: number, to: number): number {
+    for (const stop of stops) {
+        if (stop > to) return -1;
+        if (stop > from) return stop;
+    }
+    return -1;
+}
 
 function readStep(): number {
     return sharedIndex ? Atomics.load(sharedIndex, 0) : localStep;
@@ -82,7 +94,17 @@ function tick(): void {
     if (steps < 1) return;
     carry -= steps * interval;
 
-    const next = Math.min(maxStep, readStep() + steps);
+    const from = readStep();
+    const next = Math.min(maxStep, from + steps);
+    // A breakpoint between here and there: stop on it exactly.
+    const stop = firstStop(from, next);
+    if (stop >= 0) {
+        writeStep(stop);
+        publish(stop);
+        stopTimer();
+        postMessage({ type: "break", payload: { step: stop } });
+        return;
+    }
     writeStep(next);
     publish(next);
     if (next >= maxStep) stopTimer();
@@ -90,6 +112,11 @@ function tick(): void {
 
 onmessage = (event: MessageEvent<StepWorkerMessage>): void => {
     const message = event.data;
+
+    if (message.type === "breakpoints") {
+        stops = [...message.payload.steps].sort((a, b) => a - b);
+        return;
+    }
 
     if (message.type === "tab") {
         channel = new BroadcastChannel(`animation-tick:${message.payload}`);

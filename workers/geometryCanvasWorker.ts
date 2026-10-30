@@ -4,7 +4,7 @@ import {
     POINT_INSIDE,
 } from "../algorithms/geometry/HullAlgorithm";
 import type { PointsInput } from "../utils/pointsInput";
-import { createCanvasWorker } from "./runtime/canvasWorker";
+import { createCanvasWorker, type DescribeApi } from "./runtime/canvasWorker";
 import { pixelLine } from "./runtime/pixelLine";
 
 /*
@@ -16,8 +16,37 @@ import { pixelLine } from "./runtime/pixelLine";
 
 const PAD = 20;
 
+/* "Is P7 left of P2 → P5? no: drop it". */
+function describeGeometry({
+    algorithm,
+    input,
+    step,
+}: DescribeApi<PointsInput, HullAlgorithm>): string {
+    const s = algorithm.getStateByStepsIndex(step);
+    const p = (i: number): string => `P${i}`;
+    switch (s.type) {
+        case "initial":
+            return `Wrap ${input.points.length} points in the smallest convex fence.`;
+        case "sort":
+            return "Sort the points first.";
+        case "test":
+            return `Is ${p(s.c)} left of ${p(s.a)} → ${p(s.b)}? ${s.ok ? "yes" : "no"}.`;
+        case "push":
+            return `${p(s.a)} joins the hull.`;
+        case "pop":
+            return `${p(s.a)} makes a right turn: it is inside, drop it.`;
+        case "edge":
+            return `Best edge so far: ${p(s.a)} → ${p(s.b)}.`;
+        case "finish":
+            return `Done: ${algorithm.getMetrics().hull?.count ?? 0} points on the hull.`;
+        default:
+            return "";
+    }
+}
+
 createCanvasWorker<PointsInput, HullAlgorithm>({
     category: "geometry",
+    describe: describeGeometry,
     draw: ({ ctx, width, height, color, algorithm, input, step, reveal }) => {
         const state = algorithm.getStateByStepsIndex(step);
         const { points } = input;

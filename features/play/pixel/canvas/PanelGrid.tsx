@@ -18,8 +18,10 @@ import {
     clearObservedAlgorithm,
     closeAlgorithm,
     getActiveCategory,
+    getEditorOpen,
     getEvicted,
     getParkedAlgorithms,
+    getSidebarOpen,
     getVisibleAlgorithms,
     getWindowAlgorithmId,
     setPanelCapacity,
@@ -30,6 +32,8 @@ import { useFx } from "../fx/fxStore";
 import { pixelWipe } from "../fx/pixelWipe";
 import AlgorithmPanel from "./AlgorithmPanel";
 import AlgorithmWindow from "./AlgorithmWindow";
+import ResultsCard from "./ResultsCard";
+import DataEditor from "../editor/DataEditor";
 import EmptyStage from "./EmptyStage";
 import { categoryOf } from "../../categories";
 import FlipGrid, {
@@ -126,7 +130,7 @@ const Note = styled.div`
     font-size: 1rem;
     pointer-events: auto;
     ${pixelFrame("var(--line-2)")};
-    animation: px-drop-in 160ms steps(4) both;
+    animation: px-dither-in 160ms steps(4) both;
 
     span {
         overflow: hidden;
@@ -180,6 +184,7 @@ function PanelGrid(): JSX.Element {
     const windowId = useSelector<RootState, string | null>(
         getWindowAlgorithmId
     );
+    const editorOpen = useSelector<RootState, boolean>(getEditorOpen);
     const category = useSelector<RootState, string>(getActiveCategory);
     const introDone = useFx((fx) => fx.introDone);
     const { size } = useWindowSize();
@@ -202,10 +207,24 @@ function PanelGrid(): JSX.Element {
     );
     const visibleKey = visible.map((algo) => algo.id).join("|");
     const [prevKey, setPrevKey] = useState<string>(visibleKey);
-    if (visibleKey !== prevKey) {
+    const [prevCategory, setPrevCategory] = useState<string>(category);
+    if (category !== prevCategory) {
+        // A new category replaces the stage outright: the old panels have
+        // nothing to draw here, and keeping them as exiting slots would
+        // count them in the column maths (e.g. 2×2, then 3×1 once they go).
+        setPrevCategory(category);
+        setPrevKey(visibleKey);
+        setSlots(visible.map((algo) => ({ algo, exiting: false })));
+    } else if (visibleKey !== prevKey) {
         setPrevKey(visibleKey);
         setSlots((prev) => mergeSlots(prev, visible));
     }
+    // Drop exit bookkeeping for slots that were replaced without an exit.
+    useLayoutEffect(() => {
+        exitCovers.current.forEach((cancel) => cancel());
+        exitCovers.current.clear();
+        exitingIds.current.clear();
+    }, [category]);
 
     // First appearance waits for the intro, then dissolves in panel by panel.
     useEffect(() => {
@@ -264,6 +283,33 @@ function PanelGrid(): JSX.Element {
             });
         });
     }, [slots, reduced]);
+
+    // Some layout changes resize panels in one step: opening or closing
+    // Input, entering or leaving the details window, switching the
+    // algorithm in it (that panel comes back from display: none at a new
+    // size). The panels on show rebuild from blocks at their new size,
+    // which also covers the frame where a canvas still holds the drawing
+    // from its old size. Layout effect, so the cover is up before paint.
+    // Under the layout breakpoint Input is a sheet over the stage and the
+    // panels don't change with it.
+    const inspectorOpen = useSelector<RootState, boolean>(getSidebarOpen);
+    const prevLayout = useRef({ inspectorOpen, windowId });
+    useLayoutEffect(() => {
+        const prev = prevLayout.current;
+        prevLayout.current = { inspectorOpen, windowId };
+        const changed =
+            prev.windowId !== windowId ||
+            (prev.inspectorOpen !== inspectorOpen && !isMobile);
+        if (!changed || reduced) return;
+        const grid = stageRef.current?.querySelector("[data-panel-grid]");
+        if (!grid) return;
+        revealPanels(
+            Array.from(grid.children).filter((el) => {
+                const { exiting, covered } = (el as HTMLElement).dataset;
+                return exiting !== "true" && covered !== "true";
+            })
+        );
+    }, [inspectorOpen, windowId, reduced, isMobile]);
 
     const handleStageClick = (event: MouseEvent<HTMLDivElement>): void => {
         if ((event.target as HTMLElement).closest("[data-flip-id]")) return;
@@ -359,6 +405,8 @@ function PanelGrid(): JSX.Element {
             </FlipGrid>
             {slots.length === 0 && <EmptyStage />}
             <AlgorithmWindow />
+            {!focused && !editorOpen && <ResultsCard />}
+            {editorOpen && <DataEditor />}
             {!focused && (parked.length > 0 || shownEvicted > 0) && (
                 <Notes role="status">
                     {evicted && shownEvicted === evicted.seq && (

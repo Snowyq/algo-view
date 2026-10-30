@@ -1,6 +1,6 @@
 import type { FindAlgorithm } from "../algorithms/find/FindAlgorithm";
 import type { FindInput } from "../utils/findInput";
-import { createCanvasWorker } from "./runtime/canvasWorker";
+import { createCanvasWorker, type DescribeApi } from "./runtime/canvasWorker";
 
 /*
  * Array search: sorted bars, the target as a dashed line at its height,
@@ -10,8 +10,46 @@ import { createCanvasWorker } from "./runtime/canvasWorker";
 
 const LIT = "rgba(255, 255, 255, 0.28)";
 
+/* "a[17] = 42 vs target 63: too small, go right". */
+function describeFind({
+    algorithm,
+    input,
+    step,
+}: DescribeApi<FindInput, FindAlgorithm>): string {
+    const info = algorithm.getStepByIndex(step);
+    if (!info) return "";
+    const target = input.target;
+    switch (info.type) {
+        case "initial":
+            return `Look for ${target} among ${input.values.length} sorted values.`;
+        case "probe": {
+            const v = input.values[info.probe];
+            const verdict =
+                v === target
+                    ? "that's it"
+                    : v < target
+                      ? "too small, look right"
+                      : "too big, look left";
+            return `a[${info.probe}] = ${v} vs ${target}: ${verdict}.`;
+        }
+        case "narrow":
+            return `Only a[${info.lo}…${info.hi}] can still hold ${target}.`;
+        case "found":
+            return `Found ${target} at index ${info.found}.`;
+        case "miss":
+            return `${target} is not in the array.`;
+        case "finish":
+            return info.found >= 0
+                ? `Found at index ${info.found}.`
+                : "Gave up.";
+        default:
+            return "";
+    }
+}
+
 createCanvasWorker<FindInput, FindAlgorithm>({
     category: "find",
+    describe: describeFind,
     draw: ({ ctx, width, height, color, algorithm, input, step, reveal }) => {
         const state = algorithm.getStateByStepsIndex(step);
         const { values, target } = input;

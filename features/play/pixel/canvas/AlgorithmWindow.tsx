@@ -9,14 +9,18 @@ import {
     closeAlgorithmWindow,
     getActiveAlgorithms,
     getActiveCategory,
+    getVisibleAlgorithms,
     getWindowAlgorithmId,
+    openAlgorithmWindow,
     type ActiveAlgorithm,
 } from "../../playSlice";
 import PixelButton from "../primitives/PixelButton";
 import { FOCUS_SHARE, FOCUS_SIDE_SHARE } from "./focusShare";
+import { GROWTH_LADDERS } from "../../../../algorithms/growth";
+import GrowthChart from "./GrowthChart";
 import PixelMetrics from "./PixelMetrics";
 import PixelIcon from "../primitives/PixelIcon";
-import { labelText, pixelFrame } from "../primitives/pixel";
+import { labelText, pixelCorners, pixelFrame } from "../primitives/pixel";
 
 /*
  * Focus mode, at every size: clicking a panel (or its "i") hides the other
@@ -43,11 +47,12 @@ const Window = styled.section`
     z-index: 5;
     display: flex;
     flex-direction: column;
+    min-width: 0;
     margin: 0 1.2rem 1.2rem;
     background-color: var(--bg-2);
     cursor: auto;
     ${pixelFrame("var(--line-2)")};
-    animation: px-drop-in 160ms steps(4) both;
+    animation: px-dither-in 160ms steps(4) both;
 `;
 
 /* The algorithm's counters, shared by both tabs. */
@@ -60,6 +65,50 @@ const Head = styled.header`
     align-items: center;
     gap: 0.8rem;
     padding: 1rem 0.8rem 0 1.6rem;
+`;
+
+/* The other open algorithms, one tap away (the panel beside follows). */
+/* Wraps onto further rows rather than scrolling sideways, so every open
+   algorithm stays visible however many there are. */
+const Switcher = styled.div`
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    padding: 0.8rem 1.2rem 0;
+`;
+
+const Chip = styled.button`
+    position: relative;
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 100%;
+    height: 3.2rem;
+    padding: 0 1rem;
+
+    span {
+        display: block;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+    }
+    margin: var(--b);
+    border: 0;
+    background-color: var(--bg);
+    color: var(--fg-3);
+    font-size: 1.4rem;
+    ${pixelFrame("var(--line)")};
+
+    &[aria-pressed="true"] {
+        color: var(--accent-ink);
+        background-color: var(--accent);
+        ${pixelFrame("var(--accent-2)")};
+    }
+    @media (hover: hover) {
+        &:hover:not([aria-pressed="true"]) {
+            color: var(--fg);
+        }
+    }
+    ${pixelCorners("var(--fg-3)", "&:hover, &:focus-visible", "0.8rem")};
 `;
 
 const Hint = styled.kbd`
@@ -99,11 +148,16 @@ const Tab = styled.button`
     }
 `;
 
+/* Switching tabs dithers the new content in (rare, so it may show). */
 const Body = styled.div`
     flex: 1;
     min-height: 0;
+    animation: px-dither-in 160ms both;
     padding: 1.2rem;
     overflow-y: auto;
+    /* Room for the scrollbar is always kept, so its appearing never
+       shifts the content sideways. */
+    scrollbar-gutter: stable;
     overscroll-behavior: contain;
 
     &[data-fill="true"] {
@@ -111,13 +165,16 @@ const Body = styled.div`
     }
 `;
 
-type WindowTab = "code" | "about";
+type WindowTab = "code" | "about" | "growth";
 
 function AlgorithmWindow(): JSX.Element | null {
     const dispatch = useDispatch<AppDispatch>();
     const id = useSelector<RootState, string | null>(getWindowAlgorithmId);
     const category = useSelector<RootState, string>(getActiveCategory);
     const [tab, setTab] = useState<WindowTab>("code");
+    const open = useSelector<RootState, ActiveAlgorithm[]>(
+        getVisibleAlgorithms
+    );
     const totals = useSelector<RootState, ActiveAlgorithm["metrics"] | null>(
         (state) =>
             getActiveAlgorithms(state).find((algo) => algo.id === id)
@@ -139,7 +196,15 @@ function AlgorithmWindow(): JSX.Element | null {
         : undefined;
     if (!registry) return null;
     const { instructions } = registry.algorithm;
-    const shown: WindowTab = instructions ? tab : "about";
+    const hasGrowth = Boolean(
+        GROWTH_LADDERS[category as keyof typeof GROWTH_LADDERS]
+    );
+    const shown: WindowTab =
+        tab === "code" && !instructions
+            ? "about"
+            : tab === "growth" && !hasGrowth
+              ? "about"
+              : tab;
 
     return (
         <Window
@@ -161,6 +226,23 @@ function AlgorithmWindow(): JSX.Element | null {
                 </PixelButton>
                 <Hint>Esc</Hint>
             </Head>
+            {open.length > 1 && (
+                <Switcher role="group" aria-label="Show another open algorithm">
+                    {open.map((algo) => (
+                        <Chip
+                            key={algo.id}
+                            type="button"
+                            aria-pressed={algo.id === registry.id}
+                            onClick={() =>
+                                dispatch(openAlgorithmWindow(algo.id))
+                            }
+                            title={algo.info.name}
+                        >
+                            <span>{algo.info.name}</span>
+                        </Chip>
+                    ))}
+                </Switcher>
+            )}
             {totals && (
                 <Stats>
                     <PixelMetrics id={registry.id} totals={totals} />
@@ -187,8 +269,20 @@ function AlgorithmWindow(): JSX.Element | null {
                 >
                     About
                 </Tab>
+                {hasGrowth && (
+                    <Tab
+                        type="button"
+                        role="tab"
+                        id={`${baseId}-growth`}
+                        aria-selected={shown === "growth"}
+                        onClick={() => setTab("growth")}
+                    >
+                        Growth
+                    </Tab>
+                )}
             </Tabs>
             <Body
+                key={`${registry.id}-${shown}`}
                 role="tabpanel"
                 aria-labelledby={`${baseId}-${shown}`}
                 data-fill={shown === "code"}
@@ -200,6 +294,8 @@ function AlgorithmWindow(): JSX.Element | null {
                         name={registry.meta.name}
                         instructions={instructions}
                     />
+                ) : shown === "growth" ? (
+                    <GrowthChart algorithmId={registry.id} />
                 ) : (
                     <AlgorithmInfo registry={registry} showTitle={false} />
                 )}

@@ -1,4 +1,5 @@
 import { createGlobalStyle } from "styled-components";
+import { ditherKeyframes } from "./dither";
 
 /*
  * Design system: "Bitmap Instrument" (/play only).
@@ -7,6 +8,8 @@ import { createGlobalStyle } from "styled-components";
  * `:root:root` outranks the site-wide tokens while this route is mounted.
  */
 const PlayTheme = createGlobalStyle`
+${ditherKeyframes}
+
 :root:root {
   color-scheme: dark;
 
@@ -141,16 +144,6 @@ canvas, svg[data-pixel] {
 
 @keyframes px-blink {
   50% { opacity: 0; }
-}
-
-@keyframes px-menu-in {
-  from { clip-path: inset(100% 0 0 0); }
-  to { clip-path: inset(0 0 0 0); }
-}
-
-@keyframes px-drop-in {
-  from { clip-path: inset(0 0 100% 0); }
-  to { clip-path: inset(0 0 0 0); }
 }
 
 @media (prefers-reduced-motion: reduce) {

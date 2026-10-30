@@ -1,4 +1,12 @@
-import { JSX, useCallback, useEffect, useId, useState } from "react";
+import {
+    JSX,
+    useCallback,
+    useEffect,
+    useId,
+    useRef,
+    useState,
+    type CSSProperties,
+} from "react";
 import { useDispatch, useSelector } from "react-redux";
 import styled from "styled-components";
 import {
@@ -24,7 +32,8 @@ import {
 import { categoryOf } from "../../categories";
 import PixelIcon from "../primitives/PixelIcon";
 import { NARROW, SHORT, TINY } from "../media";
-import { labelText, pixelFrame } from "../primitives/pixel";
+import { labelText, pixelCorners, pixelFrame } from "../primitives/pixel";
+import AlgorithmPeek from "./AlgorithmPeek";
 
 /*
  * Category and algorithm choice. Wide screens: a sidebar, "1 Category"
@@ -106,6 +115,9 @@ const Scroll = styled.div`
     flex: 1;
     min-height: 0;
     overflow-y: auto;
+    /* Room for the scrollbar is always kept, so its appearing never
+       shifts the content sideways. */
+    scrollbar-gutter: stable;
     overscroll-behavior: contain;
     padding: 0.4rem 1.2rem 1.6rem;
 `;
@@ -182,7 +194,7 @@ const Row = styled.button`
         bottom: 0.8rem;
         width: 4px;
         background-color: var(--accent);
-        animation: px-drop-in 120ms steps(3) both;
+        animation: px-dither-in 120ms steps(3) both;
     }
 
     &:disabled {
@@ -193,6 +205,8 @@ const Row = styled.button`
     &:active:not(:disabled) [data-box] {
         transform: translateY(2px);
     }
+
+    ${pixelCorners("var(--fg-3)", "&:hover, &:focus-visible", "0.8rem")};
 
     @media (pointer: coarse) {
         min-height: 4.8rem;
@@ -283,6 +297,7 @@ const Picker = styled.div`
 `;
 
 const Select = styled.button`
+    position: relative;
     display: flex;
     align-items: center;
     gap: 0.8rem;
@@ -318,11 +333,7 @@ const Select = styled.button`
     &[aria-expanded="true"] [data-chevron] {
         transform: rotate(180deg);
     }
-    @media (hover: hover) {
-        &:hover:not([aria-expanded="true"]) {
-            ${pixelFrame("var(--fg-3)")};
-        }
-    }
+    ${pixelCorners("var(--accent)", "&:hover, &:focus-visible", "0.8rem")};
 
     /* The count never gives way; names do. */
     [data-count] {
@@ -359,21 +370,15 @@ const Sheet = styled.div`
     z-index: 60;
     max-height: min(70svh, 56rem);
     overflow-y: auto;
+    /* Room for the scrollbar is always kept, so its appearing never
+       shifts the content sideways. */
+    scrollbar-gutter: stable;
     overscroll-behavior: contain;
     padding: 1.6rem 1.2rem 2rem;
     background-color: var(--bg-2);
     border-bottom: var(--b) solid var(--line-2);
     box-shadow: 0 1.2rem 0 rgba(21, 18, 15, 0.6);
-    animation: px-sheet-down 160ms steps(4) both;
-
-    @keyframes px-sheet-down {
-        from {
-            clip-path: inset(0 0 100% 0);
-        }
-        to {
-            clip-path: inset(0 0 0 0);
-        }
-    }
+    animation: px-dither-in 160ms steps(4) both;
 
     /* Two columns of algorithms when the sheet is wide enough. */
     ul {
@@ -422,10 +427,15 @@ function useLibrary(): {
     const capacity = useSelector<RootState, number>(getPanelCapacity);
     const full = active.length >= capacity;
 
-    const renderRow = (algo: RegistryAlgorithm): JSX.Element => {
+    const renderRow = (algo: RegistryAlgorithm, index: number): JSX.Element => {
         const selected = active.some((item) => item.id === algo.id);
         return (
-            <li key={algo.id} data-lib-row>
+            <li
+                key={algo.id}
+                data-lib-row
+                data-id={algo.id}
+                style={{ "--i": index } as CSSProperties}
+            >
                 <Row
                     type="button"
                     aria-pressed={selected}
@@ -496,13 +506,54 @@ function useLibrary(): {
 
 /* Wide screens: the algorithm checklist as a sidebar (category is in the
    toolbar at every width). */
-function Library(): JSX.Element | null {
-    const { active, algorithms, algorithmGroups, clearButton, capacity, full } =
-        useLibrary();
-    const collapsed = useWidthBelow(LIBRARY_MIN_WIDTH);
-    if (collapsed) return null;
+function Library(): JSX.Element {
+    const {
+        active,
+        algorithms,
+        category,
+        algorithmGroups,
+        clearButton,
+        capacity,
+        full,
+    } = useLibrary();
+    // Visibility is CSS only (see Dock): deciding it in JS too made the
+    // sidebar flicker or vanish while a resize crossed the breakpoint.
+    const dockRef = useRef<HTMLElement | null>(null);
+    const [peek, setPeek] = useState<{
+        id: string;
+        top: number;
+        left: number;
+    } | null>(null);
+    const peekTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // Hover (mouse) or keyboard focus on a row: a short delay, then the
+    // card; leaving hides it at once.
+    const showPeek = (target: EventTarget | null, delay: number): void => {
+        const row = (target as HTMLElement | null)?.closest<HTMLElement>(
+            "[data-lib-row]"
+        );
+        if (peekTimer.current) clearTimeout(peekTimer.current);
+        if (!row?.dataset.id) {
+            setPeek(null);
+            return;
+        }
+        const id = row.dataset.id;
+        const top = row.getBoundingClientRect().top;
+        const left = (dockRef.current?.getBoundingClientRect().right ?? 0) + 8;
+        peekTimer.current = setTimeout(() => setPeek({ id, top, left }), delay);
+    };
+    const hidePeek = (): void => {
+        if (peekTimer.current) clearTimeout(peekTimer.current);
+        setPeek(null);
+    };
+    useEffect(() => hidePeek, []);
+
+    const peeked = peek
+        ? algorithms.find((algo) => algo.id === peek.id)
+        : undefined;
+
     return (
-        <Dock aria-label="Algorithms" data-library>
+        <Dock aria-label="Algorithms" data-library ref={dockRef}>
             <Section>
                 <Heading>
                     Algorithms
@@ -518,7 +569,28 @@ function Library(): JSX.Element | null {
                     oldest.
                 </Note>
             )}
-            <Scroll>{algorithmGroups}</Scroll>
+            <Scroll
+                key={category}
+                onPointerOver={(event) =>
+                    event.pointerType === "mouse" && showPeek(event.target, 280)
+                }
+                onPointerLeave={hidePeek}
+                onFocus={(event) => showPeek(event.target, 0)}
+                onBlur={hidePeek}
+                onScroll={hidePeek}
+            >
+                {algorithmGroups}
+            </Scroll>
+            {peeked && peek && (
+                <AlgorithmPeek
+                    algorithm={peeked}
+                    left={peek.left}
+                    top={Math.max(
+                        64,
+                        Math.min(peek.top, window.innerHeight - 280)
+                    )}
+                />
+            )}
         </Dock>
     );
 }

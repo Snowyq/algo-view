@@ -51,3 +51,40 @@ export function snapToBlocks(length: number, block = 6, gap = 2): number {
     const unit = block + gap;
     return Math.round(length / unit) * unit;
 }
+
+/*
+ * Hover: four pixel corner brackets dither in around the element instead
+ * of it jumping up. Needs `position: relative` on the host and a free
+ * ::after; `active` is the selector that shows them.
+ */
+export const pixelCorners = (
+    color = "var(--accent)",
+    active = "&:hover, &:focus-visible",
+    size = "1.2rem"
+) => {
+    const bar = (position: string, w: string, h: string): string =>
+        `linear-gradient(${color}, ${color}) ${position} / ${w} ${h} no-repeat`;
+    const t = "var(--b)";
+    return css`
+        &::after {
+            content: "";
+            position: absolute;
+            inset: calc(var(--b) * -3);
+            pointer-events: none;
+            opacity: 0;
+            background:
+                ${bar("top left", size, t)}, ${bar("top left", t, size)},
+                ${bar("top right", size, t)}, ${bar("top right", t, size)},
+                ${bar("bottom left", size, t)}, ${bar("bottom left", t, size)},
+                ${bar("bottom right", size, t)}, ${bar("bottom right", t, size)};
+        }
+        @media (hover: hover) {
+            ${active} {
+                &::after {
+                    opacity: 1;
+                    animation: px-dither-in 160ms both;
+                }
+            }
+        }
+    `;
+};

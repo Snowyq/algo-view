@@ -7,7 +7,7 @@ import {
     NODE_FRONTIER,
 } from "../algorithms/graph/GraphAlgorithm";
 import { type GraphInput, nodeName } from "../utils/graphInput";
-import { createCanvasWorker } from "./runtime/canvasWorker";
+import { createCanvasWorker, type DescribeApi } from "./runtime/canvasWorker";
 import { pixelLine } from "./runtime/pixelLine";
 
 /*
@@ -20,8 +20,51 @@ import { pixelLine } from "./runtime/pixelLine";
 const DARK = "#1d110b";
 const PAD = 30;
 
+/* "Relax D–H (7): H is now 12 away". */
+function describeGraph({
+    algorithm,
+    input,
+    step,
+}: DescribeApi<GraphInput, GraphAlgorithm>): string {
+    const state = algorithm.getStateByStepsIndex(step);
+    const edge = state.edge >= 0 ? input.edges[state.edge] : undefined;
+    const pair = edge
+        ? `${nodeName(edge.a)}–${nodeName(edge.b)} (${edge.w})`
+        : "";
+    const node = state.node >= 0 ? nodeName(state.node) : "";
+    const label =
+        state.node >= 0 && !Number.isNaN(state.labels[state.node])
+            ? state.labels[state.node]
+            : null;
+    switch (state.type) {
+        case "initial":
+            return `${input.nodes.length} nodes, ${input.edges.length} edges. Start at A.`;
+        case "check":
+            return `Consider edge ${pair}.`;
+        case "take":
+            return edge
+                ? `Take ${pair}${node ? `: ${node} joins` : ""}.`
+                : node
+                  ? `Settle ${node}.`
+                  : "All distances are final.";
+        case "reject":
+            return `Drop ${pair}: not useful.`;
+        case "relax":
+            return `Shorter way to ${node} via ${pair}${label !== null ? `: ${label}` : ""}.`;
+        case "visit":
+            return node
+                ? `Visit ${node}${label !== null ? ` (${label})` : ""}.`
+                : "Next round.";
+        case "finish":
+            return `Done: tree weight ${algorithm.getMetrics().weight?.count ?? 0}.`;
+        default:
+            return "";
+    }
+}
+
 createCanvasWorker<GraphInput, GraphAlgorithm>({
     category: "graph",
+    describe: describeGraph,
     draw: ({ ctx, width, height, color, algorithm, input, step, reveal }) => {
         const state = algorithm.getStateByStepsIndex(step);
         const { nodes, edges } = input;

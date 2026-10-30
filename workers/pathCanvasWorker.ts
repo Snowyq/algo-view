@@ -5,7 +5,7 @@ import {
     type PathAlgorithm,
 } from "../algorithms/path/PathAlgorithm";
 import { CELL_MUD, CELL_WALL, gridLayout, type GridInput } from "../utils/grid";
-import { createCanvasWorker } from "./runtime/canvasWorker";
+import { createCanvasWorker, type DescribeApi } from "./runtime/canvasWorker";
 
 /*
  * Path finding: the grid in square tiles. Walls and mud are the map,
@@ -15,8 +15,41 @@ import { createCanvasWorker } from "./runtime/canvasWorker";
 
 const LIT = "rgba(255, 255, 255, 0.28)";
 
+const at = (cell: number, cols: number): string =>
+    `(${cell % cols}, ${Math.floor(cell / cols)})`;
+
+/* "Expand (4, 7): 31 visited, 12 waiting". */
+function describePath({
+    algorithm,
+    input,
+    step,
+}: DescribeApi<GridInput, PathAlgorithm>): string {
+    const info = algorithm.getStepByIndex(step);
+    if (!info) return "";
+    const m = info.metrics;
+    const visited = m.visited?.count ?? 0;
+    const open = m.open?.count ?? 0;
+    switch (info.type) {
+        case "initial":
+            return `Start at ${at(input.start, input.cols)}, end at ${at(input.end, input.cols)}.`;
+        case "visit":
+            return `Expand ${at(info.current, input.cols)}: ${visited} visited, ${open} waiting.`;
+        case "frontier":
+            return `Queue ${info.cells.length} new neighbour${info.cells.length === 1 ? "" : "s"}.`;
+        case "path":
+            return `Trace the route back: ${m.path?.count ?? info.cells.length} cells, cost ${m.cost?.count ?? "?"}.`;
+        case "finish":
+            return m.noPath?.count || m.gaveUp?.count
+                ? "No route found."
+                : `Done: ${visited} cells visited.`;
+        default:
+            return "";
+    }
+}
+
 createCanvasWorker<GridInput, PathAlgorithm>({
     category: "path",
+    describe: describePath,
     draw: ({ ctx, width, height, color, algorithm, input, step, reveal }) => {
         const { overlay, current } = algorithm.getStateByStepsIndex(step);
         const { cols, rows, cells, start, end } = input;

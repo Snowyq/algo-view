@@ -1,4 +1,5 @@
 import { useGSAP } from "@gsap/react";
+import { ditherReveal, hideForReveal } from "./ditherReveal";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { JSX, useRef, useState } from "react";
@@ -198,29 +199,26 @@ function BuildLog(): JSX.Element {
                 root.querySelectorAll<HTMLElement>(
                     "[data-reveal='log']"
                 ).forEach((el) => {
-                    gsap.from(el.querySelectorAll("[data-word]"), {
-                        yPercent: 100,
-                        duration: 0.32,
-                        ease: "steps(4)",
-                        stagger: 0.012,
-                        scrollTrigger: {
-                            trigger: el,
-                            start: "top 82%",
-                            once: true,
-                        },
+                    const words = el.querySelectorAll("[data-word]");
+                    hideForReveal(words);
+                    ScrollTrigger.create({
+                        trigger: el,
+                        start: "top 82%",
+                        once: true,
+                        onEnter: () =>
+                            ditherReveal(words, {
+                                stagger: 0.012,
+                                duration: 200,
+                            }),
                     });
                 });
-                gsap.from(root.querySelectorAll("[data-chip]"), {
-                    y: 12,
-                    opacity: 0,
-                    duration: 0.3,
-                    ease: "steps(3)",
-                    stagger: 0.05,
-                    scrollTrigger: {
-                        trigger: "[data-chips]",
-                        start: "top 85%",
-                        once: true,
-                    },
+                const chips = root.querySelectorAll("[data-chip]");
+                hideForReveal(chips);
+                ScrollTrigger.create({
+                    trigger: "[data-chips]",
+                    start: "top 85%",
+                    once: true,
+                    onEnter: () => ditherReveal(chips, { stagger: 0.05 }),
                 });
             });
         },

@@ -15,9 +15,13 @@ import type {
  *   resize            → CSS size + device pixel ratio
  *   render-algorithm  → run the algorithm on the input (all steps, here)
  *
+ *   line-steps {ids}  → every step that runs one of these code lines
+ *                       (breakpoints)
+ *
  * and posts back mounted / canvas-initialized / render-start /
- * render-done {stepsLength, metrics} / step-metrics. A category worker
- * only provides draw(); this file never changes for a new category.
+ * render-done {stepsLength, metrics} / step-metrics {…, caption} /
+ * line-steps {steps}. A category worker provides draw() and, optionally,
+ * describe() for the plain-language caption of a step.
  */
 
 type Colors = Record<string, string>;
@@ -40,10 +44,18 @@ export type DrawApi<TInput, TAlgo extends StepAlgorithm> = {
     reveal: number;
 };
 
+export type DescribeApi<TInput, TAlgo extends StepAlgorithm> = {
+    algorithm: TAlgo;
+    input: TInput;
+    step: number;
+};
+
 type WorkerSpec<TInput, TAlgo extends StepAlgorithm> = {
     /** Registry category the algorithm classes live in. */
     category: string;
     draw: (api: DrawApi<TInput, TAlgo>) => void;
+    /** One short sentence: what the algorithm does on this step. */
+    describe?: (api: DescribeApi<TInput, TAlgo>) => string;
     revealMs?: number;
 };
 
@@ -53,6 +65,7 @@ const METRICS_INTERVAL_MS = 50;
 export function createCanvasWorker<TInput, TAlgo extends StepAlgorithm>({
     category,
     draw,
+    describe,
     revealMs = 360,
 }: WorkerSpec<TInput, TAlgo>): void {
     let AlgorithmClass: AlgorithmConstructor | null = null;
@@ -96,15 +109,28 @@ export function createCanvasWorker<TInput, TAlgo extends StepAlgorithm>({
 
     let lastMetricsAt = 0;
     let metricsTimer: ReturnType<typeof setTimeout> | null = null;
-    let pendingMetrics: unknown = null;
+    let pendingMetrics: Record<string, unknown> | null = null;
     const flushMetrics = (): void => {
         metricsTimer = null;
         if (pendingMetrics === null) return;
         lastMetricsAt = performance.now();
+        // The caption is only worked out for steps that actually get sent
+        // (20 a second at most), never for every drawn frame.
+        if (describe && algorithm && input !== null) {
+            try {
+                pendingMetrics.caption = describe({
+                    algorithm,
+                    input,
+                    step: pendingMetrics.stepIndex as number,
+                });
+            } catch {
+                pendingMetrics.caption = "";
+            }
+        }
         postMessage({ type: "step-metrics", payload: pendingMetrics });
         pendingMetrics = null;
     };
-    const postStepMetrics = (payload: unknown): void => {
+    const postStepMetrics = (payload: Record<string, unknown>): void => {
         pendingMetrics = payload;
         const wait = METRICS_INTERVAL_MS - (performance.now() - lastMetricsAt);
         if (wait <= 0) flushMetrics();
@@ -216,7 +242,24 @@ export function createCanvasWorker<TInput, TAlgo extends StepAlgorithm>({
                     devicePixelRatio,
                 } = (payload ?? {}) as Rect & { devicePixelRatio?: number };
                 if (resize(w, h, devicePixelRatio)) render(current);
-                postMessage({ type: "resized" });
+                // The size actually drawn, so the page can show the bitmap
+                // at it instead of stretching the old one meanwhile.
+                postMessage({ type: "resized", payload: { width, height } });
+                return;
+            }
+            case "line-steps": {
+                const { ids } = (payload ?? {}) as { ids?: string[] };
+                const wanted = new Set(ids ?? []);
+                const steps: number[] = [];
+                if (algorithm && wanted.size > 0) {
+                    const total = algorithm.getStepsLength();
+                    for (let i = 0; i < total; i += 1) {
+                        const lines =
+                            algorithm.getStepByIndex(i)?.instructionId;
+                        if (lines?.some((id) => wanted.has(id))) steps.push(i);
+                    }
+                }
+                postMessage({ type: "line-steps", payload: { steps } });
                 return;
             }
             case "render-algorithm": {
@@ -231,6 +274,7 @@ export function createCanvasWorker<TInput, TAlgo extends StepAlgorithm>({
                 }
                 if (!AlgorithmClass) return postError("Algorithm not mounted");
                 resize(p.rect.width, p.rect.height, p.devicePixelRatio);
+                postMessage({ type: "resized", payload: { width, height } });
                 postMessage({ type: "render-start" });
                 input = p.input;
                 options = p.options ?? {};

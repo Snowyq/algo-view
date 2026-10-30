@@ -110,6 +110,9 @@ export type InputSlot<TConfig, TValue> = {
 
 type CategoryData<TConfig, TValue> = {
     worker: WorkerName;
+    /** Playback speed (ms per step) on switching to this category, so a
+        run of 20 steps and one of 4,000 both take roughly 8–15 seconds. */
+    defaultSpeed: number;
     defaultConfig: () => TConfig;
     generate: (config: TConfig) => TValue;
     share: {
@@ -130,6 +133,7 @@ const seedOf = (params: URLSearchParams): number | null => {
 
 const sort: CategoryData<InputConfig, number[]> = {
     worker: "sortCanvasWorker.ts",
+    defaultSpeed: 5,
     defaultConfig: () => ({
         preset: "random",
         length: SORT_DEFAULT_INPUT_LENGTH,
@@ -173,6 +177,7 @@ const sort: CategoryData<InputConfig, number[]> = {
 
 const path: CategoryData<GridConfig, GridInput> = {
     worker: "pathCanvasWorker.ts",
+    defaultSpeed: 16,
     defaultConfig: () => ({
         preset: "maze",
         cols: GRID_DEFAULT_COLS,
@@ -222,6 +227,7 @@ const path: CategoryData<GridConfig, GridInput> = {
 
 const find: CategoryData<FindConfig, FindInput> = {
     worker: "findCanvasWorker.ts",
+    defaultSpeed: 500,
     defaultConfig: () => ({
         preset: "even",
         length: FIND_DEFAULT_LENGTH,
@@ -258,6 +264,7 @@ export type MazeConfig = { cols: number; seed: number };
 
 const maze: CategoryData<MazeConfig, MazeInput> = {
     worker: "mazeCanvasWorker.ts",
+    defaultSpeed: 5,
     defaultConfig: () => ({ cols: GRID_DEFAULT_COLS, seed: randomSeed() }),
     generate: ({ cols, seed }) => ({ ...gridSize(cols), seed }),
     share: {
@@ -276,6 +283,7 @@ const maze: CategoryData<MazeConfig, MazeInput> = {
 
 const dp: CategoryData<DpConfig, DpInput> = {
     worker: "dpCanvasWorker.ts",
+    defaultSpeed: 100,
     defaultConfig: () => ({
         preset: "words",
         size: DP_DEFAULT_SIZE,
@@ -306,6 +314,7 @@ const dp: CategoryData<DpConfig, DpInput> = {
 
 const strings: CategoryData<TextConfig, TextInput> = {
     worker: "stringsCanvasWorker.ts",
+    defaultSpeed: 50,
     defaultConfig: () => ({
         preset: "prose",
         length: TEXT_DEFAULT_LENGTH,
@@ -336,6 +345,7 @@ const strings: CategoryData<TextConfig, TextInput> = {
 
 const graph: CategoryData<GraphConfig, GraphInput> = {
     worker: "graphCanvasWorker.ts",
+    defaultSpeed: 100,
     defaultConfig: () => ({
         preset: "sparse",
         nodes: GRAPH_DEFAULT_NODES,
@@ -366,6 +376,7 @@ const graph: CategoryData<GraphConfig, GraphInput> = {
 
 const tree: CategoryData<TreeConfig, TreeInput> = {
     worker: "treeCanvasWorker.ts",
+    defaultSpeed: 100,
     defaultConfig: () => ({
         preset: "random",
         count: TREE_DEFAULT_COUNT,
@@ -396,6 +407,7 @@ const tree: CategoryData<TreeConfig, TreeInput> = {
 
 const geometry: CategoryData<PointsConfig, PointsInput> = {
     worker: "geometryCanvasWorker.ts",
+    defaultSpeed: 50,
     defaultConfig: () => ({
         preset: "scatter",
         count: POINTS_DEFAULT,
@@ -426,6 +438,7 @@ const geometry: CategoryData<PointsConfig, PointsInput> = {
 
 const fill: CategoryData<FillConfig, FillInput> = {
     worker: "fillCanvasWorker.ts",
+    defaultSpeed: 16,
     defaultConfig: () => ({
         preset: "caves",
         cols: FILL_DEFAULT_COLS,
@@ -456,6 +469,7 @@ const fill: CategoryData<FillConfig, FillInput> = {
 
 const life: CategoryData<LifeConfig, LifeInput> = {
     worker: "lifeCanvasWorker.ts",
+    defaultSpeed: 100,
     defaultConfig: () => ({
         preset: "soup",
         cols: LIFE_DEFAULT_COLS,
