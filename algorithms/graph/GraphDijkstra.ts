@@ -9,8 +9,8 @@ import {
     NODE_FRONTIER,
 } from "./GraphAlgorithm";
 
-/* Settles nodes in order of distance from A; each settled node relaxes
-   its edges. Labels are the best known distances. */
+// Settles nodes in order of distance from A; each one relaxes its edges.
+// Labels are the best known distances.
 export class GraphDijkstra extends GraphAlgorithm {
     protected run(): void {
         const n = this.nodeCount;

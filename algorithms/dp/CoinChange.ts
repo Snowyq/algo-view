@@ -2,8 +2,8 @@ import type { DpInput } from "../../utils/dpInput";
 import type { AlgorithmInstructions } from "../types";
 import { DpAlgorithm, type DpTable } from "./DpAlgorithm";
 
-/* Fewest coins that add up to an amount, coins reusable. Greedy fails
-   with sets like {1, 3, 4} for 6; the table does not. */
+// Fewest coins for an amount, coins reusable. Greedy fails on {1, 3, 4}
+// for 6; the table does not.
 export class CoinChange extends DpAlgorithm {
     protected setup({ coins, amount }: DpInput): DpTable {
         return {

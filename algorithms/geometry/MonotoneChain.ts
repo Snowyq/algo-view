@@ -1,8 +1,8 @@
 import type { AlgorithmInstructions } from "../types";
-import { HullAlgorithm, POINT_HULL, POINT_INSIDE } from "./HullAlgorithm";
+import { HullAlgorithm } from "./HullAlgorithm";
 
-/* Andrew's algorithm: sort by x, build the lower hull left to right and
-   the upper hull right to left with the same right-turn rule. */
+// Andrew's algorithm: sort by x, build the lower hull left to right and
+// the upper hull right to left with the same right-turn rule.
 export class MonotoneChain extends HullAlgorithm {
     protected run(): number[] {
         const p = this.points;
@@ -13,28 +13,7 @@ export class MonotoneChain extends HullAlgorithm {
         const build = (sequence: number[], done: number[]): number[] => {
             const chain: number[] = [];
             for (const i of sequence) {
-                while (chain.length >= 2) {
-                    const turn = this.test(
-                        chain[chain.length - 2],
-                        chain[chain.length - 1],
-                        i,
-                        {
-                            instructionId: ["m2"],
-                        }
-                    );
-                    if (turn > 0) break;
-                    const dropped = chain.pop()!;
-                    if (!done.includes(dropped))
-                        this.mark(dropped, POINT_INSIDE);
-                    this.setChain([...done, ...chain]);
-                    this.emit("pop", dropped, -1, i, false, {
-                        instructionId: ["m3"],
-                    });
-                }
-                chain.push(i);
-                this.mark(i, POINT_HULL);
-                this.setChain([...done, ...chain]);
-                this.emit("push", i, -1, -1, true, { instructionId: ["m1"] });
+                this.pushTurningLeft(chain, i, done, ["m2", "m3", "m1"]);
             }
             return chain;
         };

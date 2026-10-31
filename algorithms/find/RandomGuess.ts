@@ -2,8 +2,8 @@ import { createRng } from "../../utils/randoms";
 import type { AlgorithmInstructions } from "../types";
 import { FindAlgorithm } from "./FindAlgorithm";
 
-/* Points at random indices until one is right. Has no idea when to stop
-   if the value is not there, so it eventually gives up. */
+// Probes random indices. Cannot tell when the value is missing,
+// so it gives up after a while.
 export class RandomGuess extends FindAlgorithm {
     search(): void {
         const n = this.values.length;

@@ -1,8 +1,7 @@
 import type { AlgorithmInstructions } from "../types";
 import { TreeAlgorithm } from "./TreeAlgorithm";
 
-/* Smaller keys go left, larger go right, new keys hang as leaves. Fast
-   on random input; sorted input makes it a linked list. */
+// Plain BST: fine on random input, a linked list on sorted input.
 export class BinarySearchTree extends TreeAlgorithm {
     protected insert(key: number): void {
         this.insertLeaf(key, 0, { instructionId: ["i"] });

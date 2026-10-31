@@ -2,9 +2,8 @@ import { createRng } from "../../utils/randoms";
 import type { AlgorithmInstructions } from "../types";
 import { DIRS4, FillAlgorithm } from "./FillAlgorithm";
 
-/* Picks a random cell from the frontier each time. Still fills exactly
-   the same region — order does not matter for correctness — but grows
-   like mould instead of a wave. */
+/* Paints a random cell from the frontier each time. Same region, but it
+   grows like mould instead of a wave. */
 export class RandomFill extends FillAlgorithm {
     protected run(): void {
         const rng = createRng(this.start + 1);
@@ -12,19 +11,13 @@ export class RandomFill extends FillAlgorithm {
         this.push(this.start);
         while (bag.length) {
             this.memory(bag.length);
+            // Swap-remove a random cell.
             const pick = Math.floor(rng() * bag.length);
             const cell = bag[pick];
             bag[pick] = bag[bag.length - 1];
             bag.pop();
             this.paint(cell);
-            const [x, y] = this.xy(cell);
-            for (const [dx, dy] of DIRS4) {
-                if (!this.open(x + dx, y + dy)) continue;
-                const next = this.at(x + dx, y + dy);
-                if (this.marks[next] !== 0) continue;
-                this.push(next);
-                bag.push(next);
-            }
+            bag.push(...this.pushNeighbours(cell, DIRS4));
             this.emit("fill", cell, { instructionId: ["r1"] });
         }
     }

@@ -1,46 +1,32 @@
-import { findClosest, insertSorted, removeSorted } from "../utils/arrays";
+import { findClosest, insertSorted } from "../utils/arrays";
 
-type CacheConfig = {
-    enableDynamic: boolean;
-    persistentSize: number;
-    dynamicSize: number;
-};
+const MAX_CACHE_SIZE = 100000;
 
-type CacheGroup<TState extends unknown[]> = {
+type CacheGroup<TState> = {
+    /** Sorted keys of every saved state. */
     index: number[];
-    dynamic: {
-        values: Record<number, TState>;
-        keys: number[];
-    };
-    persistent: {
-        values: Record<number, TState>;
-    };
-    config: CacheConfig;
+    values: Record<number, TState>;
 };
 
-type CacheStore<TState extends unknown[]> = {
+type CacheStore = {
     groups: string[];
-    [key: string]: CacheGroup<TState> | string[] | unknown;
+    [key: string]: unknown;
 };
 
-type CacheClosest<TState extends unknown[]> = {
+type CacheClosest<TState> = {
     key: number;
     item: TState;
 };
 
+/** Copies of a replayed state saved at chosen operation indices, per group. */
 export class CacheManager<
     TState extends unknown[] = number[],
     TMutation = unknown,
 > {
-    MAX_PERSISTENT_CACHE_SIZE: number = 100000;
-    MAX_DYNAMIC_CACHE_SIZE: number = 100;
-    DEFAULT_PERSISTENT_CACHE_SIZE: number = 100000;
-    DEFAULT_DYNAMIC_CACHE_SIZE: number = 30;
-    group: string | null = null;
-    cache: CacheStore<TState>;
+    cache: CacheStore;
 
-    constructor(cacheObject: CacheStore<TState>) {
-        this.cache = cacheObject;
+    constructor(cache: CacheStore) {
+        this.cache = cache;
     }
 
     private getGroup(group: string): CacheGroup<TState> | undefined {
@@ -56,99 +42,29 @@ export class CacheManager<
     initGroup(group: string): this {
         if (!this.hasGroup(group)) {
             this.cache.groups.push(group);
-            const nextGroup: CacheGroup<TState> = {
-                index: [],
-                dynamic: {
-                    values: {},
-                    keys: [],
-                },
-                persistent: {
-                    values: {},
-                },
-                config: {
-                    enableDynamic: true,
-                    persistentSize: this.DEFAULT_PERSISTENT_CACHE_SIZE,
-                    dynamicSize: this.DEFAULT_DYNAMIC_CACHE_SIZE,
-                },
-            };
-            this.cache[group] = nextGroup;
+            const empty: CacheGroup<TState> = { index: [], values: {} };
+            this.cache[group] = empty;
         }
         return this;
-    }
-
-    getStoredValuesInfo(group: string): number[] | undefined {
-        return this.getGroup(group)?.index;
-    }
-
-    getPersistentValues(group: string): Record<number, TState> | undefined {
-        return this.getGroup(group)?.persistent.values;
-    }
-
-    getDynamicValues(group: string): Record<number, TState> | undefined {
-        return this.getGroup(group)?.dynamic.values;
-    }
-
-    getDynamicKeys(group: string): number[] | undefined {
-        return this.getGroup(group)?.dynamic.keys;
-    }
-
-    addGroup(group: string): this {
-        if (!this.hasGroup(group)) this.initGroup(group);
-        return this;
-    }
-
-    has(group: string, key: number): boolean | undefined {
-        if (!this.hasGroup(group)) return undefined;
-        const dynamicValues = this.getDynamicValues(group);
-        const persistentValues = this.getPersistentValues(group);
-        if (!dynamicValues || !persistentValues) return undefined;
-        if (key in dynamicValues) return true;
-        if (key in persistentValues) return true;
-        return undefined;
     }
 
     get(group: string, key: number): TState | undefined {
-        if (!this.hasGroup(group)) return undefined;
-        const dynamicValues = this.getDynamicValues(group);
-        const persistentValues = this.getPersistentValues(group);
-        if (!dynamicValues || !persistentValues) return undefined;
-        if (key in dynamicValues) return dynamicValues[key];
-        if (key in persistentValues) return persistentValues[key];
-        return undefined;
+        const values = this.getGroup(group)?.values;
+        if (!this.hasGroup(group) || !values) return undefined;
+        return key in values ? values[key] : undefined;
     }
 
     add(group: string, key: number, item: TState): void {
-        if (!this.hasGroup(group)) return;
-        const storedKeys = this.getStoredValuesInfo(group);
-        const dynamicKeys = this.getDynamicKeys(group);
-        const dynamicValues = this.getDynamicValues(group);
-
-        if (!storedKeys || !dynamicKeys || !dynamicValues) return;
-
-        if (!this.has(group, key)) {
-            dynamicKeys.push(key);
-            insertSorted(storedKeys, key);
-        }
-
-        dynamicValues[key] = item;
-
-        const maxDynamicSize =
-            this.getGroup(group)?.config.dynamicSize ??
-            this.DEFAULT_DYNAMIC_CACHE_SIZE;
-
-        if (dynamicKeys.length > maxDynamicSize) {
-            const oldKey = dynamicKeys.shift();
-            if (typeof oldKey === "number") {
-                delete dynamicValues[oldKey];
-                removeSorted(dynamicKeys, oldKey);
-            }
-        }
+        const groupCache = this.getGroup(group);
+        if (!this.hasGroup(group) || !groupCache) return;
+        insertSorted(groupCache.index, key);
+        groupCache.values[key] = item;
     }
 
     getClosestKey(group: string, key: number): number | null | undefined {
-        const storedKeys = this.getStoredValuesInfo(group);
-        if (!storedKeys) return undefined;
-        return findClosest(storedKeys, key);
+        const index = this.getGroup(group)?.index;
+        if (!index) return undefined;
+        return findClosest(index, key);
     }
 
     getClosest(group: string, key: number): CacheClosest<TState> | undefined {
@@ -160,21 +76,10 @@ export class CacheManager<
         return { key: closestKey, item: closestValue };
     }
 
-    addPersistent(group: string, key: number, item: TState): void {
-        if (!this.hasGroup(group)) return;
-        const storedKeys = this.getStoredValuesInfo(group);
-        const persistentValues = this.getPersistentValues(group);
-        if (!storedKeys || !persistentValues) return;
-        insertSorted(storedKeys, key);
-        persistentValues[key] = item;
-    }
-
-    toggleDynamicCache(group: string, bool: boolean): void {
-        const groupCache = this.getGroup(group);
-        if (!groupCache) return;
-        groupCache.config.enableDynamic = bool ? true : false;
-    }
-
+    /**
+     * Replays every mutation from the initial state and saves at most
+     * `maxCacheSize` evenly spaced states (always the first and last).
+     */
     createPersistentCache(
         group: string,
         initialState: TState,
@@ -183,43 +88,29 @@ export class CacheManager<
         { maxCacheSize }: { maxCacheSize?: number } = {}
     ): this | undefined {
         if (!this.hasGroup(group)) return undefined;
-        const cacheSize =
-            maxCacheSize && typeof maxCacheSize === "number"
-                ? Math.min(maxCacheSize, this.MAX_PERSISTENT_CACHE_SIZE)
-                : this.DEFAULT_PERSISTENT_CACHE_SIZE;
-
-        const cacheStep =
+        const cacheSize = maxCacheSize
+            ? Math.min(maxCacheSize, MAX_CACHE_SIZE)
+            : MAX_CACHE_SIZE;
+        const step =
             mutations.length > cacheSize ? mutations.length / cacheSize : 1;
-
-        if (cacheStep <= 1) this.toggleDynamicCache(group, false);
-
-        const shouldCache = (() => {
-            if (cacheStep <= 1) return () => true;
-
-            let next = cacheStep;
-            return (index: number, arr: TMutation[]) => {
-                if (
-                    index >= Math.floor(next) ||
-                    index === 0 ||
-                    index === arr.length - 1
-                ) {
-                    next += cacheStep;
-                    return true;
-                }
-                return false;
-            };
-        })();
+        const last = mutations.length - 1;
+        let next = step;
+        const shouldCache = (index: number): boolean => {
+            if (step <= 1) return true;
+            if (index >= Math.floor(next) || index === 0 || index === last) {
+                next += step;
+                return true;
+            }
+            return false;
+        };
 
         const state = initialState.slice() as TState;
-        mutations.forEach(
-            (mutation: TMutation, index: number, arr: TMutation[]) => {
-                mutatorFn(mutation, state);
-                if (shouldCache(index, arr)) {
-                    this.addPersistent(group, index, state.slice() as TState);
-                }
+        mutations.forEach((mutation, index) => {
+            mutatorFn(mutation, state);
+            if (shouldCache(index)) {
+                this.add(group, index, state.slice() as TState);
             }
-        );
-
+        });
         return this;
     }
 }

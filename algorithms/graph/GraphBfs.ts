@@ -8,12 +8,11 @@ import {
     NODE_FRONTIER,
 } from "./GraphAlgorithm";
 
-/* Visits nodes ring by ring from A, ignoring weights. Labels are the
-   number of hops; the tree has the fewest edges, not the least weight. */
+// Visits nodes ring by ring from A, ignoring weights. Labels are hop counts;
+// the tree has the fewest edges, not the least weight.
 export class GraphBfs extends GraphAlgorithm {
     protected run(): void {
         const seen = new Uint8Array(this.nodeCount);
-        const state = new Uint8Array(this.edgeList.length);
         const queue = [0];
         const hops = new Array<number>(this.nodeCount).fill(0);
         seen[0] = 1;
@@ -25,13 +24,12 @@ export class GraphBfs extends GraphAlgorithm {
             this.setNode(u, NODE_DONE);
             this.emit("visit", u, -1, { instructionId: ["q1"] });
             for (const { to, edge, w } of this.adjacency[u]) {
-                if (state[edge] !== EDGE_IDLE) continue;
+                if (this.edgeAt(edge) !== EDGE_IDLE) continue;
                 this.count("checks");
                 if (!seen[to]) {
                     seen[to] = 1;
                     hops[to] = hops[u] + 1;
                     queue.push(to);
-                    state[edge] = EDGE_TREE;
                     this.count("updates");
                     this.count("weight", w);
                     this.setEdge(edge, EDGE_TREE);
@@ -39,7 +37,6 @@ export class GraphBfs extends GraphAlgorithm {
                     this.setLabel(to, hops[to]);
                     this.emit("take", to, edge, { instructionId: ["q2"] });
                 } else {
-                    state[edge] = EDGE_REJECT;
                     this.setEdge(edge, EDGE_REJECT);
                     this.emit("reject", to, edge, { instructionId: ["q3"] });
                 }

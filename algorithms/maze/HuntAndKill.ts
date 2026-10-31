@@ -1,8 +1,8 @@
 import type { AlgorithmInstructions } from "../types";
 import { MazeAlgorithm } from "./MazeAlgorithm";
 
-/* Like the backtracker, but at a dead end it scans the grid row by row
-   for an unvisited room next to the maze and carries on from there. */
+/* Backtracker variant: at a dead end, scan row by row for an unvisited
+   room next to the maze and continue from there. */
 export class HuntAndKill extends MazeAlgorithm {
     generate(): void {
         const rooms = this.rooms();

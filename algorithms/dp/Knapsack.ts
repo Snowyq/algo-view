@@ -2,8 +2,7 @@ import type { DpInput } from "../../utils/dpInput";
 import type { AlgorithmInstructions } from "../types";
 import { DpAlgorithm, type DpTable } from "./DpAlgorithm";
 
-/* 0/1 knapsack: best total value within a weight limit. Each cell
-   decides one item: skip it, or take it and look up the rest. */
+// 0/1 knapsack: best value within a weight limit. Each cell skips or takes one item.
 export class Knapsack extends DpAlgorithm {
     protected setup({ items, capacity }: DpInput): DpTable {
         return {

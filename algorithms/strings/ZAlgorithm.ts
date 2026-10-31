@@ -1,9 +1,8 @@
 import type { AlgorithmInstructions } from "../types";
 import { StringAlgorithm } from "./StringAlgorithm";
 
-/* For every text position, how many letters match the start of the
-   pattern (the Z value). A match is a Z value of m. A "box" of already
-   matched letters lets most positions skip ahead. */
+// Z value = how many letters at a text position match the pattern start;
+// a match is a Z value of m. The [l, r) box lets most positions skip ahead.
 export class ZAlgorithm extends StringAlgorithm {
     tableLabel = "z";
     tableOn = "text" as const;

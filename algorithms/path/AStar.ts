@@ -2,12 +2,11 @@ import { MinHeap } from "../../utils/minHeap";
 import type { AlgorithmInstructions } from "../types";
 import { PathAlgorithm } from "./PathAlgorithm";
 
-/* Dijkstra with a sense of direction: cost so far plus the Manhattan
-   distance still to go. Same cheapest route, far fewer cells explored. */
+/* Dijkstra plus a Manhattan estimate of the distance still to go. */
 export class AStar extends PathAlgorithm {
     search(): void {
         const { start, end } = this.grid;
-        const cameFrom = new Int32Array(this.size).fill(-1);
+        const cameFrom = this.emptyCameFrom();
         const g = new Float64Array(this.size).fill(Infinity);
         const done = new Uint8Array(this.size);
         const heap = new MinHeap();

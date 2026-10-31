@@ -1,9 +1,8 @@
 import type { AlgorithmInstructions } from "../types";
 import { StringAlgorithm } from "./StringAlgorithm";
 
-/* Never re-reads the text: on a mismatch the prefix table says how much
-   of the pattern is already known to match, so the text index only ever
-   moves forward. */
+// The prefix table says how much of the pattern already matches after a
+// mismatch, so the text index never moves back.
 export class KnuthMorrisPratt extends StringAlgorithm {
     tableLabel = "prefix";
     tableOn = "pattern" as const;

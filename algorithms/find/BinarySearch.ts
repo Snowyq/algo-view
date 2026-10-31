@@ -1,7 +1,7 @@
 import type { AlgorithmInstructions } from "../types";
 import { FindAlgorithm } from "./FindAlgorithm";
 
-/* Looks at the middle and throws away the half that cannot hold it. */
+// Probes the middle and drops the half that cannot hold the target.
 export class BinarySearch extends FindAlgorithm {
     search(): void {
         let lo = 0;

@@ -1,8 +1,8 @@
 import type { AlgorithmInstructions } from "../types";
 import { MazeAlgorithm } from "./MazeAlgorithm";
 
-/* A drunk random walk that carves whenever it reaches a new room. Fair,
-   and painfully slow to finish the last few rooms. */
+/* Random walk that carves into every new room it reaches. Unbiased, but
+   slow to find the last few rooms. */
 export class AldousBroder extends MazeAlgorithm {
     generate(): void {
         const rooms = this.rooms();

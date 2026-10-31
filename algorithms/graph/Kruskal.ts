@@ -1,3 +1,4 @@
+import { DisjointSet } from "../../utils/disjointSet";
 import type { AlgorithmInstructions } from "../types";
 import {
     EDGE_REJECT,
@@ -7,17 +8,15 @@ import {
     NODE_DONE,
 } from "./GraphAlgorithm";
 
-/* Takes edges from the lightest up and keeps every one that joins two
-   separate pieces. Union-find answers "same piece?" in near O(1). */
+// Takes edges from the lightest up, keeping each one that joins two pieces.
+// Union-find answers "same piece?" in near O(1).
 export class Kruskal extends GraphAlgorithm {
     protected run(): void {
         const n = this.nodeCount;
         const order = this.edgeList
             .map((_, i) => i)
             .sort((p, q) => this.edgeList[p].w - this.edgeList[q].w || p - q);
-        const parent = Array.from({ length: n }, (_, i) => i);
-        const find = (i: number): number =>
-            parent[i] === i ? i : (parent[i] = find(parent[i]));
+        const sets = new DisjointSet(n);
         let taken = 0;
         for (const edge of order) {
             if (taken === n - 1) break;
@@ -25,9 +24,7 @@ export class Kruskal extends GraphAlgorithm {
             this.count("checks");
             this.setEdge(edge, EDGE_SEEN);
             this.emit("check", -1, edge, { instructionId: ["k1"] });
-            const [ra, rb] = [find(a), find(b)];
-            if (ra !== rb) {
-                parent[ra] = rb;
+            if (sets.union(a, b)) {
                 taken += 1;
                 this.count("updates");
                 this.count("weight", w);

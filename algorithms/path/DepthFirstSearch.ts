@@ -1,12 +1,12 @@
 import type { AlgorithmInstructions } from "../types";
 import { PathAlgorithm } from "./PathAlgorithm";
 
-/* Dives down one corridor until it dead-ends, then backtracks. Finds a
-   route, rarely the short one. */
+/* Follows one corridor to a dead end, then backtracks. Finds a route,
+   rarely the shortest. */
 export class DepthFirstSearch extends PathAlgorithm {
     search(): void {
         const { start, end } = this.grid;
-        const cameFrom = new Int32Array(this.size).fill(-1);
+        const cameFrom = this.emptyCameFrom();
         const done = new Uint8Array(this.size);
         const stack: number[] = [start];
         this.frontier([start], 1, { instructionId: ["d0"] });

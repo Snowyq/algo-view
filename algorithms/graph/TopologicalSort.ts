@@ -6,9 +6,8 @@ import {
     NODE_FRONTIER,
 } from "./GraphAlgorithm";
 
-/* Kahn's algorithm on the graph with every edge pointing right: output
-   a node once nothing points into it, then remove its outgoing edges.
-   Labels count incoming edges left; done nodes show their position. */
+// Kahn's algorithm, every edge pointing right: output a node once nothing
+// points into it. Labels count incoming edges; done nodes show their position.
 export class TopologicalSort extends GraphAlgorithm {
     get directed(): boolean {
         return true;

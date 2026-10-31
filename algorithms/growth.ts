@@ -1,10 +1,8 @@
 import type { CategoryId } from "./categoryData";
 
 /*
- * Measured growth: which config field sets the input size for each
- * category, and the sizes to try (inside each category's limits). Life is
- * left out: every generation touches every cell, so its step count does
- * not grow with the grid.
+ * Input sizes to measure growth on, per category. Life is left out: every
+ * generation touches every cell, so its step count does not grow with the grid.
  */
 
 export type GrowthLadder = { key: string; unit: string; sizes: number[] };
@@ -36,11 +34,11 @@ export const GROWTH_LADDERS: Partial<Record<CategoryId, GrowthLadder>> = {
 
 export type GrowthPoint = { n: number; value: number; steps: number };
 
-/** Least-squares slope of log(value) against log(n): value ≈ c·n^k. */
+/** Least-squares slope of log(value) against log(n), i.e. k in value = c * n^k. */
 export function growthExponent(points: GrowthPoint[]): number | null {
     const usable = points.filter((p) => p.n > 0 && p.value > 0);
     if (usable.length < 3) return null;
-    // The small sizes are dominated by constants; fit the larger half.
+    // Constants dominate the small sizes, so fit only the larger ones.
     const tail = usable.slice(Math.floor(usable.length / 3));
     const xs = tail.map((p) => Math.log(p.n));
     const ys = tail.map((p) => Math.log(p.value));
@@ -55,7 +53,6 @@ export function growthExponent(points: GrowthPoint[]): number | null {
     return den === 0 ? null : num / den;
 }
 
-/** "≈ n²: doubling n quadruples the work". */
 export function describeGrowth(k: number): string {
     if (k < 0.3) return "about the same work whatever the size";
     if (k < 0.75) return "≈ log n or √n: grows slowly";
@@ -65,11 +62,10 @@ export function describeGrowth(k: number): string {
     return "≈ n³ or worse: doubling n multiplies it by 8 or more";
 }
 
-/* Counters that are flags, not work. */
+// Counters that are flags, not work.
 const FLAGS = new Set(["gaveUp", "noPath"]);
-/* The counter that best stands for "work": comparisons first, matched by
-   key or by the name shown in the UI (sorts call theirs conditionChecks,
-   shown as "Checks"); then things visited or produced; then the first. */
+// Matched against key or display name: comparisons first, then things
+// visited or produced; otherwise the first counter.
 const PREFERRED = [
     /check|compar|probe|test/i,
     /visit|cells|filled|carved|labelled/i,

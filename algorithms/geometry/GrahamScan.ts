@@ -1,8 +1,8 @@
 import type { AlgorithmInstructions } from "../types";
-import { HullAlgorithm, POINT_HULL, POINT_INSIDE } from "./HullAlgorithm";
+import { HullAlgorithm, POINT_HULL } from "./HullAlgorithm";
 
-/* Sort points by angle around the lowest one, then walk them keeping a
-   stack; any point that makes a right turn is popped. O(n log n). */
+// Sort by angle around the lowest point, then walk them with a stack,
+// popping any point that makes a right turn. O(n log n).
 export class GrahamScan extends HullAlgorithm {
     protected run(): number[] {
         const p = this.points;
@@ -30,27 +30,7 @@ export class GrahamScan extends HullAlgorithm {
 
         const stack = [pivot];
         for (const i of order) {
-            while (stack.length >= 2) {
-                const turn = this.test(
-                    stack[stack.length - 2],
-                    stack[stack.length - 1],
-                    i,
-                    {
-                        instructionId: ["g2"],
-                    }
-                );
-                if (turn > 0) break;
-                const dropped = stack.pop()!;
-                this.mark(dropped, POINT_INSIDE);
-                this.setChain(stack);
-                this.emit("pop", dropped, -1, i, false, {
-                    instructionId: ["g3"],
-                });
-            }
-            stack.push(i);
-            this.mark(i, POINT_HULL);
-            this.setChain(stack);
-            this.emit("push", i, -1, -1, true, { instructionId: ["g1"] });
+            this.pushTurningLeft(stack, i, [], ["g2", "g3", "g1"]);
         }
         return stack;
     }

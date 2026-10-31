@@ -1,15 +1,11 @@
 import type { AlgorithmInstructions } from "../types";
 import { PathAlgorithm } from "./PathAlgorithm";
 
-/* Two breadth-first searches, one from each end, taking turns. They meet
-   in the middle having explored about half as much. */
+/* Two BFS runs, one from each end, taking turns until they meet. */
 export class BidirectionalBFS extends PathAlgorithm {
     search(): void {
         const { start, end } = this.grid;
-        const from = [
-            new Int32Array(this.size).fill(-1),
-            new Int32Array(this.size).fill(-1),
-        ];
+        const from = [this.emptyCameFrom(), this.emptyCameFrom()];
         const side = new Int8Array(this.size).fill(-1);
         const queues: number[][] = [[start], [end]];
         const heads = [0, 0];

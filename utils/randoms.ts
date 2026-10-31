@@ -1,15 +1,9 @@
-export function generateRandomArray(
-    n: number,
-    min: number,
-    max: number
-): number[] {
-    return Array.from({ length: n }, () =>
-        Math.floor(Math.random() * (max - min) + min)
-    );
-}
+import { isOneOf } from "./values";
 
-/* Deterministic PRNG (mulberry32): same seed, same array, on any machine. */
-export function createRng(seed: number): () => number {
+export type Rng = () => number;
+
+/** Seeded PRNG (mulberry32): same seed, same numbers on any machine. */
+export function createRng(seed: number): Rng {
     let a = seed >>> 0;
     return () => {
         a = (a + 0x6d2b79f5) >>> 0;
@@ -22,6 +16,15 @@ export function createRng(seed: number): () => number {
 
 export function randomSeed(): number {
     return Math.floor(Math.random() * 0xffffffff) >>> 0;
+}
+
+/** Integer in [0, n). */
+export function randomInt(rng: Rng, n: number): number {
+    return Math.floor(rng() * n);
+}
+
+export function pick<T>(rng: Rng, items: ArrayLike<T>): T {
+    return items[randomInt(rng, items.length)];
 }
 
 export const INPUT_PRESETS = [
@@ -44,16 +47,10 @@ export type InputConfig = {
 };
 
 export function isInputPreset(value: unknown): value is InputPreset {
-    return (
-        typeof value === "string" &&
-        (INPUT_PRESETS as readonly string[]).includes(value)
-    );
+    return isOneOf(INPUT_PRESETS, value);
 }
 
-/*
- * Data shapes worth comparing algorithms on. Values stay within
- * [min, max]; the seed decides every random choice.
- */
+/** Sort input in a given shape, values within [min, max]. */
 export function generateInput({
     preset,
     length,
@@ -65,7 +62,7 @@ export function generateInput({
     const lo = Math.min(min, max);
     const hi = Math.max(min, max);
     const span = hi - lo;
-    const randomValue = (): number => Math.floor(rng() * (span + 1)) + lo;
+    const randomValue = (): number => randomInt(rng, span + 1) + lo;
     const at = (t: number): number => Math.round(lo + t * span);
     const n = Math.max(1, length);
 
@@ -78,8 +75,8 @@ export function generateInput({
             );
             const swaps = Math.max(1, Math.round(n * 0.06));
             for (let i = 0; i < swaps; i += 1) {
-                const a = Math.floor(rng() * n);
-                const b = Math.min(n - 1, a + 1 + Math.floor(rng() * 3));
+                const a = randomInt(rng, n);
+                const b = Math.min(n - 1, a + 1 + randomInt(rng, 3));
                 [values[a], values[b]] = [values[b], values[a]];
             }
             return values;
@@ -88,10 +85,7 @@ export function generateInput({
             return Array.from({ length: n }, randomValue).sort((a, b) => b - a);
         case "fewUnique": {
             const pool = Array.from({ length: 4 }, (_, i) => at((i + 1) / 4));
-            return Array.from(
-                { length: n },
-                () => pool[Math.floor(rng() * pool.length)]
-            );
+            return Array.from({ length: n }, () => pick(rng, pool));
         }
         case "sawtooth": {
             const teeth = Math.max(2, Math.round(n / 12));

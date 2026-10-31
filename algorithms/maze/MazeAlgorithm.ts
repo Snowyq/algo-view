@@ -1,16 +1,11 @@
 import { createRng } from "../../utils/randoms";
-import { Algorithm } from "../Algorithm";
-import type {
-    AlgorithmInstructions,
-    StepAlgorithm,
-    StepMetrics,
-} from "../types";
+import { DIRS, GridAlgorithm } from "../GridAlgorithm";
+import { Snapshots, type StepOptions } from "../RecordedAlgorithm";
+import type { StepMetrics } from "../types";
 
 /*
- * Maze generation on an odd-sized grid of cells: every cell starts as
- * wall; "rooms" sit on odd coordinates and passages are carved between
- * them. Subclasses implement generate() and report through carve / mark;
- * like the other categories, steps are replayed from snapshots.
+ * Maze generation on an odd-sized grid. Every cell starts as wall, rooms
+ * sit on odd coordinates and passages are carved between them.
  */
 
 export type MazeInput = { cols: number; rows: number; seed: number };
@@ -31,7 +26,7 @@ export const MARK_WALK = 3;
 
 export type MazeStep = {
     type: MazeStepType;
-    /** Cells opened (wall → passage) on this step. */
+    /** Cells opened (wall to passage) on this step. */
     carve: number[];
     /** Cells whose mark changes, and to what. */
     mark: number[];
@@ -48,31 +43,28 @@ export type MazeState = {
     current: number;
 };
 
-type StepOptions = { instructionId?: string[] };
+type MazeLayers = { walls: Uint8Array; marks: Uint8Array };
 
 const SNAPSHOT_EVERY = 32;
-const DIRS: Array<[number, number]> = [
-    [0, -1],
-    [1, 0],
-    [0, 1],
-    [-1, 0],
-];
 
-export abstract class MazeAlgorithm
-    extends Algorithm
-    implements StepAlgorithm<MazeStep, MazeState>
-{
-    cols: number;
-    rows: number;
-    steps: MazeStep[] = [];
+export abstract class MazeAlgorithm extends GridAlgorithm<MazeStep, MazeState> {
     protected rng: () => number;
     protected walls: Uint8Array;
     protected marks: Uint8Array;
     protected current = -1;
-    private snapshots = new Map<
-        number,
-        { walls: Uint8Array; marks: Uint8Array }
-    >();
+    private snapshots = new Snapshots<MazeLayers>(
+        SNAPSHOT_EVERY,
+        () => ({
+            walls: new Uint8Array(this.size).fill(1),
+            marks: new Uint8Array(this.size),
+        }),
+        ({ walls, marks }) => ({ walls: walls.slice(), marks: marks.slice() }),
+        ({ walls, marks }, index) => {
+            const step = this.steps[index];
+            step.carve.forEach((cell) => (walls[cell] = 0));
+            step.mark.forEach((cell) => (marks[cell] = step.markValue));
+        }
+    );
     metrics: StepMetrics = {
         carved: { count: 0, name: "Carved" },
         visits: { count: 0, name: "Visits" },
@@ -80,19 +72,16 @@ export abstract class MazeAlgorithm
     };
 
     constructor(input: MazeInput, options: Record<string, unknown> = {}) {
-        super();
-        this.options = options;
-        this.cols = input.cols;
-        this.rows = input.rows;
+        super(input.cols, input.rows, options);
         this.rng = createRng(input.seed);
-        this.walls = new Uint8Array(input.cols * input.rows).fill(1);
-        this.marks = new Uint8Array(input.cols * input.rows);
+        this.walls = new Uint8Array(this.size).fill(1);
+        this.marks = new Uint8Array(this.size);
         this.push("initial", [], [], MARK_NONE, {});
         this.generate();
         this.current = -1;
         this.setCount("deadEnds", this.countDeadEnds());
         this.push("finish", [], [], MARK_NONE, {});
-        this.buildSnapshots();
+        this.snapshots.build(this.steps.length);
     }
 
     abstract generate(): void;
@@ -106,8 +95,6 @@ export abstract class MazeAlgorithm
         markValue: number,
         { instructionId }: StepOptions
     ): void {
-        const metrics: StepMetrics = {};
-        for (const key in this.metrics) metrics[key] = { ...this.metrics[key] };
         this.steps.push({
             type,
             carve,
@@ -115,27 +102,8 @@ export abstract class MazeAlgorithm
             markValue,
             current: this.current,
             instructionId,
-            metrics,
+            metrics: this.metricsSnapshot(),
         });
-    }
-
-    private buildSnapshots(): void {
-        const walls = new Uint8Array(this.walls.length).fill(1);
-        const marks = new Uint8Array(this.marks.length);
-        this.steps.forEach((step, index) => {
-            step.carve.forEach((cell) => (walls[cell] = 0));
-            step.mark.forEach((cell) => (marks[cell] = step.markValue));
-            if (index % SNAPSHOT_EVERY === 0) {
-                this.snapshots.set(index, {
-                    walls: walls.slice(),
-                    marks: marks.slice(),
-                });
-            }
-        });
-    }
-
-    protected setCount(key: string, value: number): void {
-        if (this.metrics[key]) this.metrics[key].count = value;
     }
 
     /** Open a room and the wall between it and where we came from. */
@@ -166,18 +134,6 @@ export abstract class MazeAlgorithm
     }
 
     // ---------- Grid helpers ----------
-
-    get size(): number {
-        return this.cols * this.rows;
-    }
-
-    at(x: number, y: number): number {
-        return y * this.cols + x;
-    }
-
-    xy(cell: number): [number, number] {
-        return [cell % this.cols, Math.floor(cell / this.cols)];
-    }
 
     isRoom(cell: number): boolean {
         const [x, y] = this.xy(cell);
@@ -235,42 +191,16 @@ export abstract class MazeAlgorithm
         }).length;
     }
 
-    // ---------- Replay API ----------
-
-    getStepsLength(): number {
-        return this.steps.length;
-    }
-
-    getStepByIndex(index: number): MazeStep | undefined {
-        return this.steps[index];
-    }
-
-    getMetrics(): StepMetrics {
-        return this.steps[this.steps.length - 1]?.metrics ?? this.metrics;
-    }
-
     getStateByStepsIndex(index: number): MazeState {
-        const last = Math.max(0, Math.min(index, this.steps.length - 1));
-        const base = last - (last % SNAPSHOT_EVERY);
-        const snap = this.snapshots.get(base);
-        const walls = snap
-            ? snap.walls.slice()
-            : new Uint8Array(this.size).fill(1);
-        const marks = snap ? snap.marks.slice() : new Uint8Array(this.size);
-        for (let i = base + 1; i <= last; i += 1) {
-            const step = this.steps[i];
-            step.carve.forEach((cell) => (walls[cell] = 0));
-            step.mark.forEach((cell) => (marks[cell] = step.markValue));
-        }
-        return { walls, marks, current: this.steps[last]?.current ?? -1 };
+        const last = this.clampStep(index);
+        return {
+            ...this.snapshots.at(last),
+            current: this.steps[last]?.current ?? -1,
+        };
     }
 
     /** The finished maze, e.g. to hand over to the path finders. */
     getFinalWalls(): Uint8Array {
         return this.walls.slice();
-    }
-
-    static getInstructions(): AlgorithmInstructions {
-        return {};
     }
 }

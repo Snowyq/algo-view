@@ -10,7 +10,6 @@ export class StoogeSort extends BudgetedSortAlgorithm {
         const stooge = (lo: number, hi: number): void => {
             this.spend();
             this.countConditionChecks();
-            this.countArrayAccess(2);
             if (this.check(lo, ">", hi, arr, { instructionId: ["t1"] }))
                 this.swap(lo, hi, arr, { instructionId: ["t1"] });
             if (hi - lo + 1 <= 2) return;

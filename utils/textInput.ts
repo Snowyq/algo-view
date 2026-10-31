@@ -1,10 +1,9 @@
-import { createRng } from "./randoms";
+import { createRng, pick, randomInt } from "./randoms";
+import { clamp, isOneOf } from "./values";
 
 /*
- * Pattern-matching input: a text and a pattern to find in it. Presets
- * pick the shape that separates the algorithms: prose (skips pay off),
- * DNA (tiny alphabet), and a repetitive text that is the naive search's
- * worst case and KMP's best showcase.
+ * Text and pattern. Prose rewards skipping, DNA has a tiny alphabet, and
+ * the repetitive text is the naive search's worst case.
  */
 
 export const TEXT_PRESETS = ["prose", "dna", "repetitive"] as const;
@@ -18,10 +17,7 @@ export const TEXT_MAX_LENGTH = 64;
 export const TEXT_DEFAULT_LENGTH = 40;
 
 export function isTextPreset(value: unknown): value is TextPreset {
-    return (
-        typeof value === "string" &&
-        (TEXT_PRESETS as readonly string[]).includes(value)
-    );
+    return isOneOf(TEXT_PRESETS, value);
 }
 
 const PROSE =
@@ -33,30 +29,22 @@ export function generateTextInput({
     seed,
 }: TextConfig): TextInput {
     const rng = createRng(seed);
-    const n = Math.max(TEXT_MIN_LENGTH, Math.min(TEXT_MAX_LENGTH, length));
-    let text: string;
-    let pattern: string;
+    const n = clamp(length, TEXT_MIN_LENGTH, TEXT_MAX_LENGTH);
 
     if (preset === "prose") {
-        const start = Math.floor(rng() * Math.max(1, PROSE.length - n));
-        text = PROSE.slice(start, start + n);
-        // A word from the text that appears at least once.
+        const start = randomInt(rng, Math.max(1, PROSE.length - n));
+        const text = PROSE.slice(start, start + n);
+        // A word that appears in the text at least once.
         const words = text.split(" ").filter((w) => w.length >= 3);
-        pattern = words.length
-            ? words[Math.floor(rng() * words.length)]
-            : "sort";
-    } else if (preset === "dna") {
-        text = Array.from(
-            { length: n },
-            () => "ACGT"[Math.floor(rng() * 4)]
-        ).join("");
-        const at = Math.floor(rng() * (n - 5));
-        pattern = text.slice(at, at + 4 + Math.floor(rng() * 2));
-    } else {
-        // aaaa…ab: every alignment nearly matches before failing.
-        const m = 4 + Math.floor(rng() * 3);
-        text = "a".repeat(n - 1) + "b";
-        pattern = "a".repeat(m - 1) + "b";
+        return { text, pattern: words.length ? pick(rng, words) : "sort" };
     }
-    return { text, pattern };
+    if (preset === "dna") {
+        const letters = Array.from({ length: n }, () => pick(rng, "ACGT"));
+        const text = letters.join("");
+        const at = randomInt(rng, n - 5);
+        return { text, pattern: text.slice(at, at + 4 + randomInt(rng, 2)) };
+    }
+    // aaaa...ab: every alignment nearly matches before failing.
+    const m = 4 + randomInt(rng, 3);
+    return { text: "a".repeat(n - 1) + "b", pattern: "a".repeat(m - 1) + "b" };
 }

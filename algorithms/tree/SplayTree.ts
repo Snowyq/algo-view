@@ -1,9 +1,8 @@
 import type { AlgorithmInstructions } from "../types";
 import { NIL, TreeAlgorithm } from "./TreeAlgorithm";
 
-/* Every inserted key is rotated all the way to the root (zig, zig-zig,
-   zig-zag). No balance rule, yet any sequence of operations costs
-   O(log n) amortised, and recent keys stay near the top. */
+// Rotates every inserted key up to the root (zig, zig-zig, zig-zag).
+// O(log n) amortised; recent keys stay near the top.
 export class SplayTree extends TreeAlgorithm {
     protected insert(key: number): void {
         const x = this.insertLeaf(key, 0, { instructionId: ["i"] });

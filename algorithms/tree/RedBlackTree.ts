@@ -1,9 +1,8 @@
 import type { AlgorithmInstructions } from "../types";
 import { BLACK, NIL, RED, type TagKind, TreeAlgorithm } from "./TreeAlgorithm";
 
-/* New nodes are red; no red node may have a red child and every path
-   has the same number of black nodes. A red uncle means recolour and move
-   up; a black one means at most two rotations. */
+// New nodes are red. A red uncle means recolour and move up; a black
+// one means at most two rotations.
 export class RedBlackTree extends TreeAlgorithm {
     get tagKind(): TagKind {
         return "color";

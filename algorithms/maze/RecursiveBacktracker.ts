@@ -1,8 +1,8 @@
 import type { AlgorithmInstructions } from "../types";
 import { MARK_IN_MAZE, MARK_WALK, MazeAlgorithm } from "./MazeAlgorithm";
 
-/* Walks forward into unvisited rooms, backs up at dead ends. The stack
-   glows while it is open: long, winding corridors, few junctions. */
+/* Walks into unvisited rooms, backs up at dead ends. The open stack is
+   marked as a walk. Long, winding corridors. */
 export class RecursiveBacktracker extends MazeAlgorithm {
     generate(): void {
         const start = this.pick(this.rooms());

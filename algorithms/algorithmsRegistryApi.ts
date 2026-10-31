@@ -2,24 +2,11 @@ import { registry } from "./algorithmsRegistryData";
 import type {
     AlgorithmCategory,
     AlgorithmConstructor,
-    AlgorithmInstructions,
-    AlgorithmMeta,
     AlgorithmRegistryItem,
 } from "./types";
 
-function getRegistriesByCategory(categoryId: string): AlgorithmRegistryItem[] {
-    if (!registry.categoriesLog.includes(categoryId)) return [];
-
-    const registriesInCategory = registry.data.find(
-        (category) => category.id === categoryId
-    )?.items;
-
-    return registriesInCategory ?? [];
-}
-
 function getCategoriesIds(): string[] {
-    const ids = registry.data.map((cat) => cat.id);
-    return ids;
+    return registry.data.map((category) => category.id);
 }
 
 function getCategory(category: string): AlgorithmCategory | undefined {
@@ -37,57 +24,23 @@ function getAlgorithmRegistry(
     category: string,
     id: string
 ): AlgorithmRegistryItem | undefined {
-    const registry = getRegistriesByCategory(category).find(
-        (reg) => reg.id === id
-    );
-
-    return registry;
-}
-
-function getCategories(): AlgorithmCategory[] {
-    return registry.data;
-}
-
-function getAlgorithmInfo(
-    category: string,
-    id: string
-): AlgorithmMeta | undefined {
-    const registry = getRegistriesByCategory(category).find(
-        (reg) => reg.id === id
-    );
-
-    return registry?.meta;
+    return getCategory(category)?.items.find((item) => item.id === id);
 }
 
 function getAlgorithmClass(
     category: string,
     id: string
 ): AlgorithmConstructor | undefined {
-    const registry = getAlgorithmRegistry(category, id);
-    if (!registry) return;
-    return registry.algorithm.Class;
-}
-
-function getAlgorithmInstructions(
-    category: string,
-    id: string
-): AlgorithmInstructions | undefined {
-    const registry = getAlgorithmRegistry(category, id);
-    if (!registry) return;
-    return registry.algorithm.instructions;
+    return getAlgorithmRegistry(category, id)?.algorithm.Class;
 }
 
 const registryApi = {
     registry,
     getAlgorithmClass,
     getCategory,
-    getRegistriesByCategory,
     getAlgorithmRegistry,
-    getCategories,
     getCategoriesIds,
     getAlgorithmsInCategory,
-    getAlgorithmInstructions,
-    getAlgorithmInfo,
 };
 
 export default registryApi;

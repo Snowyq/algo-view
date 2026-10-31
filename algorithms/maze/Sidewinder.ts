@@ -1,8 +1,8 @@
 import type { AlgorithmInstructions } from "../types";
 import { MazeAlgorithm } from "./MazeAlgorithm";
 
-/* Row by row: runs of rooms going east, each run closed by one opening
-   north. The top row is always one long corridor. */
+/* Row by row: runs going east, each closed by one opening north. The top
+   row is always one long corridor. */
 export class Sidewinder extends MazeAlgorithm {
     generate(): void {
         for (let y = 1; y < this.rows - 1; y += 2) {

@@ -1,9 +1,8 @@
 import type { AlgorithmInstructions } from "../types";
 import { NIL, type TagKind, TreeAlgorithm } from "./TreeAlgorithm";
 
-/* After each insert, walk back up; where the two subtrees' heights
-   differ by more than one, one or two rotations fix it. Height stays
-   within 1.44 log n. Tags hold heights; nodes show the balance. */
+// Walks back up after each insert and rotates wherever subtree heights
+// differ by more than one. Tags hold heights.
 export class AvlTree extends TreeAlgorithm {
     get tagKind(): TagKind {
         return "height";

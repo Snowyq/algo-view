@@ -1,21 +1,18 @@
 import type { AlgorithmInstructions } from "../types";
 import { SortAlgorithm } from "./SortAlgorithm";
 
-/*
- * Base for the joke algorithms. Steps are generated up front and kept in
- * memory, so an unbounded sort (bogo, slow sort) would never finish building.
- * Once the step budget is spent the algorithm gives up and says so in metrics.
- */
-
-export const JOKE_SORT_STEP_BUDGET = 25000;
+const JOKE_SORT_STEP_BUDGET = 25000;
 
 class BudgetSpent extends Error {}
 
-// Steps are built inside the base constructor, before subclass fields are
-// initialised, so the budget is static (set at class definition), not an
-// instance field.
-export class BudgetedSortAlgorithm extends SortAlgorithm {
+/* Base for the joke sorts. Steps are built up front, so an unbounded sort
+   gets a step budget and gives up (shown in metrics) once it is spent. */
+export abstract class BudgetedSortAlgorithm extends SortAlgorithm {
+    /* Static: steps are built in the base constructor, before instance
+       fields exist. */
     static stepBudget: number = JOKE_SORT_STEP_BUDGET;
+
+    abstract run(arr: number[]): void;
 
     sort(arr: number[]): void {
         try {
@@ -41,7 +38,6 @@ export class BudgetedSortAlgorithm extends SortAlgorithm {
         for (let i = 0; i < arr.length - 1; i++) {
             this.spend();
             this.countConditionChecks();
-            this.countArrayAccess(2);
             if (!this.check(i, "<=", i + 1, arr, { instructionId: ["s2"] }))
                 return false;
         }
@@ -63,10 +59,5 @@ export class BudgetedSortAlgorithm extends SortAlgorithm {
             s4: { line: `return true;`, indent: 1 },
             se0: { line: `}`, indent: 0 },
         };
-    }
-
-    // To implement in child instance
-    run(arr: number[]): void {
-        void arr;
     }
 }

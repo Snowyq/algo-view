@@ -1,8 +1,8 @@
 import type { AlgorithmInstructions } from "../types";
 import { MARK_FRONTIER, MazeAlgorithm } from "./MazeAlgorithm";
 
-/* Grows from one room by adding a random frontier room each time.
-   Short dead ends everywhere, a branching, coral-like texture. */
+/* Grows from one room, adding a random frontier room each time. Lots of
+   short dead ends. */
 export class Prim extends MazeAlgorithm {
     generate(): void {
         const start = this.pick(this.rooms());

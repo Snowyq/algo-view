@@ -1,9 +1,8 @@
 import type { AlgorithmInstructions } from "../types";
 import { HullAlgorithm, POINT_HULL } from "./HullAlgorithm";
 
-/* Gift wrapping: from the leftmost point, find the point every other
-   point lies left of, step to it, repeat. O(n·h): fast when the hull is
-   small, slow on a ring. */
+// Gift wrapping: from the leftmost point, step to the point all others lie
+// left of. O(n*h), so slow when most points are on the hull.
 export class JarvisMarch extends HullAlgorithm {
     protected run(): number[] {
         const p = this.points;

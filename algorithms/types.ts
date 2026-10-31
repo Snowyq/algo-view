@@ -88,14 +88,9 @@ export type AlgorithmCategory = {
 
 export type AlgorithmsRegistry = {
     data: AlgorithmCategory[];
-    categoriesLog: string[];
 };
 
-/*
- * The contract between any algorithm and its canvas worker. Every
- * category's base class (sort, path, find, …) implements it, and the
- * shared worker runtime relies on nothing else.
- */
+/* What the canvas worker runtime needs from every category's base class. */
 export type StepMetrics = Record<string, AlgorithmMetric>;
 
 export type StepBase = {
@@ -110,8 +105,8 @@ export interface StepAlgorithm<
 > {
     getStepsLength(): number;
     getStepByIndex(index: number): TStep | undefined;
-    /** Whatever the drawing needs at step `index` (array, overlay, range…). */
+    /** Whatever the drawing needs at step `index`. */
     getStateByStepsIndex(index: number): TState;
-    /** Counters at the end of the run (decide which counters exist). */
+    /** Counters at the end of the run; also decides which counters exist. */
     getMetrics(): StepMetrics;
 }

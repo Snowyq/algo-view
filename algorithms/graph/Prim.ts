@@ -9,8 +9,8 @@ import {
     NODE_FRONTIER,
 } from "./GraphAlgorithm";
 
-/* Grows one tree from A, always adding the cheapest edge that reaches a
-   new node. Labels show each waiting node's cheapest known link. */
+// Grows one tree from A, always adding the cheapest edge to a new node.
+// Labels show each waiting node's cheapest known link.
 export class Prim extends GraphAlgorithm {
     protected run(): void {
         const n = this.nodeCount;
