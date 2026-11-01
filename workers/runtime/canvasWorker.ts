@@ -3,30 +3,26 @@ import type {
     AlgorithmConstructor,
     StepAlgorithm,
 } from "../../algorithms/types";
+import { FALLBACK_COLORS } from "./draw";
 
 /*
- * Shared runtime for every canvas worker. It owns the protocol with the
- * main thread and the playback clock:
+ * Shared runtime for the canvas workers: the message protocol with the main
+ * thread and frame pacing. A category worker only supplies draw() and describe().
  *
- *   tab               → subscribe to the step broadcast for this tab
- *   mount {id}        → look the algorithm class up in the registry
- *   init-canvas       → take the OffscreenCanvas
- *   load-step-colors  → palette from CSS custom properties
- *   resize            → CSS size + device pixel ratio
- *   render-algorithm  → run the algorithm on the input (all steps, here)
- *
- *   line-steps {ids}  → every step that runs one of these code lines
- *                       (breakpoints)
- *
- * and posts back mounted / canvas-initialized / render-start /
- * render-done {stepsLength, metrics} / step-metrics {…, caption} /
- * line-steps {steps}. A category worker provides draw() and, optionally,
- * describe() for the plain-language caption of a step.
+ * in:  tab, mount, init-canvas, load-step-colors, resize, render-algorithm, line-steps
+ * out: mounted, canvas-initialized, colors-loaded, resized, render-start,
+ *      render-done, step-metrics, line-steps, error
  */
 
 type Colors = Record<string, string>;
 type Rect = { width: number; height: number };
 type Incoming = { type: string; payload?: unknown; canvas?: OffscreenCanvas };
+type RunPayload<TInput> = {
+    input?: TInput;
+    options?: Record<string, unknown>;
+    rect?: Rect;
+    devicePixelRatio?: number;
+};
 
 export type DrawApi<TInput, TAlgo extends StepAlgorithm> = {
     ctx: OffscreenCanvasRenderingContext2D;
@@ -34,13 +30,14 @@ export type DrawApi<TInput, TAlgo extends StepAlgorithm> = {
     width: number;
     height: number;
     dpr: number;
-    color: (name: string, fallback: string) => string;
+    /** Step color token; the fallback defaults to FALLBACK_COLORS. */
+    color: (name: string, fallback?: string) => string;
     algorithm: TAlgo;
     input: TInput;
     options: Record<string, unknown>;
-    /** Step to draw (already clamped). */
+    /** Already clamped to the run. */
     step: number;
-    /** 0→1 while a fresh run animates in, then 1. */
+    /** 0 to 1 while a fresh run animates in, then 1. */
     reveal: number;
 };
 
@@ -54,13 +51,21 @@ type WorkerSpec<TInput, TAlgo extends StepAlgorithm> = {
     /** Registry category the algorithm classes live in. */
     category: string;
     draw: (api: DrawApi<TInput, TAlgo>) => void;
-    /** One short sentence: what the algorithm does on this step. */
+    /** Short caption for a step. */
     describe?: (api: DescribeApi<TInput, TAlgo>) => string;
     revealMs?: number;
 };
 
-/* Counters re-render React on the main thread: 20 a second reads live. */
+/* Metrics re-render React on the main thread, so cap them at 20 a second. */
 const METRICS_INTERVAL_MS = 50;
+
+const nextFrame: (cb: () => void) => void =
+    typeof requestAnimationFrame === "function"
+        ? (cb) => requestAnimationFrame(() => cb())
+        : (cb) => setTimeout(cb, 16);
+
+const postError = (message: string): void =>
+    postMessage({ type: "error", message });
 
 export function createCanvasWorker<TInput, TAlgo extends StepAlgorithm>({
     category,
@@ -80,18 +85,9 @@ export function createCanvasWorker<TInput, TAlgo extends StepAlgorithm>({
     let current = 0;
     let revealStart = 0;
 
-    const postError = (message: string): void =>
-        postMessage({ type: "error", message });
-
     // ---------- Frame pacing ----------
 
-    // Ticks can arrive far faster than the screen refreshes: keep only the
-    // newest step and draw it once per frame, so no backlog builds up.
-    const nextFrame: (cb: () => void) => void =
-        typeof requestAnimationFrame === "function"
-            ? (cb) => requestAnimationFrame(() => cb())
-            : (cb) => setTimeout(cb, 16);
-
+    // Ticks can outrun the screen: keep only the newest step, draw once per frame.
     let scheduled: number | null = null;
     let frameQueued = false;
     const schedule = (step: number): void => {
@@ -107,15 +103,17 @@ export function createCanvasWorker<TInput, TAlgo extends StepAlgorithm>({
         });
     };
 
+    // ---------- Metrics ----------
+
     let lastMetricsAt = 0;
     let metricsTimer: ReturnType<typeof setTimeout> | null = null;
     let pendingMetrics: Record<string, unknown> | null = null;
+
+    // Captions are built only for steps that actually get posted.
     const flushMetrics = (): void => {
         metricsTimer = null;
         if (pendingMetrics === null) return;
         lastMetricsAt = performance.now();
-        // The caption is only worked out for steps that actually get sent
-        // (20 a second at most), never for every drawn frame.
         if (describe && algorithm && input !== null) {
             try {
                 pendingMetrics.caption = describe({
@@ -130,6 +128,7 @@ export function createCanvasWorker<TInput, TAlgo extends StepAlgorithm>({
         postMessage({ type: "step-metrics", payload: pendingMetrics });
         pendingMetrics = null;
     };
+
     const postStepMetrics = (payload: Record<string, unknown>): void => {
         pendingMetrics = payload;
         const wait = METRICS_INTERVAL_MS - (performance.now() - lastMetricsAt);
@@ -141,8 +140,8 @@ export function createCanvasWorker<TInput, TAlgo extends StepAlgorithm>({
 
     // ---------- Drawing ----------
 
-    const color = (name: string, fallback: string): string =>
-        colors[name] || fallback;
+    const color = (name: string, fallback?: string): string =>
+        colors[name] || fallback || FALLBACK_COLORS[name] || "";
 
     function render(step: number): void {
         if (!ctx || !algorithm || input === null || width === 0) return;
@@ -197,29 +196,70 @@ export function createCanvasWorker<TInput, TAlgo extends StepAlgorithm>({
         return true;
     }
 
+    // The size actually drawn, so the page can scale the bitmap to match.
+    const postSize = (): void =>
+        postMessage({ type: "resized", payload: { width, height } });
+
     // ---------- Protocol ----------
+
+    function subscribe(tab: unknown): void {
+        const channel = new BroadcastChannel(`animation-tick:${tab}`);
+        channel.onmessage = (e: MessageEvent<{ step: number }>) =>
+            schedule(e.data.step);
+    }
+
+    function mount(id?: string): void {
+        const Class = id
+            ? registryApi.getAlgorithmClass(category, id)
+            : undefined;
+        if (!Class) return postError(`${category}/${id} not found`);
+        AlgorithmClass = Class;
+        postMessage({ type: "mounted" });
+    }
+
+    /* Steps that run any of these code lines (for breakpoints). */
+    function stepsOnLines(ids: string[]): number[] {
+        const wanted = new Set(ids);
+        const steps: number[] = [];
+        if (!algorithm || wanted.size === 0) return steps;
+        const total = algorithm.getStepsLength();
+        for (let i = 0; i < total; i += 1) {
+            const lines = algorithm.getStepByIndex(i)?.instructionId;
+            if (lines?.some((id) => wanted.has(id))) steps.push(i);
+        }
+        return steps;
+    }
+
+    function run(p: RunPayload<TInput>): void {
+        if (p.input === undefined || !p.rect) {
+            return postError("Input or rect not provided");
+        }
+        if (!AlgorithmClass) return postError("Algorithm not mounted");
+        resize(p.rect.width, p.rect.height, p.devicePixelRatio);
+        postSize();
+        postMessage({ type: "render-start" });
+        input = p.input;
+        options = p.options ?? {};
+        algorithm = new AlgorithmClass(p.input, options) as unknown as TAlgo;
+        current = 0;
+        postMessage({
+            type: "render-done",
+            payload: {
+                stepsLength: algorithm.getStepsLength(),
+                metrics: algorithm.getMetrics(),
+            },
+        });
+        revealStart = performance.now();
+        animateReveal();
+    }
 
     self.onmessage = (event: MessageEvent<Incoming>) => {
         const { type, payload, canvas } = event.data;
         switch (type) {
-            case "tab": {
-                const channel = new BroadcastChannel(
-                    `animation-tick:${payload}`
-                );
-                channel.onmessage = (e: MessageEvent<{ step: number }>) =>
-                    schedule(e.data.step);
-                return;
-            }
-            case "mount": {
-                const { id } = (payload ?? {}) as { id?: string };
-                const Class = id
-                    ? registryApi.getAlgorithmClass(category, id)
-                    : undefined;
-                if (!Class) return postError(`${category}/${id} not found`);
-                AlgorithmClass = Class;
-                postMessage({ type: "mounted" });
-                return;
-            }
+            case "tab":
+                return subscribe(payload);
+            case "mount":
+                return mount((payload as { id?: string } | undefined)?.id);
             case "init-canvas": {
                 if (!canvas) return postError("canvas offscreen not provided");
                 ctx = canvas.getContext("2d");
@@ -242,58 +282,17 @@ export function createCanvasWorker<TInput, TAlgo extends StepAlgorithm>({
                     devicePixelRatio,
                 } = (payload ?? {}) as Rect & { devicePixelRatio?: number };
                 if (resize(w, h, devicePixelRatio)) render(current);
-                // The size actually drawn, so the page can show the bitmap
-                // at it instead of stretching the old one meanwhile.
-                postMessage({ type: "resized", payload: { width, height } });
+                postSize();
                 return;
             }
             case "line-steps": {
                 const { ids } = (payload ?? {}) as { ids?: string[] };
-                const wanted = new Set(ids ?? []);
-                const steps: number[] = [];
-                if (algorithm && wanted.size > 0) {
-                    const total = algorithm.getStepsLength();
-                    for (let i = 0; i < total; i += 1) {
-                        const lines =
-                            algorithm.getStepByIndex(i)?.instructionId;
-                        if (lines?.some((id) => wanted.has(id))) steps.push(i);
-                    }
-                }
+                const steps = stepsOnLines(ids ?? []);
                 postMessage({ type: "line-steps", payload: { steps } });
                 return;
             }
-            case "render-algorithm": {
-                const p = (payload ?? {}) as {
-                    input?: TInput;
-                    options?: Record<string, unknown>;
-                    rect?: Rect;
-                    devicePixelRatio?: number;
-                };
-                if (p.input === undefined || !p.rect) {
-                    return postError("Input or rect not provided");
-                }
-                if (!AlgorithmClass) return postError("Algorithm not mounted");
-                resize(p.rect.width, p.rect.height, p.devicePixelRatio);
-                postMessage({ type: "resized", payload: { width, height } });
-                postMessage({ type: "render-start" });
-                input = p.input;
-                options = p.options ?? {};
-                algorithm = new AlgorithmClass(
-                    p.input,
-                    options
-                ) as unknown as TAlgo;
-                current = 0;
-                postMessage({
-                    type: "render-done",
-                    payload: {
-                        stepsLength: algorithm.getStepsLength(),
-                        metrics: algorithm.getMetrics(),
-                    },
-                });
-                revealStart = performance.now();
-                animateReveal();
-                return;
-            }
+            case "render-algorithm":
+                return run((payload ?? {}) as RunPayload<TInput>);
         }
     };
 }

@@ -5,15 +5,14 @@ import {
 import type { FillInput } from "../utils/fillInput";
 import { gridLayout } from "../utils/grid";
 import { createCanvasWorker, type DescribeApi } from "./runtime/canvasWorker";
+import { cellName, cellOrigin } from "./runtime/draw";
 
 /*
- * Flood fill on a bitmap: walls, open floor, cells waiting in the queue
- * or stack (yellow), and paint (teal). Freshly painted cells glow and
- * cool down, so the shape of the wavefront — diamond, square, snake,
- * runs, mould — is visible at a glance. Labelling gives every region its
- * own colour instead.
+ * Flood fill: queued cells in yellow, paint in teal. Fresh paint glows and
+ * fades so the wavefront shape shows. Labelling colours each region instead.
  */
 
+/* Minimum number of fills a fresh cell keeps glowing for. */
 const FRESH = 24;
 const LABEL_TOKENS = [
     "finish",
@@ -24,7 +23,6 @@ const LABEL_TOKENS = [
     "check-false",
 ];
 
-/* "Paint (12, 4): 230 painted, 18 waiting". */
 function describeFill({
     algorithm,
     input,
@@ -33,8 +31,7 @@ function describeFill({
     const info = algorithm.getStepByIndex(step);
     if (!info) return "";
     const m = info.metrics;
-    const at = (cell: number): string =>
-        `(${cell % input.cols}, ${Math.floor(cell / input.cols)})`;
+    const at = (cell: number): string => cellName(cell, input.cols);
     switch (info.type) {
         case "initial":
             return `Pour paint at ${at(input.start)}.`;
@@ -64,10 +61,10 @@ createCanvasWorker<FillInput, FillAlgorithm>({
         const shown = Math.ceil(rows * reveal);
         const finished = state.type === "finish";
 
-        const wall = color("path-wall", "#6b5f50");
-        const floor = color("path-empty", "#2b251f");
-        const queued = color("frontier", "#f5cd4e");
-        const paint = color("path", "#5fd6c6");
+        const wall = color("path-wall");
+        const floor = color("path-empty");
+        const queued = color("frontier");
+        const paint = color("path");
         const palette = LABEL_TOKENS.map((t) => color(t, "#5fd6c6"));
         const fresh = Math.max(FRESH, Math.round(state.order * 0.04));
 
@@ -100,9 +97,8 @@ createCanvasWorker<FillInput, FillAlgorithm>({
         }
 
         const ring = (cell: number, stroke: string): void => {
-            const px = layout.x + (cell % cols) * layout.cell;
-            const py = layout.y + Math.floor(cell / cols) * layout.cell;
             if (Math.floor(cell / cols) >= shown) return;
+            const [px, py] = cellOrigin(layout, cols, cell);
             const t = size >= 8 ? 2 : 1;
             ctx.fillStyle = stroke;
             ctx.fillRect(px - t, py - t, size + t * 2, t);
@@ -110,8 +106,7 @@ createCanvasWorker<FillInput, FillAlgorithm>({
             ctx.fillRect(px - t, py, t, size);
             ctx.fillRect(px + size, py, t, size);
         };
-        if (state.mode === "order") ring(start, color("path-start", "#e8825c"));
-        if (!finished && state.cell >= 0)
-            ring(state.cell, color("current", "#ee8fd0"));
+        if (state.mode === "order") ring(start, color("path-start"));
+        if (!finished && state.cell >= 0) ring(state.cell, color("current"));
     },
 });

@@ -1,16 +1,13 @@
 import type { FindAlgorithm } from "../algorithms/find/FindAlgorithm";
 import type { FindInput } from "../utils/findInput";
 import { createCanvasWorker, type DescribeApi } from "./runtime/canvasWorker";
+import { DARK, highlight, monoFont } from "./runtime/draw";
 
 /*
- * Array search: sorted bars, the target as a dashed line at its height,
- * everything outside the live range dimmed, a bracket under the range,
- * and a mark under every bar already probed.
+ * Array search: sorted bars with the target as a dashed line. Bars outside
+ * the live range are dimmed, a bracket marks the range, probed bars get a tick.
  */
 
-const LIT = "rgba(255, 255, 255, 0.28)";
-
-/* "a[17] = 42 vs target 63: too small, go right". */
 function describeFind({
     algorithm,
     input,
@@ -66,7 +63,7 @@ createCanvasWorker<FindInput, FindAlgorithm>({
             state.type === "miss" ||
             (state.type === "finish" && state.found < 0);
 
-        ctx.font = "bold 10px ui-monospace, monospace";
+        ctx.font = monoFont(10);
         for (let i = 0; i < n; i += 1) {
             const h = Math.max(
                 2,
@@ -75,24 +72,21 @@ createCanvasWorker<FindInput, FindAlgorithm>({
             const x = xOf(i);
             const y = chartBottom - h;
             const live = i >= state.lo && i <= state.hi;
-            let fill = color("default", "#7a6c5a");
-            if (i === state.found) fill = color("finish", "#5fd6c6");
-            else if (i === state.probe) fill = color("check", "#f5cd4e");
+            let fill = color("default");
+            if (i === state.found) fill = color("finish");
+            else if (i === state.probe) fill = color("check");
             ctx.globalAlpha =
                 live || i === state.found || i === state.probe ? 1 : 0.22;
             ctx.fillStyle = fill;
             ctx.fillRect(x, y, barW, h);
-            if (barW >= 4 && h >= 4) {
-                ctx.fillStyle = LIT;
-                ctx.fillRect(x, y, barW, 2);
-            }
+            if (barW >= 4 && h >= 4) highlight(ctx, x, y, barW);
             ctx.globalAlpha = 1;
             if (state.probed[i] && i !== state.probe) {
                 ctx.fillStyle = color("copy-to", "#95886f");
                 ctx.fillRect(x, chartBottom + 2, barW, 2);
             }
             if (barW >= 14 && reveal === 1) {
-                ctx.fillStyle = color("label", "#a99d8a");
+                ctx.fillStyle = color("label");
                 ctx.textAlign = "center";
                 ctx.fillText(String(values[i]), x + barW / 2, y - 4);
             }
@@ -101,7 +95,7 @@ createCanvasWorker<FindInput, FindAlgorithm>({
         if (!ended && state.lo >= 0 && state.lo <= state.hi) {
             const x0 = xOf(state.lo);
             const x1 = xOf(state.hi) + barW;
-            ctx.fillStyle = color("select", "#ee8fd0");
+            ctx.fillStyle = color("select");
             ctx.fillRect(x0, chartBottom + 6, x1 - x0, 2);
             ctx.fillRect(x0, chartBottom + 4, 2, 6);
             ctx.fillRect(x1 - 2, chartBottom + 4, 2, 6);
@@ -110,13 +104,13 @@ createCanvasWorker<FindInput, FindAlgorithm>({
         // Target line; it turns red once the search gives up.
         const ty = Math.round(chartBottom - (target / max) * chartH * reveal);
         ctx.fillStyle = ended
-            ? color("check-false", "#ff7a68")
+            ? color("check-false")
             : color("find-target", "#e8825c");
         for (let x = 0; x < width; x += 8) ctx.fillRect(x, ty, 4, 2);
         const label = `target ${target}`;
         ctx.textAlign = "left";
         ctx.fillRect(0, ty - 14, ctx.measureText(label).width + 8, 14);
-        ctx.fillStyle = "#1d110b";
+        ctx.fillStyle = DARK;
         ctx.fillText(label, 4, ty - 4);
     },
 });

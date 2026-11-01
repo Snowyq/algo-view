@@ -5,18 +5,15 @@ import {
 } from "../algorithms/geometry/HullAlgorithm";
 import type { PointsInput } from "../utils/pointsInput";
 import { createCanvasWorker, type DescribeApi } from "./runtime/canvasWorker";
-import { pixelLine } from "./runtime/pixelLine";
+import { focusRing, pixelLine } from "./runtime/draw";
 
 /*
- * Convex hull: square pixel points, the current hull candidate in teal,
- * the line being tested in yellow with the tested point lit green (left
- * turn, keep) or red (right turn). Points known to be inside fade out;
- * at the end the hull closes and its area gets a faint fill.
+ * Convex hull: candidate hull in teal, the tested line in yellow, the tested
+ * point green (left turn, keep) or red. The closed hull gets a faint fill.
  */
 
 const PAD = 20;
 
-/* "Is P7 left of P2 → P5? no: drop it". */
 function describeGeometry({
     algorithm,
     input,
@@ -52,14 +49,14 @@ createCanvasWorker<PointsInput, HullAlgorithm>({
         const { points } = input;
         const n = points.length;
 
-        const idle = color("default", "#7a6c5a");
+        const idle = color("default");
         const inside = color("path-wall", "#4a4036");
-        const hull = color("path", "#5fd6c6");
-        const testLine = color("check", "#f5cd4e");
-        const ok = color("check-true", "#8fdc8a");
-        const bad = color("check-false", "#ff7a68");
-        const select = color("select", "#ee8fd0");
-        const fg = color("fg", "#f4ede0");
+        const hull = color("path");
+        const testLine = color("check");
+        const ok = color("check-true");
+        const bad = color("check-false");
+        const select = color("select");
+        const fg = color("fg");
 
         // Stretch to the panel, but not so far that a ring turns flat.
         const spanY = height - PAD * 2;
@@ -128,12 +125,7 @@ createCanvasWorker<PointsInput, HullAlgorithm>({
                 if (state.type === "push" && i === state.a) ring = fg;
                 if (state.type === "sort" && i === state.a) ring = fg;
             }
-            if (ring) {
-                ctx.fillStyle = ring;
-                ctx.fillRect(x - half - 3, y - half - 3, size + 6, size + 6);
-                ctx.fillStyle = "#1d110b";
-                ctx.fillRect(x - half - 1, y - half - 1, size + 2, size + 2);
-            }
+            if (ring) focusRing(ctx, x - half, y - half, size, ring);
             ctx.fillStyle = fill;
             ctx.fillRect(x - half, y - half, size, size);
         }

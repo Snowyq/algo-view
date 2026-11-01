@@ -6,19 +6,13 @@ import {
 } from "../algorithms/path/PathAlgorithm";
 import { CELL_MUD, CELL_WALL, gridLayout, type GridInput } from "../utils/grid";
 import { createCanvasWorker, type DescribeApi } from "./runtime/canvasWorker";
+import { cellName, cellOrigin, highlight } from "./runtime/draw";
 
 /*
- * Path finding: the grid in square tiles. Walls and mud are the map,
- * the overlay (frontier, visited, route) is the search at this step.
- * A fresh grid wipes in row by row.
+ * Path finding: walls and mud are the map, the overlay (frontier, visited,
+ * route) is the search at this step.
  */
 
-const LIT = "rgba(255, 255, 255, 0.28)";
-
-const at = (cell: number, cols: number): string =>
-    `(${cell % cols}, ${Math.floor(cell / cols)})`;
-
-/* "Expand (4, 7): 31 visited, 12 waiting". */
 function describePath({
     algorithm,
     input,
@@ -27,13 +21,14 @@ function describePath({
     const info = algorithm.getStepByIndex(step);
     if (!info) return "";
     const m = info.metrics;
+    const at = (cell: number): string => cellName(cell, input.cols);
     const visited = m.visited?.count ?? 0;
     const open = m.open?.count ?? 0;
     switch (info.type) {
         case "initial":
-            return `Start at ${at(input.start, input.cols)}, end at ${at(input.end, input.cols)}.`;
+            return `Start at ${at(input.start)}, end at ${at(input.end)}.`;
         case "visit":
-            return `Expand ${at(info.current, input.cols)}: ${visited} visited, ${open} waiting.`;
+            return `Expand ${at(info.current)}: ${visited} visited, ${open} waiting.`;
         case "frontier":
             return `Queue ${info.cells.length} new neighbour${info.cells.length === 1 ? "" : "s"}.`;
         case "path":
@@ -57,18 +52,16 @@ createCanvasWorker<GridInput, PathAlgorithm>({
         const size = layout.cell - layout.gap;
         const shownRows = Math.ceil(rows * reveal);
 
-        const empty = color("path-empty", "#2b251f");
-        const wall = color("path-wall", "#6b5f50");
+        const empty = color("path-empty");
+        const wall = color("path-wall");
         const mud = color("path-mud", "#4f3524");
         const mudDot = color("path-mud-dot", "#8a5a3a");
-        const frontier = color("frontier", "#f5cd4e");
-        const visited = color("visit", "#7fb0ff");
-        const route = color("path", "#5fd6c6");
+        const frontier = color("frontier");
+        const visited = color("visit");
+        const route = color("path");
 
-        const at = (cell: number): [number, number] => [
-            layout.x + (cell % cols) * layout.cell,
-            layout.y + Math.floor(cell / cols) * layout.cell,
-        ];
+        const at = (cell: number): [number, number] =>
+            cellOrigin(layout, cols, cell);
 
         for (let y = 0; y < shownRows; y += 1) {
             for (let x = 0; x < cols; x += 1) {
@@ -79,10 +72,7 @@ createCanvasWorker<GridInput, PathAlgorithm>({
                 if (kind === CELL_WALL) {
                     ctx.fillStyle = wall;
                     ctx.fillRect(px, py, size, size);
-                    if (size >= 6) {
-                        ctx.fillStyle = LIT;
-                        ctx.fillRect(px, py, size, 1);
-                    }
+                    if (size >= 6) highlight(ctx, px, py, size, 1);
                     continue;
                 }
                 const state = overlay[i];
@@ -102,8 +92,8 @@ createCanvasWorker<GridInput, PathAlgorithm>({
                     ctx.fillRect(px + d * 3, py + d * 3, d, d);
                 }
                 if (state === OVERLAY_PATH && size >= 6) {
-                    ctx.fillStyle = LIT;
-                    ctx.fillRect(
+                    highlight(
+                        ctx,
                         px,
                         py,
                         size,
@@ -115,16 +105,16 @@ createCanvasWorker<GridInput, PathAlgorithm>({
 
         if (current >= 0 && current !== start && current !== end) {
             const [px, py] = at(current);
-            ctx.fillStyle = color("current", "#ee8fd0");
+            ctx.fillStyle = color("current");
             ctx.fillRect(px, py, size, size);
         }
 
         // Start: solid block. End: notched ring.
         const [sx, sy] = at(start);
-        ctx.fillStyle = color("path-start", "#e8825c");
+        ctx.fillStyle = color("path-start");
         ctx.fillRect(sx, sy, size, size);
         const [ex, ey] = at(end);
-        ctx.fillStyle = color("path-end", "#f4ede0");
+        ctx.fillStyle = color("path-end");
         if (size < 6) {
             ctx.fillRect(ex, ey, size, size);
         } else {

@@ -7,14 +7,13 @@ import {
 } from "../algorithms/maze/MazeAlgorithm";
 import { gridLayout } from "../utils/grid";
 import { createCanvasWorker, type DescribeApi } from "./runtime/canvasWorker";
+import { cellName, cellOrigin } from "./runtime/draw";
 
 /*
- * Maze generation: solid rock that gets carved. Passages are drawn in
- * the floor color, the open stack / random walk glows, frontier rooms
- * wait in yellow, and the cursor shows where the algorithm is looking.
+ * Maze generation: solid rock gets carved into floor. The open stack or
+ * random walk glows, frontier rooms wait in yellow.
  */
 
-/* "Carve 2 cells: 140 carved so far". */
 function describeMaze({
     algorithm,
     input,
@@ -23,8 +22,6 @@ function describeMaze({
     const info = algorithm.getStepByIndex(step);
     if (!info) return "";
     const carved = info.metrics.carved?.count ?? 0;
-    const pos = (cell: number): string =>
-        `(${cell % input.cols}, ${Math.floor(cell / input.cols)})`;
     switch (info.type) {
         case "initial":
             return "Solid rock: nothing carved yet.";
@@ -33,7 +30,9 @@ function describeMaze({
         case "frontier":
             return `${info.mark.length} room${info.mark.length === 1 ? "" : "s"} join the frontier.`;
         case "visit":
-            return info.current >= 0 ? `Look around ${pos(info.current)}.` : "";
+            return info.current >= 0
+                ? `Look around ${cellName(info.current, input.cols)}.`
+                : "";
         case "walk":
             return "Random walk: wander until the maze is hit.";
         case "finish":
@@ -53,11 +52,11 @@ createCanvasWorker<MazeInput, MazeAlgorithm>({
         const size = layout.cell - layout.gap;
         const shown = Math.ceil(rows * reveal);
 
-        const rock = color("path-wall", "#6b5f50");
-        const floor = color("path-empty", "#2b251f");
-        const settled = color("visit", "#7fb0ff");
-        const walk = color("path", "#5fd6c6");
-        const frontier = color("frontier", "#f5cd4e");
+        const rock = color("path-wall");
+        const floor = color("path-empty");
+        const settled = color("visit");
+        const walk = color("path");
+        const frontier = color("frontier");
 
         for (let y = 0; y < shown; y += 1) {
             for (let x = 0; x < cols; x += 1) {
@@ -78,14 +77,9 @@ createCanvasWorker<MazeInput, MazeAlgorithm>({
                     ctx.globalAlpha = 1;
                     continue;
                 }
-                ctx.fillStyle =
-                    mark === MARK_WALK
-                        ? walk
-                        : mark === MARK_IN_MAZE
-                          ? floor
-                          : floor;
+                ctx.fillStyle = mark === MARK_WALK ? walk : floor;
                 ctx.fillRect(px, py, size, size);
-                // Settled passages carry a faint tint of "done".
+                // Faint tint on settled passages.
                 if (mark === MARK_IN_MAZE) {
                     ctx.globalAlpha = 0.18;
                     ctx.fillStyle = settled;
@@ -96,9 +90,8 @@ createCanvasWorker<MazeInput, MazeAlgorithm>({
         }
 
         if (current >= 0) {
-            const px = layout.x + (current % cols) * layout.cell;
-            const py = layout.y + Math.floor(current / cols) * layout.cell;
-            ctx.fillStyle = color("current", "#ee8fd0");
+            const [px, py] = cellOrigin(layout, cols, current);
+            ctx.fillStyle = color("current");
             ctx.fillRect(px, py, size, size);
         }
     },

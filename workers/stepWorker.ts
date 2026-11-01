@@ -24,16 +24,14 @@ type StepWorkerMessage =
     | { type: "change"; payload: StepWorkerChangePayload };
 
 /*
- * The playback clock. Steps advance by elapsed time, not by timer calls:
- * the timer wakes every frame (16ms) and moves as many steps as the
- * interval says have passed. A 1ms speed therefore means ~16 steps
- * per tick instead of 1000 messages a second that nobody can draw.
+ * Playback clock. Steps advance by elapsed time: the timer wakes every frame
+ * and moves as many steps as have passed, so fast speeds batch steps per tick.
  */
 
 const TICK_MS = 16;
-/* After a stall (hidden tab, GC) don't jump more than this much time. */
+/* Cap the jump after a stall (hidden tab, GC). */
 const MAX_CATCH_UP_MS = 250;
-/* Never cap below one full interval, or slow speeds could never step. */
+/* At least two intervals, or slow speeds could never step. */
 const catchUpLimit = (): number => Math.max(MAX_CATCH_UP_MS, interval * 2);
 
 let sharedIndex: Int32Array | null = null;
@@ -76,8 +74,7 @@ function startTimer(): void {
     stopTimer();
     lastTime = performance.now();
     carry = 0;
-    // Always wake every frame: a 500ms timer that fires 0.1ms early would
-    // round down to zero steps and silently halve the speed.
+    // Wake every frame: a long timer firing slightly early would round to zero steps.
     timerId = setInterval(tick, TICK_MS);
 }
 
@@ -96,7 +93,7 @@ function tick(): void {
 
     const from = readStep();
     const next = Math.min(maxStep, from + steps);
-    // A breakpoint between here and there: stop on it exactly.
+    // Stop exactly on a breakpoint in between.
     const stop = firstStop(from, next);
     if (stop >= 0) {
         writeStep(stop);
@@ -136,7 +133,7 @@ onmessage = (event: MessageEvent<StepWorkerMessage>): void => {
         return;
     }
 
-    // Speed or length changed mid-play: retune without losing the position.
+    // Speed or length changed mid-play: retune, keep the position.
     if (message.type === "config") {
         const { interval: nextInterval, maxStep: nextMax } = message.payload;
         if (nextInterval) interval = nextInterval;

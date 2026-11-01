@@ -1,19 +1,53 @@
 import { NIL, RED, type TreeAlgorithm } from "../algorithms/tree/TreeAlgorithm";
 import type { TreeInput } from "../utils/treeInput";
 import { createCanvasWorker, type DescribeApi } from "./runtime/canvasWorker";
-import { pixelLine } from "./runtime/pixelLine";
+import { DARK, highlight, monoFont, pixelLine } from "./runtime/draw";
 
 /*
- * Trees: the keys still to insert run along the top, the tree below is
- * laid out by in-order rank (x) and depth (y), so a degenerate tree
- * visibly becomes a staircase. The key being inserted floats next to
- * the node it is compared with; rotations light both nodes involved.
+ * Trees: keys to insert run along the top. Nodes sit at in-order rank (x)
+ * and depth (y), so a degenerate tree shows as a staircase.
  */
 
-const DARK = "#1d110b";
 const PAD = 18;
+/* Black node fill in red-black trees. */
+const BLACK = "#14100d";
 
-/* "Insert 42: 42 < 57, go left". */
+/* In-order rank and depth of every node, plus a breadth-first order. */
+function treeLayout(
+    root: number,
+    left: Int16Array,
+    right: Int16Array,
+    n: number
+) {
+    const rank = new Int16Array(n).fill(-1);
+    const depth = new Int16Array(n);
+    let count = 0;
+    let maxDepth = 0;
+    const stack: number[] = [];
+    let x = root;
+    while (x !== NIL || stack.length) {
+        while (x !== NIL) {
+            stack.push(x);
+            x = left[x];
+        }
+        x = stack.pop()!;
+        rank[x] = count;
+        count += 1;
+        x = right[x];
+    }
+    const order: number[] = root === NIL ? [] : [root];
+    for (let k = 0; k < order.length; k += 1) {
+        const u = order[k];
+        for (const c of [left[u], right[u]]) {
+            if (c === NIL) continue;
+            depth[c] = depth[u] + 1;
+            maxDepth = Math.max(maxDepth, depth[c]);
+            order.push(c);
+        }
+    }
+    return { rank, depth, order, count, maxDepth };
+}
+
 function describeTree({
     algorithm,
     input,
@@ -55,16 +89,16 @@ createCanvasWorker<TreeInput, TreeAlgorithm>({
         const n = all.length;
         const finished = state.type === "finish";
 
-        const idleNode = color("default", "#7a6c5a");
+        const idleNode = color("default");
         const ink = color("label", "#d4cab9");
-        const fg = color("fg", "#f4ede0");
-        const edge = color("path-wall", "#6b5f50");
-        const tile = color("path-empty", "#2b251f");
-        const check = color("check", "#f5cd4e");
-        const inserted = color("finish", "#5fd6c6");
+        const fg = color("fg");
+        const edge = color("path-wall");
+        const tile = color("path-empty");
+        const check = color("check");
+        const inserted = color("finish");
         const swap = color("swap", "#f08a5d");
-        const select = color("select", "#ee8fd0");
-        const red = color("check-false", "#ff7a68");
+        const select = color("select");
+        const red = color("check-false");
 
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
@@ -75,7 +109,7 @@ createCanvasWorker<TreeInput, TreeAlgorithm>({
             Math.min(22, Math.floor((width - PAD * 2) / n) - 2)
         );
         const kx = Math.floor((width - (kw + 2) * n) / 2);
-        ctx.font = `bold ${Math.max(8, Math.floor(kw * 0.5))}px ui-monospace, monospace`;
+        ctx.font = monoFont(Math.max(8, Math.floor(kw * 0.5)));
         for (let i = 0; i < n; i += 1) {
             const current = i === state.keyIndex && !finished;
             const done = i < state.keyIndex;
@@ -91,33 +125,12 @@ createCanvasWorker<TreeInput, TreeAlgorithm>({
             }
         }
 
-        // In-order rank and depth of every node in the tree.
-        const rank = new Int16Array(n).fill(-1);
-        const depth = new Int16Array(n);
-        let count = 0;
-        let maxDepth = 0;
-        const stack: number[] = [];
-        let x = root;
-        while (x !== NIL || stack.length) {
-            while (x !== NIL) {
-                stack.push(x);
-                x = left[x];
-            }
-            x = stack.pop()!;
-            rank[x] = count;
-            count += 1;
-            x = right[x];
-        }
-        const order: number[] = root === NIL ? [] : [root];
-        for (let k = 0; k < order.length; k += 1) {
-            const u = order[k];
-            for (const c of [left[u], right[u]]) {
-                if (c === NIL) continue;
-                depth[c] = depth[u] + 1;
-                maxDepth = Math.max(maxDepth, depth[c]);
-                order.push(c);
-            }
-        }
+        const { rank, depth, order, count, maxDepth } = treeLayout(
+            root,
+            left,
+            right,
+            n
+        );
         if (!count) return;
 
         const top = PAD + kw + 18;
@@ -138,7 +151,6 @@ createCanvasWorker<TreeInput, TreeAlgorithm>({
         const hot = (u: number): boolean =>
             !finished && (u === state.focus || u === state.other);
 
-        // Edges.
         order.forEach((u) => {
             if (rank[u] >= shown) return;
             for (const c of [left[u], right[u]]) {
@@ -149,7 +161,6 @@ createCanvasWorker<TreeInput, TreeAlgorithm>({
             }
         });
 
-        // Nodes.
         const h = (u: number): number => (u === NIL ? 0 : tag[u]);
         order.forEach((u) => {
             if (rank[u] >= shown) return;
@@ -158,7 +169,7 @@ createCanvasWorker<TreeInput, TreeAlgorithm>({
             let fill = idleNode;
             let text = fg;
             if (tagKind === "color") {
-                fill = tag[u] === RED ? red : "#14100d";
+                fill = tag[u] === RED ? red : BLACK;
                 text = tag[u] === RED ? DARK : fg;
             }
             if (!finished) {
@@ -170,7 +181,7 @@ createCanvasWorker<TreeInput, TreeAlgorithm>({
                 if (state.type === "rotate" && isOther) fill = select;
                 if (state.type === "swap" && (isFocus || isOther)) fill = swap;
                 if (state.type === "compare" && isOther) fill = select;
-                if (fill !== idleNode && fill !== "#14100d" && fill !== red)
+                if (fill !== idleNode && fill !== BLACK && fill !== red)
                     text = DARK;
                 if (state.type === "recolor" && (isFocus || isOther)) {
                     ctx.fillStyle = select;
@@ -182,17 +193,23 @@ createCanvasWorker<TreeInput, TreeAlgorithm>({
                     );
                 }
             }
-            if (fill === "#14100d") {
+            if (fill === BLACK) {
                 ctx.fillStyle = ink;
                 ctx.fillRect(cx - half - 1, cy - half - 1, size + 2, size + 2);
             }
             ctx.fillStyle = fill;
             ctx.fillRect(cx - half, cy - half, size, size);
-            ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
-            ctx.fillRect(cx - half, cy - half, size, 2);
+            highlight(
+                ctx,
+                cx - half,
+                cy - half,
+                size,
+                2,
+                "rgba(255, 255, 255, 0.2)"
+            );
             if (size >= 14) {
                 ctx.fillStyle = text;
-                ctx.font = `bold ${Math.max(9, Math.floor(size * 0.5))}px ui-monospace, monospace`;
+                ctx.font = monoFont(Math.max(9, Math.floor(size * 0.5)));
                 ctx.fillText(String(keys[u]), cx, cy + 1);
             }
             // Balance factor (AVL) or priority (treap) badge.
@@ -206,7 +223,7 @@ createCanvasWorker<TreeInput, TreeAlgorithm>({
                     value > 0 && tagKind === "height"
                         ? `+${value}`
                         : String(value);
-                ctx.font = "bold 9px ui-monospace, monospace";
+                ctx.font = monoFont(9);
                 const w = Math.ceil(ctx.measureText(label).width) + 4;
                 ctx.fillStyle = DARK;
                 ctx.fillRect(cx + half - 3, cy - half - 7, w, 10);
@@ -216,7 +233,7 @@ createCanvasWorker<TreeInput, TreeAlgorithm>({
             }
         });
 
-        // The key on its way down floats beside the node it is compared with.
+        // The key being inserted floats beside the node it is compared with.
         if (
             state.type === "compare" &&
             state.focus !== NIL &&
@@ -229,7 +246,7 @@ createCanvasWorker<TreeInput, TreeAlgorithm>({
             ctx.fillStyle = select;
             ctx.fillRect(fx, fy, t, t);
             ctx.fillStyle = DARK;
-            ctx.font = `bold ${Math.max(9, Math.floor(t * 0.5))}px ui-monospace, monospace`;
+            ctx.font = monoFont(Math.max(9, Math.floor(t * 0.5)));
             ctx.fillText(
                 String(all[state.keyIndex]),
                 fx + t / 2,
