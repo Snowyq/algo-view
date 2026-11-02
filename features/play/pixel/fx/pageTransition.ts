@@ -1,36 +1,30 @@
+import { markIntroSeen } from "../intro/introSeen";
+import { prefersReducedMotion } from "./dom";
 import { pixelWipe } from "./pixelWipe";
 
 /*
- * Page transitions between the landing page and the playground: the page
- * being left fills with a large pixel dither, the route changes under the
- * cover, and the arriving page clears it the same way. The cover is a
- * fixed element on <body>, so it survives the client-side navigation.
+ * Landing <-> playground transition. The cover is a fixed element on <body>,
+ * so it survives the client-side navigation and the new page clears it.
  */
 
 const ID = "page-transition";
-const BLOCK = 24;
-const DURATION = 300;
+const WIPE = {
+    color: "--bg",
+    block: 24,
+    duration: 300,
+    frames: 5,
+    pattern: "bayer",
+} as const;
 /** If the new page never calls arrive(), don't leave the screen covered. */
 const SAFETY_MS = 4000;
 
-const reducedMotion = (): boolean =>
-    typeof window !== "undefined" &&
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
 export function leaveTo(href: string, navigate: (href: string) => void): void {
-    if (reducedMotion() || document.getElementById(ID)) {
+    if (prefersReducedMotion() || document.getElementById(ID)) {
         navigate(href);
         return;
     }
-    // The playground's own intro would be a second effect right after
-    // this one: arriving through the transition skips it.
-    if (href.startsWith("/play")) {
-        try {
-            sessionStorage.setItem("algo-view:intro-seen", "1");
-        } catch {
-            // Storage blocked: the intro just plays.
-        }
-    }
+    // the playground intro right after this would be a second effect
+    if (href.startsWith("/play")) markIntroSeen();
     const cover = document.createElement("div");
     cover.id = ID;
     Object.assign(cover.style, {
@@ -39,15 +33,7 @@ export function leaveTo(href: string, navigate: (href: string) => void): void {
         zIndex: "10000",
     });
     document.body.appendChild(cover);
-    pixelWipe(cover, {
-        mode: "cover",
-        color: "--bg",
-        block: BLOCK,
-        duration: DURATION,
-        frames: 5,
-        keep: true,
-        pattern: "bayer",
-    }).done.then(() => {
+    pixelWipe(cover, { ...WIPE, mode: "cover", keep: true }).done.then(() => {
         navigate(href);
         window.setTimeout(() => cover.remove(), SAFETY_MS);
     });
@@ -59,12 +45,7 @@ export function arrive(): void {
     if (!cover) return;
     cover.replaceChildren();
     cover.style.pointerEvents = "none";
-    pixelWipe(cover, {
-        mode: "reveal",
-        color: "--bg",
-        block: BLOCK,
-        duration: DURATION,
-        frames: 5,
-        pattern: "bayer",
-    }).done.then(() => cover.remove());
+    pixelWipe(cover, { ...WIPE, mode: "reveal" }).done.then(() =>
+        cover.remove()
+    );
 }

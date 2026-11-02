@@ -1,7 +1,4 @@
-/*
- * One vocabulary for step types, shared by the legend, the code view and
- * anything else that names or colors a step.
- */
+/* Labels and colors for every step type, shared by legend and code view. */
 
 export type StepInfo = {
     type: string;

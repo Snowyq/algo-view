@@ -4,7 +4,10 @@ import {
     useLayoutEffect,
     useRef,
     useState,
+    type Dispatch,
     type MouseEvent,
+    type RefObject,
+    type SetStateAction,
 } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import styled from "styled-components";
@@ -46,8 +49,9 @@ import {
     FOCUS_SHARE,
     FOCUS_SIDE_MIN_WIDTH,
     FOCUS_SIDE_SHARE,
-} from "./focusShare";
-import { panelCapacity, panelColumns } from "./panelLayout";
+    panelCapacity,
+    panelColumns,
+} from "./panelLayout";
 import { labelText, pixelFrame } from "../primitives/pixel";
 
 const EVICTED_NOTE_MS = 2600;
@@ -65,10 +69,8 @@ const Stage = styled.div`
     background-position: 8px 8px;
     overflow: hidden;
 
-    /* Focus mode: the clicked panel keeps the top (stacked) or left (side)
-       share, the window takes the rest; other panels stay mounted (their
-       state survives) but out of sight, and the panel's own counters move
-       into the window. */
+    /* Focus mode: the panel keeps its share, the window takes the rest.
+       Other panels stay mounted (state survives) but hidden. */
     &[data-window="stack"] [data-panel-grid] {
         height: ${FOCUS_SHARE};
     }
@@ -83,8 +85,7 @@ const Stage = styled.div`
     }
 `;
 
-/* Parked panels and "closed to make room": small pixel notes at the
-   bottom of the stage. */
+/* Notes about parked and evicted panels, at the bottom of the stage. */
 const Notes = styled.div`
     position: absolute;
     left: 50%;
@@ -99,7 +100,6 @@ const Notes = styled.div`
     pointer-events: none;
 `;
 
-/* The chip's one action: an inline pixel link-button. */
 const NoteAction = styled.button`
     flex: 0 0 auto;
     padding: 0.3rem 0.6rem;
@@ -156,10 +156,7 @@ const Slot = styled.div`
 
 type PanelSlot = { algo: ActiveAlgorithm; exiting: boolean };
 
-/*
- * Keeps closed panels mounted while they dissolve, so the grid can play
- * an exit before the remaining panels glide into the freed space.
- */
+/* Closed panels stay in the list, marked exiting, until their exit plays. */
 function mergeSlots(prev: PanelSlot[], next: ActiveAlgorithm[]): PanelSlot[] {
     const nextIds = new Set(next.map((algo) => algo.id));
     const result: PanelSlot[] = next.map((algo) => ({ algo, exiting: false }));
@@ -171,71 +168,55 @@ function mergeSlots(prev: PanelSlot[], next: ActiveAlgorithm[]): PanelSlot[] {
     return result;
 }
 
-function PanelGrid(): JSX.Element {
-    const dispatch = useDispatch<AppDispatch>();
-    // Only panels that fit get a slot; the rest are parked (see playSlice).
-    const visible = useSelector<RootState, ActiveAlgorithm[]>(
-        getVisibleAlgorithms
-    );
-    const parked = useSelector<RootState, ActiveAlgorithm[]>(
-        getParkedAlgorithms
-    );
-    const evicted = useSelector(getEvicted);
-    const windowId = useSelector<RootState, string | null>(
-        getWindowAlgorithmId
-    );
-    const editorOpen = useSelector<RootState, boolean>(getEditorOpen);
-    const category = useSelector<RootState, string>(getActiveCategory);
-    const introDone = useFx((fx) => fx.introDone);
-    const { size } = useWindowSize();
-    const reduced = useReducedMotion();
-    const breakpoint = Number.parseInt(PLAY_LAYOUT_BREAKPOINT, 10);
-    const isMobile =
-        size.width > 0 &&
-        Number.isFinite(breakpoint) &&
-        size.width < breakpoint;
+const allEntering = (algorithms: ActiveAlgorithm[]): PanelSlot[] =>
+    algorithms.map((algo) => ({ algo, exiting: false }));
 
-    const stageRef = useRef<HTMLDivElement | null>(null);
-    const exitingIds = useRef<Set<string>>(new Set());
-    // Running exit covers, so a panel that comes back can be uncovered.
-    const exitCovers = useRef<Map<string, () => void>>(new Map());
-    const revealed = useRef<boolean>(false);
+const panelGridOf = (stage: HTMLElement | null): Element | null =>
+    stage?.querySelector("[data-panel-grid]") ?? null;
 
-    // Derive slots during render so a closing panel is never unmounted early.
-    const [slots, setSlots] = useState<PanelSlot[]>(() =>
-        visible.map((algo) => ({ algo, exiting: false }))
-    );
+/*
+ * Slots derived during render, so a closing panel is never unmounted early.
+ * A new category replaces the stage outright: old panels kept as exiting
+ * slots would count in the column maths.
+ */
+function usePanelSlots(
+    visible: ActiveAlgorithm[],
+    category: string
+): [PanelSlot[], Dispatch<SetStateAction<PanelSlot[]>>] {
+    const [slots, setSlots] = useState<PanelSlot[]>(() => allEntering(visible));
     const visibleKey = visible.map((algo) => algo.id).join("|");
     const [prevKey, setPrevKey] = useState<string>(visibleKey);
     const [prevCategory, setPrevCategory] = useState<string>(category);
     if (category !== prevCategory) {
-        // A new category replaces the stage outright: the old panels have
-        // nothing to draw here, and keeping them as exiting slots would
-        // count them in the column maths (e.g. 2×2, then 3×1 once they go).
         setPrevCategory(category);
         setPrevKey(visibleKey);
-        setSlots(visible.map((algo) => ({ algo, exiting: false })));
+        setSlots(allEntering(visible));
     } else if (visibleKey !== prevKey) {
         setPrevKey(visibleKey);
         setSlots((prev) => mergeSlots(prev, visible));
     }
-    // Drop exit bookkeeping for slots that were replaced without an exit.
+    return [slots, setSlots];
+}
+
+/* Exiting slots get covered in blocks, then dropped. */
+function usePanelExits(
+    stageRef: RefObject<HTMLDivElement | null>,
+    slots: PanelSlot[],
+    setSlots: Dispatch<SetStateAction<PanelSlot[]>>,
+    category: string,
+    reduced: boolean
+): void {
+    const exitingIds = useRef<Set<string>>(new Set());
+    // Running exit covers, so a panel that comes back can be uncovered.
+    const exitCovers = useRef<Map<string, () => void>>(new Map());
+
+    // Slots replaced by a category switch never finish their exit.
     useLayoutEffect(() => {
         exitCovers.current.forEach((cancel) => cancel());
         exitCovers.current.clear();
         exitingIds.current.clear();
     }, [category]);
 
-    // First appearance waits for the intro, then dissolves in panel by panel.
-    useEffect(() => {
-        if (!introDone || revealed.current) return;
-        revealed.current = true;
-        const grid = stageRef.current?.querySelector("[data-panel-grid]");
-        if (!grid || reduced) return;
-        revealPanels(Array.from(grid.children), 90);
-    }, [introDone, reduced]);
-
-    // Exit: cover the closed panel in blocks, then drop it.
     useLayoutEffect(() => {
         const stage = stageRef.current;
         if (!stage) return;
@@ -251,8 +232,7 @@ function PanelGrid(): JSX.Element {
             if (!slot.exiting || exitingIds.current.has(id)) return;
             exitingIds.current.add(id);
 
-            // Only drop it if it is still leaving: a panel parked and back
-            // again mid-animation (window resized both ways) must stay.
+            // Drop it only if still leaving: it may have come back meanwhile.
             const remove = (): void => {
                 exitingIds.current.delete(id);
                 setSlots((prev) =>
@@ -282,17 +262,146 @@ function PanelGrid(): JSX.Element {
                 remove();
             });
         });
-    }, [slots, reduced]);
+    }, [stageRef, slots, setSlots, reduced]);
+}
 
-    // Some layout changes resize panels in one step: opening or closing
-    // Input, entering or leaving the details window, switching the
-    // algorithm in it (that panel comes back from display: none at a new
-    // size). The panels on show rebuild from blocks at their new size,
-    // which also covers the frame where a canvas still holds the drawing
-    // from its old size. Layout effect, so the cover is up before paint.
-    // Under the layout breakpoint Input is a sheet over the stage and the
-    // panels don't change with it.
+/* Stage content size, ignoring sub-pixel jitter. */
+function useStageSize(stageRef: RefObject<HTMLDivElement | null>): {
+    width: number;
+    height: number;
+} {
+    const [size, setSize] = useState({ width: 0, height: 0 });
+    useLayoutEffect(() => {
+        const stage = stageRef.current;
+        if (!stage) return;
+        const observer = new ResizeObserver(([entry]) => {
+            const { width, height } = entry.contentRect;
+            setSize((prev) =>
+                Math.abs(prev.width - width) < 1 &&
+                Math.abs(prev.height - height) < 1
+                    ? prev
+                    : { width, height }
+            );
+        });
+        observer.observe(stage);
+        return () => observer.disconnect();
+    }, [stageRef]);
+    return size;
+}
+
+/* Reports capacity once the stage width settles, so dragging a window edge
+   doesn't park and unpark panels every frame. The first report is instant. */
+function useReportCapacity(capacity: number, stageWidth: number): void {
+    const dispatch = useDispatch<AppDispatch>();
+    const reported = useRef<boolean>(false);
+    useEffect(() => {
+        if (stageWidth <= 0) return;
+        if (!reported.current) {
+            reported.current = true;
+            dispatch(setPanelCapacity(capacity));
+            return;
+        }
+        const id = setTimeout(
+            () => dispatch(setPanelCapacity(capacity)),
+            CAPACITY_SETTLE_MS
+        );
+        return () => clearTimeout(id);
+    }, [capacity, stageWidth, dispatch]);
+}
+
+/* Seq of the eviction to announce, cleared after a short while. */
+function useEvictedNote(evicted: { seq: number } | null): number {
+    const [shown, setShown] = useState<number>(0);
+    useEffect(() => {
+        if (!evicted) return;
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setShown(evicted.seq);
+        const id = setTimeout(() => setShown(0), EVICTED_NOTE_MS);
+        return () => clearTimeout(id);
+    }, [evicted]);
+    return shown;
+}
+
+type StageNotesProps = {
+    parked: ActiveAlgorithm[];
+    evictedName: string | null;
+};
+
+function StageNotes({ parked, evictedName }: StageNotesProps): JSX.Element {
+    const dispatch = useDispatch<AppDispatch>();
+    const parkedNames = parked.map((algo) => algo.info.name).join(", ");
+    return (
+        <Notes role="status">
+            {evictedName && (
+                <Note>
+                    <span>
+                        <b>{evictedName}</b> closed to make room
+                    </span>
+                </Note>
+            )}
+            {parked.length > 0 && (
+                <Note title={parkedNames}>
+                    <span>
+                        <b>+{parked.length}</b> waiting for room: {parkedNames}
+                    </span>
+                    <NoteAction
+                        type="button"
+                        onClick={() =>
+                            parked.forEach((algo) =>
+                                dispatch(closeAlgorithm(algo.id))
+                            )
+                        }
+                    >
+                        Close {parked.length > 1 ? "them" : "it"}
+                    </NoteAction>
+                </Note>
+            )}
+        </Notes>
+    );
+}
+
+function PanelGrid(): JSX.Element {
+    const dispatch = useDispatch<AppDispatch>();
+    // Only panels that fit get a slot; the rest are parked (see playSlice).
+    const visible = useSelector<RootState, ActiveAlgorithm[]>(
+        getVisibleAlgorithms
+    );
+    const parked = useSelector<RootState, ActiveAlgorithm[]>(
+        getParkedAlgorithms
+    );
+    const evicted = useSelector(getEvicted);
+    const windowId = useSelector<RootState, string | null>(
+        getWindowAlgorithmId
+    );
+    const editorOpen = useSelector<RootState, boolean>(getEditorOpen);
     const inspectorOpen = useSelector<RootState, boolean>(getSidebarOpen);
+    const category = useSelector<RootState, string>(getActiveCategory);
+    const introDone = useFx((fx) => fx.introDone);
+    const { size } = useWindowSize();
+    const reduced = useReducedMotion();
+    const breakpoint = Number.parseInt(PLAY_LAYOUT_BREAKPOINT, 10);
+    const isMobile =
+        size.width > 0 &&
+        Number.isFinite(breakpoint) &&
+        size.width < breakpoint;
+
+    const stageRef = useRef<HTMLDivElement | null>(null);
+    const revealed = useRef<boolean>(false);
+    const [slots, setSlots] = usePanelSlots(visible, category);
+    usePanelExits(stageRef, slots, setSlots, category, reduced);
+
+    // First appearance waits for the intro, then dissolves in panel by panel.
+    useEffect(() => {
+        if (!introDone || revealed.current) return;
+        revealed.current = true;
+        const grid = panelGridOf(stageRef.current);
+        if (!grid || reduced) return;
+        revealPanels(Array.from(grid.children), 90);
+    }, [introDone, reduced]);
+
+    // Opening Input (wide layout) or the window resizes panels in one go:
+    // rebuild the visible ones from blocks, before paint, so a canvas never
+    // shows its drawing at the old size.
     const prevLayout = useRef({ inspectorOpen, windowId });
     useLayoutEffect(() => {
         const prev = prevLayout.current;
@@ -301,7 +410,7 @@ function PanelGrid(): JSX.Element {
             prev.windowId !== windowId ||
             (prev.inspectorOpen !== inspectorOpen && !isMobile);
         if (!changed || reduced) return;
-        const grid = stageRef.current?.querySelector("[data-panel-grid]");
+        const grid = panelGridOf(stageRef.current);
         if (!grid) return;
         revealPanels(
             Array.from(grid.children).filter((el) => {
@@ -317,57 +426,17 @@ function PanelGrid(): JSX.Element {
     };
 
     // Stage size drives the layout; panels keep their category's minimum.
-    const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
-    useLayoutEffect(() => {
-        const stage = stageRef.current;
-        if (!stage) return;
-        const observer = new ResizeObserver(([entry]) => {
-            const { width, height } = entry.contentRect;
-            setStageSize((prev) =>
-                Math.abs(prev.width - width) < 1 &&
-                Math.abs(prev.height - height) < 1
-                    ? prev
-                    : { width, height }
-            );
-        });
-        observer.observe(stage);
-        return () => observer.disconnect();
-    }, []);
-    const wide = !isMobile;
-    const gap = wide ? GRID_GAP : GRID_GAP_SMALL;
-    const pad = wide ? GRID_PAD : GRID_GAP_SMALL;
+    const stageSize = useStageSize(stageRef);
+    const gap = isMobile ? GRID_GAP_SMALL : GRID_GAP;
+    const pad = isMobile ? GRID_GAP_SMALL : GRID_PAD;
     const box = categoryOf(category).panel;
     const innerWidth = stageSize.width - pad * 2;
     const innerHeight = stageSize.height - pad * 2;
-
-    // How many panels this stage holds; the store parks or evicts by it.
-    // Reported once the size settles, so dragging a window edge doesn't
-    // send panels in and out on every frame. The first report is instant.
-    const capacity = panelCapacity(innerWidth, innerHeight, gap, box);
-    const reported = useRef<boolean>(false);
-    useEffect(() => {
-        if (stageSize.width <= 0) return;
-        if (!reported.current) {
-            reported.current = true;
-            dispatch(setPanelCapacity(capacity));
-            return;
-        }
-        const id = setTimeout(
-            () => dispatch(setPanelCapacity(capacity)),
-            CAPACITY_SETTLE_MS
-        );
-        return () => clearTimeout(id);
-    }, [capacity, stageSize.width, dispatch]);
-
-    // "Closed X to make room" shows briefly after an automatic close.
-    const [shownEvicted, setShownEvicted] = useState<number>(0);
-    useEffect(() => {
-        if (!evicted) return;
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setShownEvicted(evicted.seq);
-        const id = setTimeout(() => setShownEvicted(0), EVICTED_NOTE_MS);
-        return () => clearTimeout(id);
-    }, [evicted]);
+    useReportCapacity(
+        panelCapacity(innerWidth, innerHeight, gap, box),
+        stageSize.width
+    );
+    const shownEvicted = useEvictedNote(evicted);
 
     const focused = windowId !== null;
     const focusLayout =
@@ -376,6 +445,8 @@ function PanelGrid(): JSX.Element {
         ? 1
         : panelColumns(slots.length, innerWidth, innerHeight, gap, box);
     const flipKey = `${slots.map((slot) => slot.algo.id).join("|")}/${columns}`;
+    const evictedName =
+        evicted && shownEvicted === evicted.seq ? evicted.name : null;
 
     return (
         <Stage
@@ -408,39 +479,7 @@ function PanelGrid(): JSX.Element {
             {!focused && !editorOpen && <ResultsCard />}
             {editorOpen && <DataEditor />}
             {!focused && (parked.length > 0 || shownEvicted > 0) && (
-                <Notes role="status">
-                    {evicted && shownEvicted === evicted.seq && (
-                        <Note>
-                            <span>
-                                <b>{evicted.name}</b> closed to make room
-                            </span>
-                        </Note>
-                    )}
-                    {parked.length > 0 && (
-                        <Note
-                            title={parked
-                                .map((algo) => algo.info.name)
-                                .join(", ")}
-                        >
-                            <span>
-                                <b>+{parked.length}</b> waiting for room:{" "}
-                                {parked
-                                    .map((algo) => algo.info.name)
-                                    .join(", ")}
-                            </span>
-                            <NoteAction
-                                type="button"
-                                onClick={() =>
-                                    parked.forEach((algo) =>
-                                        dispatch(closeAlgorithm(algo.id))
-                                    )
-                                }
-                            >
-                                Close {parked.length > 1 ? "them" : "it"}
-                            </NoteAction>
-                        </Note>
-                    )}
-                </Notes>
+                <StageNotes parked={parked} evictedName={evictedName} />
             )}
         </Stage>
     );

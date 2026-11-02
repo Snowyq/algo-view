@@ -13,11 +13,8 @@ import {
     setInputValue,
 } from "./playSlice";
 
-/*
- * Maze → Path bridge: rebuild the finished maze (cheap, deterministic
- * from the seed) and hand it to the path finders, start in the top-left
- * room, end in the bottom-right one.
- */
+/* Rebuilds the finished maze (deterministic from the seed) and opens it in
+   Path, from the top-left room to the bottom-right one. */
 export function solveMazeActions(
     algorithmId: string,
     maze: MazeInput

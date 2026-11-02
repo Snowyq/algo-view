@@ -5,11 +5,7 @@ import type { RegistryAlgorithm } from "../../playSlice";
 import PixelIcon from "../primitives/PixelIcon";
 import { labelText, pixelFrame } from "../primitives/pixel";
 
-/*
- * Hover (or focus) an algorithm in the sidebar: what it is, before you
- * open it. The card sits beside the list, level with the row, and never
- * takes focus or clicks itself.
- */
+/* Info card beside a hovered or focused sidebar row; never takes input. */
 
 const Card = styled.aside`
     position: fixed;

@@ -3,6 +3,7 @@ import { useSelector } from "react-redux";
 import styled from "styled-components";
 import { mainMetricKey } from "../../../../algorithms/growth";
 import type { RootState } from "../../../../store";
+import { formatNumber } from "../../format";
 import {
     getMaxStep,
     getVisibleAlgorithms,
@@ -13,12 +14,7 @@ import PixelIcon from "../primitives/PixelIcon";
 import { labelText, pixelFrame } from "../primitives/pixel";
 import PixelSprite from "../sprites/PixelSprite";
 
-/*
- * When a run with two or more panels reaches its end: who finished first,
- * what each one cost, and one sentence that says what the numbers mean.
- * Closing it hides it until the next finish (a new input or new set of
- * algorithms counts as a new run).
- */
+/* End-of-run comparison for two or more panels; dismissed until the next run. */
 
 /* Counters that are flags, not work. */
 const SKIP = new Set(["gaveUp", "noPath"]);
@@ -108,10 +104,76 @@ const Table = styled.table`
     }
 `;
 
-const format = new Intl.NumberFormat("en-US");
-
 function count(algo: ActiveAlgorithm, key: string): number {
     return algo.metrics?.[key]?.count ?? 0;
+}
+
+function gaveUp(algo: ActiveAlgorithm): boolean {
+    return Boolean(count(algo, "gaveUp") || count(algo, "noPath"));
+}
+
+/* The main counter (comparisons where there are any) first, then two more. */
+function tableKeys(metrics: ActiveAlgorithm["metrics"]): string[] {
+    const primary = mainMetricKey(metrics);
+    return [
+        ...(primary ? [primary] : []),
+        ...Object.keys(metrics ?? {}).filter(
+            (key) => !SKIP.has(key) && key !== primary
+        ),
+    ].slice(0, 3);
+}
+
+/* Finishers first, then fewest steps. */
+function rank(algorithms: ActiveAlgorithm[]): ActiveAlgorithm[] {
+    return [...algorithms].sort(
+        (a, b) =>
+            Number(gaveUp(a)) - Number(gaveUp(b)) ||
+            a.stepsLength - b.stepsLength
+    );
+}
+
+/* One sentence: the spread on the main counter, or who gave up. */
+function takeawayOf(algorithms: ActiveAlgorithm[]): JSX.Element {
+    const primary = mainMetricKey(algorithms[0].metrics);
+    const finishers = algorithms.filter((algo) => !gaveUp(algo));
+    const quitters = algorithms.filter(gaveUp);
+    if (primary && finishers.length >= 2) {
+        const byPrimary = [...finishers].sort(
+            (a, b) => count(a, primary) - count(b, primary)
+        );
+        const best = byPrimary[0];
+        const worst = byPrimary[byPrimary.length - 1];
+        const name = (
+            algorithms[0].metrics?.[primary]?.name ?? primary
+        ).toLowerCase();
+        const low = count(best, primary);
+        const high = count(worst, primary);
+        if (high === low) {
+            return <>All of them needed the same number of {name}.</>;
+        }
+        const ratio = high / low;
+        return (
+            <>
+                <b>{worst.info.name}</b> needed{" "}
+                <b>
+                    {low > 0
+                        ? `${ratio.toFixed(ratio < 10 ? 1 : 0)}×`
+                        : formatNumber(high - low)}
+                </b>{" "}
+                {low > 0 ? "as many" : "more"} {name} as <b>{best.info.name}</b>
+                .
+            </>
+        );
+    }
+    if (quitters.length > 0) {
+        return (
+            <>
+                <b>{quitters.map((algo) => algo.info.name).join(", ")}</b> gave
+                up; {finishers[0]?.info.name ?? "none"} got there.
+            </>
+        );
+    }
+    return <>Every run reached its end.</>;
 }
 
 function ResultsCard(): JSX.Element | null {
@@ -136,62 +198,7 @@ function ResultsCard(): JSX.Element | null {
         algorithms.every((algo) => algo.stepsLength > 0 && algo.metrics);
     if (!atEnd || !ready || maxStep <= 0 || dismissed === runKey) return null;
 
-    // The main counter (comparisons where there are any) leads the table.
-    const primary = mainMetricKey(algorithms[0].metrics);
-    const keys = [
-        ...(primary ? [primary] : []),
-        ...Object.keys(algorithms[0].metrics ?? {}).filter(
-            (key) => !SKIP.has(key) && key !== primary
-        ),
-    ].slice(0, 3);
-    const gaveUp = (algo: ActiveAlgorithm): boolean =>
-        Boolean(count(algo, "gaveUp") || count(algo, "noPath"));
-    const ranked = [...algorithms].sort(
-        (a, b) =>
-            Number(gaveUp(a)) - Number(gaveUp(b)) ||
-            a.stepsLength - b.stepsLength
-    );
-
-    // One sentence: the spread on the main counter, or a give-up.
-    const finishers = algorithms.filter((algo) => !gaveUp(algo));
-    const quitters = algorithms.filter(gaveUp);
-    let takeaway: JSX.Element;
-    if (primary && finishers.length >= 2) {
-        const byPrimary = [...finishers].sort(
-            (a, b) => count(a, primary) - count(b, primary)
-        );
-        const best = byPrimary[0];
-        const worst = byPrimary[byPrimary.length - 1];
-        const name = (
-            algorithms[0].metrics?.[primary]?.name ?? primary
-        ).toLowerCase();
-        const low = count(best, primary);
-        const high = count(worst, primary);
-        takeaway =
-            high === low ? (
-                <>All of them needed the same number of {name}.</>
-            ) : (
-                <>
-                    <b>{worst.info.name}</b> needed{" "}
-                    <b>
-                        {low > 0
-                            ? `${(high / low).toFixed(high / low < 10 ? 1 : 0)}×`
-                            : format.format(high - low)}
-                    </b>{" "}
-                    {low > 0 ? "as many" : "more"} {name} as{" "}
-                    <b>{best.info.name}</b>.
-                </>
-            );
-    } else if (quitters.length > 0) {
-        takeaway = (
-            <>
-                <b>{quitters.map((algo) => algo.info.name).join(", ")}</b> gave
-                up; {finishers[0]?.info.name ?? "none"} got there.
-            </>
-        );
-    } else {
-        takeaway = <>Every run reached its end.</>;
-    }
+    const keys = tableKeys(algorithms[0].metrics);
 
     return (
         <Card aria-label="Results" data-no-observe>
@@ -211,7 +218,7 @@ function ResultsCard(): JSX.Element | null {
                     <PixelIcon name="close" scale={2} />
                 </PixelButton>
             </Head>
-            <Takeaway>{takeaway}</Takeaway>
+            <Takeaway>{takeawayOf(algorithms)}</Takeaway>
             <Table>
                 <thead>
                     <tr>
@@ -225,7 +232,7 @@ function ResultsCard(): JSX.Element | null {
                     </tr>
                 </thead>
                 <tbody>
-                    {ranked.map((algo, index) => (
+                    {rank(algorithms).map((algo, index) => (
                         <tr
                             key={algo.id}
                             data-best={index === 0 || undefined}
@@ -235,11 +242,11 @@ function ResultsCard(): JSX.Element | null {
                             <td data-gave-up={gaveUp(algo) || undefined}>
                                 {gaveUp(algo)
                                     ? "gave up"
-                                    : format.format(algo.stepsLength - 1)}
+                                    : formatNumber(algo.stepsLength - 1)}
                             </td>
                             {keys.map((key) => (
                                 <td key={key}>
-                                    {format.format(count(algo, key))}
+                                    {formatNumber(count(algo, key))}
                                 </td>
                             ))}
                         </tr>

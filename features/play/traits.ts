@@ -2,130 +2,124 @@ import type { AlgorithmMeta } from "../../algorithms/types";
 
 export type Trait = { on: boolean; label: string; short: string };
 
-/*
- * Yes/no properties worth showing for an algorithm. Sorts are judged on
- * stability and memory; path finders on whether the route is the best
- * one and whether they notice mud.
- */
+type Wording = [label: string, short: string];
+
+/** A yes/no trait, worded by whether it holds. */
+function trait(on: boolean, yes: Wording, no: Wording): Trait {
+    const [label, short] = on ? yes : no;
+    return { on, label, short };
+}
+
+/** A trait that always holds. */
+function fact(label: string, short: string): Trait {
+    return { on: true, label, short };
+}
+
+/** Yes/no properties worth showing for an algorithm, by its family. */
 export function algorithmTraits(meta: AlgorithmMeta): Trait[] {
     if (meta.rule) {
-        const rule = { on: true, label: `Rule ${meta.rule}`, short: meta.rule };
+        const rule = fact(`Rule ${meta.rule}`, meta.rule);
         if (typeof meta.explosive !== "boolean") return [rule];
         return [
             rule,
-            {
-                on: !meta.explosive,
-                label: meta.explosive ? "Tends to explode" : "Tends to settle",
-                short: meta.explosive ? "explosive" : "settles",
-            },
+            trait(
+                !meta.explosive,
+                ["Tends to settle", "settles"],
+                ["Tends to explode", "explosive"]
+            ),
         ];
     }
     if (meta.connectivity) {
         return [
-            {
-                on: meta.connectivity === 4,
-                label:
-                    meta.connectivity === 4
-                        ? "4-way: walls hold"
-                        : "8-way: leaks through diagonal gaps",
-                short: meta.connectivity === 4 ? "4-way" : "8-way",
-            },
-            {
-                on: Boolean(meta.spans),
-                label: meta.spans ? "Paints whole runs" : "Cell by cell",
-                short: meta.spans ? "runs" : "per cell",
-            },
+            trait(
+                meta.connectivity === 4,
+                ["4-way: walls hold", "4-way"],
+                ["8-way: leaks through diagonal gaps", "8-way"]
+            ),
+            trait(
+                Boolean(meta.spans),
+                ["Paints whole runs", "runs"],
+                ["Cell by cell", "per cell"]
+            ),
         ];
     }
     if (typeof meta.outputSensitive === "boolean") {
         return [
-            {
-                on: meta.outputSensitive,
-                label: meta.outputSensitive
-                    ? "Output-sensitive: fast on small hulls"
-                    : "Same cost whatever the hull",
-                short: meta.outputSensitive ? "output-sensitive" : "fixed cost",
-            },
-            {
-                on: Boolean(meta.sortsFirst),
-                label: meta.sortsFirst
-                    ? "Sorts the points first"
-                    : "No sorting",
-                short: meta.sortsFirst ? "sorts first" : "no sort",
-            },
+            trait(
+                meta.outputSensitive,
+                ["Output-sensitive: fast on small hulls", "output-sensitive"],
+                ["Same cost whatever the hull", "fixed cost"]
+            ),
+            trait(
+                Boolean(meta.sortsFirst),
+                ["Sorts the points first", "sorts first"],
+                ["No sorting", "no sort"]
+            ),
         ];
     }
     if (typeof meta.balanced === "boolean") {
         return [
-            {
-                on: meta.balanced,
-                label: meta.balanced ? "Stays balanced" : "Can degenerate",
-                short: meta.balanced ? "balanced" : "can degenerate",
-            },
-            {
-                on: Boolean(meta.rotates),
-                label: meta.rotates ? "Rotates nodes" : "No rotations",
-                short: meta.rotates ? "rotations" : "no rotations",
-            },
+            trait(
+                meta.balanced,
+                ["Stays balanced", "balanced"],
+                ["Can degenerate", "can degenerate"]
+            ),
+            trait(
+                Boolean(meta.rotates),
+                ["Rotates nodes", "rotations"],
+                ["No rotations", "no rotations"]
+            ),
         ];
     }
     if (meta.graphGoal) {
         const goal = {
-            mst: ["Minimum spanning tree", "mst"],
-            shortest: ["Shortest distances", "shortest paths"],
-            order: ["Visit order", "traversal"],
+            mst: fact("Minimum spanning tree", "mst"),
+            shortest: fact("Shortest distances", "shortest paths"),
+            order: fact("Visit order", "traversal"),
         }[meta.graphGoal];
         return [
-            { on: true, label: goal[0], short: goal[1] },
-            {
-                on: Boolean(meta.weighted),
-                label: meta.weighted ? "Uses weights" : "Ignores weights",
-                short: meta.weighted ? "weighted" : "unweighted",
-            },
+            goal,
+            trait(
+                Boolean(meta.weighted),
+                ["Uses weights", "weighted"],
+                ["Ignores weights", "unweighted"]
+            ),
         ];
     }
     if (typeof meta.preprocesses === "boolean") {
         return [
-            {
-                on: Boolean(meta.linearWorst),
-                label: meta.linearWorst
-                    ? "Linear worst case"
-                    : "Can go quadratic",
-                short: meta.linearWorst ? "linear" : "quadratic worst",
-            },
-            {
-                on: Boolean(meta.preprocesses),
-                label: meta.preprocesses
-                    ? "Preprocesses the pattern"
-                    : "No preprocessing",
-                short: meta.preprocesses ? "preprocessing" : "no preprocessing",
-            },
+            trait(
+                Boolean(meta.linearWorst),
+                ["Linear worst case", "linear"],
+                ["Can go quadratic", "quadratic worst"]
+            ),
+            trait(
+                meta.preprocesses,
+                ["Preprocesses the pattern", "preprocessing"],
+                ["No preprocessing", "no preprocessing"]
+            ),
         ];
     }
     if (meta.tableDims) {
         return [
-            {
-                on: true,
-                label: meta.tableDims === 2 ? "2D table" : "1D table",
-                short: meta.tableDims === 2 ? "2d table" : "1d table",
-            },
-            { on: true, label: "Traces the answer", short: "traceback" },
+            meta.tableDims === 2
+                ? fact("2D table", "2d table")
+                : fact("1D table", "1d table"),
+            fact("Traces the answer", "traceback"),
         ];
     }
     if (typeof meta.uniform === "boolean") {
         return [
-            {
-                on: Boolean(meta.uniform),
-                label: meta.uniform ? "Uniform: no bias" : "Biased texture",
-                short: meta.uniform ? "uniform" : "biased",
-            },
-            {
-                on: Boolean(meta.longCorridors),
-                label: meta.longCorridors
-                    ? "Long corridors"
-                    : "Many short branches",
-                short: meta.longCorridors ? "long corridors" : "short branches",
-            },
+            trait(
+                meta.uniform,
+                ["Uniform: no bias", "uniform"],
+                ["Biased texture", "biased"]
+            ),
+            trait(
+                Boolean(meta.longCorridors),
+                ["Long corridors", "long corridors"],
+                ["Many short branches", "short branches"]
+            ),
         ];
     }
     if (
@@ -133,16 +127,16 @@ export function algorithmTraits(meta: AlgorithmMeta): Trait[] {
         typeof meta.randomAccess === "boolean"
     ) {
         return [
-            {
-                on: !meta.needsSorted,
-                label: meta.needsSorted ? "Needs sorted data" : "Any order",
-                short: meta.needsSorted ? "sorted input" : "any order",
-            },
-            {
-                on: Boolean(meta.randomAccess),
-                label: meta.randomAccess ? "Jumps by index" : "Walks in order",
-                short: meta.randomAccess ? "random access" : "sequential",
-            },
+            trait(
+                !meta.needsSorted,
+                ["Any order", "any order"],
+                ["Needs sorted data", "sorted input"]
+            ),
+            trait(
+                Boolean(meta.randomAccess),
+                ["Jumps by index", "random access"],
+                ["Walks in order", "sequential"]
+            ),
         ];
     }
     if (
@@ -150,28 +144,28 @@ export function algorithmTraits(meta: AlgorithmMeta): Trait[] {
         typeof meta.weighted === "boolean"
     ) {
         return [
-            {
-                on: Boolean(meta.optimal),
-                label: meta.optimal ? "Best route" : "Any route",
-                short: meta.optimal ? "optimal" : "not optimal",
-            },
-            {
-                on: Boolean(meta.weighted),
-                label: meta.weighted ? "Avoids mud" : "Ignores mud",
-                short: meta.weighted ? "weighted" : "unweighted",
-            },
+            trait(
+                Boolean(meta.optimal),
+                ["Best route", "optimal"],
+                ["Any route", "not optimal"]
+            ),
+            trait(
+                Boolean(meta.weighted),
+                ["Avoids mud", "weighted"],
+                ["Ignores mud", "unweighted"]
+            ),
         ];
     }
     return [
-        {
-            on: Boolean(meta.stable),
-            label: meta.stable ? "Stable" : "Not stable",
-            short: meta.stable ? "stable" : "unstable",
-        },
-        {
-            on: Boolean(meta.inPlace),
-            label: meta.inPlace ? "In place" : "Extra memory",
-            short: meta.inPlace ? "in place" : "extra memory",
-        },
+        trait(
+            Boolean(meta.stable),
+            ["Stable", "stable"],
+            ["Not stable", "unstable"]
+        ),
+        trait(
+            Boolean(meta.inPlace),
+            ["In place", "in place"],
+            ["Extra memory", "extra memory"]
+        ),
     ];
 }

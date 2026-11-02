@@ -1,10 +1,7 @@
 import { useLayoutEffect, useRef, useState, type RefObject } from "react";
 
-/**
- * Observes an element's layout size and returns `test(width, height)`.
- * Re-renders only when the answer flips. Uses layout size (offset/contentRect),
- * not getBoundingClientRect, so transform animations (FLIP) never decide it.
- */
+/* `test(width, height)` on the element's layout size; re-renders only when
+   it flips. Layout size ignores transforms, so FLIP animations don't count. */
 function useSizeFlag(
     ref: RefObject<HTMLElement | null>,
     test: (width: number, height: number) => boolean

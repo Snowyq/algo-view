@@ -1,6 +1,6 @@
 import { JSX, useId, type ReactNode } from "react";
 import styled from "styled-components";
-import { pixelFrame } from "./pixel";
+import { blockPattern, pixelFrame } from "./pixel";
 
 const Row = styled.label`
     display: inline-flex;
@@ -27,11 +27,7 @@ const Switch = styled.button`
         content: "";
         position: absolute;
         inset: 0;
-        background-image: repeating-linear-gradient(
-            90deg,
-            var(--accent) 0 4px,
-            transparent 4px 6px
-        );
+        ${blockPattern("var(--accent)", 4, 2)};
         transform: scaleX(0);
         transform-origin: left;
         transition: transform 160ms steps(4);

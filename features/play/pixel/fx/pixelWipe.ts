@@ -1,8 +1,6 @@
-/*
- * Pixel dissolve: a canvas laid over an element fills or clears in random
- * square blocks, in a handful of discrete frames. One element, opacity-free,
- * so it costs a few fillRects per frame whatever the content underneath.
- */
+import { cssVar, mountCanvas } from "./dom";
+
+/* Pixel dissolve: a canvas over the host fills or clears in square blocks. */
 
 type WipeMode = "cover" | "reveal";
 
@@ -12,12 +10,11 @@ type WipeOptions = {
     color?: string;
     block?: number;
     duration?: number;
-    /** Discrete frames over the duration: the "pixel" feel. */
+    /** Discrete frames over the duration. */
     frames?: number;
     /** Keep the overlay after a cover (caller removes the element). */
     keep?: boolean;
-    /** Block order: random, or an ordered 4×4 Bayer dither (the same
-        pattern as the CSS px-dither keyframes, scaled up). */
+    /** Block order: random, or the 4x4 Bayer dither the CSS px-dither keyframes use. */
     pattern?: "random" | "bayer";
 };
 
@@ -28,8 +25,7 @@ const BAYER = [
     [15, 7, 13, 5],
 ];
 
-/* Cells in dither order: every 4×4 tile fills its lowest thresholds
-   first; ties shuffled so the frames don't sweep left to right. */
+/* Lowest Bayer thresholds first; ties shuffled so frames don't sweep left to right. */
 function bayerOrder(cols: number, rows: number): Uint32Array {
     const random = shuffled(cols * rows);
     const order = Array.from(random).sort((a, b) => {
@@ -38,11 +34,6 @@ function bayerOrder(cols: number, rows: number): Uint32Array {
         return ta - tb;
     });
     return Uint32Array.from(order);
-}
-
-function resolveColor(host: HTMLElement, color: string): string {
-    if (!color.startsWith("--")) return color;
-    return getComputedStyle(host).getPropertyValue(color).trim() || "#15120f";
 }
 
 function shuffled(count: number): Uint32Array {
@@ -75,24 +66,16 @@ export function pixelWipe(
         return { done: Promise.resolve(), cancel: () => undefined };
     }
 
-    const canvas = document.createElement("canvas");
-    Object.assign(canvas.style, {
-        position: "absolute",
+    const canvas = mountCanvas(host, {
         inset: "0",
         imageRendering: "pixelated",
-        pointerEvents: "none",
         zIndex: "20",
     });
-    if (getComputedStyle(host).position === "static") {
-        host.style.position = "relative";
-    }
-    host.appendChild(canvas);
-
     const ctx = canvas.getContext("2d");
-    const fill = resolveColor(host, color);
-    // The block grid follows the host: a panel that is resized mid-wipe
-    // (its grid settling over a frame or two) gets a fresh grid at the
-    // same progress instead of a cover that fits only part of it.
+    const fill = color.startsWith("--")
+        ? cssVar(host, color, "#15120f")
+        : color;
+    // a host resized mid-wipe gets a fresh block grid at the same progress
     let cols = 0;
     let rows = 0;
     let total = 0;

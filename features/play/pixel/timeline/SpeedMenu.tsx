@@ -12,6 +12,7 @@ import { useDispatch, useSelector, useStore } from "react-redux";
 import styled from "styled-components";
 import useClickOutside from "../../../../hooks/useClickOutside";
 import type { AppDispatch, RootState } from "../../../../store";
+import { useEscapeKey } from "../../../../hooks/useEscapeKey";
 import {
     changeSpeed,
     freezeAnimation,
@@ -84,7 +85,7 @@ const TriggerText = styled.span`
     }
 `;
 
-/* Opens upward from the dock in four frames, like a menu in a bitmap OS. */
+/* Opens upward from the dock. */
 const Panel = styled.div`
     position: absolute;
     right: 0;
@@ -96,12 +97,12 @@ const Panel = styled.div`
     ${pixelFrame("var(--line-2)")};
     transform-origin: bottom right;
     animation: px-dither-in 140ms steps(4) both;
-    /* Never taller than the room above the dock; scroll if it must. */
+    /* Never taller than the room above the dock. */
     max-height: calc(100svh - var(--toolbar-h) - 12rem);
     overflow-y: auto;
     overscroll-behavior: contain;
 
-    /* Landscape phones: one wide strip, every speed visible at once. */
+    /* Landscape phones: one wide strip with every speed. */
     @media ${SHORT} {
         width: min(72rem, calc(100vw - 3.2rem));
     }
@@ -239,17 +240,10 @@ function SpeedMenu(): JSX.Element {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open]);
 
-    // Escape closes the menu wherever focus is.
-    useEffect(() => {
-        if (!open) return;
-        const onKey = (event: globalThis.KeyboardEvent): void => {
-            if (event.key !== "Escape") return;
-            event.preventDefault();
-            close(true);
-        };
-        document.addEventListener("keydown", onKey);
-        return () => document.removeEventListener("keydown", onKey);
-    }, [open, close]);
+    useEscapeKey(open, (event) => {
+        event.preventDefault();
+        close(true);
+    });
 
     const choose = (ms: number): void => {
         dispatch(changeSpeed(ms));

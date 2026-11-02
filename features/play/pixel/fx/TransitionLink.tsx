@@ -5,11 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { forwardRef, type ComponentProps, type MouseEvent } from "react";
 import { leaveTo } from "./pageTransition";
 
-/*
- * A Next <Link> that leaves through the pixel page transition. Modified
- * clicks (new tab, new window, download), other targets and links to the
- * page you are on behave as plain links.
- */
+/* <Link> through the page transition; modified and same-page clicks stay plain. */
 const TransitionLink = forwardRef<
     HTMLAnchorElement,
     ComponentProps<typeof Link>
@@ -27,7 +23,6 @@ const TransitionLink = forwardRef<
             event.shiftKey ||
             event.altKey ||
             (props.target && props.target !== "_self") ||
-            // Same page (e.g. a home link on home): nothing to cover.
             target.split(/[?#]/)[0] === pathname
         ) {
             return;

@@ -1,22 +1,15 @@
 import { Raster } from "./raster";
 
 /*
- * Animal rigs built only from rectangles, classic pixel-mascot style: blocky
- * bodies with notched corners, tall 1×2 eyes, square legs. No ellipses,
- * no free diagonals, so every frame stays a set of clean pixel clusters
- * (no orphans, no jaggies).
- *
- * Motion is keyed, not simulated: four poses per cycle (contact, pass,
- * contact, pass), legs as blocks forming 1:1 stairs, the body bobbing on
- * the pass keys. Pixel-art rule of thumb: strong keys, few frames.
- *
- * Cells: "o" body, "d" dark (far limbs, marks), "l" light, "e" eye,
- * "p" tongue.
+ * Animal rigs drawn from rectangles only, four keyed poses per run cycle.
+ * Cells: o body, d dark (far limbs, marks), l light, e eye, p tongue.
  */
 
 export const W = 22;
 export const H = 14;
-export const GROUND = H - 1;
+/** Keys per run cycle. */
+export const CYCLE = 4;
+const GROUND = H - 1;
 const HIP = 10; // first leg row under a standing body
 
 export type Mode = "run" | "stand" | "sit" | "lie" | "tuck" | "dangle" | "hide";
@@ -51,12 +44,13 @@ function draw(r: Raster, parts: Part[], dx = 0, dy = 0): void {
         const under = corners.map(([cx, cy]) => r.get(cx, cy));
         r.rect(x0, y0, w, h, c);
         if (notch && w > 2 && h > 2) {
-            // Knock out the corners (the soft-block mascot look), keeping
-            // whatever was drawn underneath so parts stay joined.
+            // notch the corners but keep what was under them, so parts stay joined
             corners.forEach(([cx, cy], i) => r.set(cx, cy, under[i]));
         }
     });
 }
+
+const cycleKey = (pose: Pose): number => ((pose.frame % CYCLE) + CYCLE) % CYCLE;
 
 function eye(r: Raster, x: number, y: number, eyes: Eyes): void {
     if (eyes === "open") r.rect(x, y, 1, 2, "e");
@@ -64,16 +58,10 @@ function eye(r: Raster, x: number, y: number, eyes: Eyes): void {
     else r.rect(x - 1, y + 1, 2, 1, "d");
 }
 
-// ---------- Legs ----------
-
 type LegKey = { dx: number; lift: 0 | 1 };
 const k = (dx: number, lift: 0 | 1 = 0): LegKey => ({ dx, lift });
 
-/*
- * A leg is a stack of blocks from the hip to the ground. Planted legs
- * step at most one pixel per row (clean 1:1 stairs); a lifted leg ends
- * two rows above the ground with the paw tucked.
- */
+/* Planted legs step one pixel per row at most; lifted legs stop two rows up. */
 function leg(
     r: Raster,
     x: number,
@@ -97,8 +85,6 @@ function leg(
         r.rect(x + dir * s, top + upper + s - 1, w, 1, c);
     }
 }
-
-// ---------- Quadrupeds ----------
 
 type Gait = {
     /** Per key: [backNear, backFar, frontNear, frontFar]. */
@@ -159,7 +145,7 @@ type QuadDef = {
 function quadruped(def: QuadDef): Rig {
     return (pose) => {
         const r = new Raster(W, H);
-        const f = ((pose.frame % 4) + 4) % 4;
+        const f = cycleKey(pose);
         const running = pose.mode === "run";
         let dy = 0;
         let stretch = 0;
@@ -174,7 +160,7 @@ function quadruped(def: QuadDef): Rig {
         const top = HIP + dy;
         const { back, front } = def.hips;
 
-        // Far legs (dark, one pixel behind), then tail, body, near legs.
+        // far legs (dark, one pixel behind), then tail, body, near legs
         const legs = (far: boolean): void => {
             const c = far ? "d" : "o";
             const off = far ? -1 : 0;
@@ -225,8 +211,6 @@ function quadruped(def: QuadDef): Rig {
         return r.toGrid();
     };
 }
-
-// ---------- The animals ----------
 
 export const cheetahRig = quadruped({
     gait: GALLOP,
@@ -329,7 +313,7 @@ export const dogRig = quadruped({
             [3, 2, 1, 2],
         ],
     ],
-    // Floppy ear swings on the stride; tongue out while running.
+    // ear flops on the stride, tongue out while running
     headFlair: (pose) => {
         const flop = pose.mode === "run" && pose.frame % 2 === 1 ? -1 : 0;
         const parts: Part[] = [[13 + flop, 3, 2, 4, "d"]];
@@ -366,10 +350,10 @@ export const catRig = quadruped({
     ],
 });
 
-/* Hare: crouch → push → flight → land, ears streaming back in the air. */
+/* Hare: crouch, push, flight, land; ears stream back in the air. */
 export const hareRig: Rig = (pose) => {
     const r = new Raster(W, H);
-    const f = ((pose.frame % 4) + 4) % 4;
+    const f = cycleKey(pose);
     const run = pose.mode === "run";
     const lie = pose.mode === "lie";
     const key = run ? f : -1;
@@ -378,7 +362,7 @@ export const hareRig: Rig = (pose) => {
 
     if (!lie && pose.mode !== "hide") {
         if (key === 1) {
-            // Push-off: hind leg kicks out behind in 1:1 stairs.
+            // push-off: hind leg kicks out behind
             draw(
                 r,
                 [
@@ -457,7 +441,7 @@ export const hareRig: Rig = (pose) => {
 /* Duck: alternating webbed steps, head bobbing forward on each step. */
 export const duckRig: Rig = (pose) => {
     const r = new Raster(W, H);
-    const f = ((pose.frame % 4) + 4) % 4;
+    const f = cycleKey(pose);
     const run = pose.mode === "run";
     const lie = pose.mode === "lie";
     const y = lie ? 2 : pose.squash ? 1 : run && f % 2 === 1 ? -1 : 0;
@@ -514,7 +498,7 @@ export const duckRig: Rig = (pose) => {
 /* Turtle: stubby legs shuffle in pairs, head pushes out on each step. */
 export const turtleRig: Rig = (pose) => {
     const r = new Raster(W, H);
-    const f = ((pose.frame % 4) + 4) % 4;
+    const f = cycleKey(pose);
     const run = pose.mode === "run";
     const hide = pose.mode === "hide";
     const y = pose.mode === "lie" ? 1 : 0;
@@ -539,7 +523,7 @@ export const turtleRig: Rig = (pose) => {
         );
         eye(r, 18 + reach, 8 + y, pose.eyes);
     }
-    // Shell: light dome, dark hex pattern, dark rim.
+    // shell: light dome, dark pattern and rim
     draw(
         r,
         [
@@ -562,7 +546,7 @@ export const turtleRig: Rig = (pose) => {
 /* Snail: foot stretches, shell catches up; eye stalks sway. */
 export const snailRig: Rig = (pose) => {
     const r = new Raster(W, H);
-    const f = ((pose.frame % 4) + 4) % 4;
+    const f = cycleKey(pose);
     const run = pose.mode === "run";
     const hide = pose.mode === "hide";
     const reach = run ? [0, 1, 2, 1][f] : 0;
@@ -579,7 +563,7 @@ export const snailRig: Rig = (pose) => {
             r.rect(16 + reach, 5 + sway, 1, 1, "e");
         }
     }
-    // Shell spiral, as rings of blocks.
+    // shell spiral
     draw(r, [
         [5, 5, 7, 7, "l", true],
         [6, 6, 5, 1, "d"],
@@ -594,7 +578,7 @@ export const snailRig: Rig = (pose) => {
 /* Sloth: one long arm reaches at a time, hooks the ground, drags. */
 export const slothRig: Rig = (pose) => {
     const r = new Raster(W, H);
-    const f = ((pose.frame % 4) + 4) % 4;
+    const f = cycleKey(pose);
     const run = pose.mode === "run";
     const lie = pose.mode === "lie";
     const y = lie ? 2 : pose.squash ? 1 : 0;

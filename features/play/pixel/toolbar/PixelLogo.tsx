@@ -1,5 +1,5 @@
 import gsap from "gsap";
-import { JSX, useMemo, useRef } from "react";
+import { JSX, useRef } from "react";
 import useReducedMotion from "../../../../hooks/useReducedMotion";
 
 /* 5-row bitmap font, only the letters the wordmark needs. */
@@ -15,9 +15,9 @@ const GLYPHS: Record<string, string[]> = {
     " ": ["..", "..", "..", "..", ".."],
 };
 
-export type LogoPixel = { x: number; y: number; accent: boolean };
+type LogoPixel = { x: number; y: number; accent: boolean };
 
-/* Lays the word out as a list of pixels; the dot between words is accent. */
+/* Lays the word out as pixels; a "·" becomes a single accent pixel. */
 export function layoutWord(word: string): {
     pixels: LogoPixel[];
     width: number;
@@ -42,9 +42,30 @@ export function layoutWord(word: string): {
     return { pixels, width: cursor - 1 };
 }
 
+export const WORDMARK = layoutWord("ALGO·VIEW");
+
+/* The wordmark's pixels as 1x1 svg rects (viewBox 0 0 WORDMARK.width 5). */
+export function WordmarkRects({ opacity }: { opacity?: number }): JSX.Element {
+    return (
+        <>
+            {WORDMARK.pixels.map((pixel, index) => (
+                <rect
+                    key={index}
+                    x={pixel.x}
+                    y={pixel.y}
+                    width={1}
+                    height={1}
+                    opacity={opacity}
+                    fill={pixel.accent ? "var(--accent)" : "currentColor"}
+                />
+            ))}
+        </>
+    );
+}
+
 type PixelLogoProps = {
     scale?: number;
-    /** Scatter-and-reassemble on hover (easter egg). */
+    /** Scatter and reassemble on hover. */
     playful?: boolean;
     className?: string;
 };
@@ -57,7 +78,7 @@ function PixelLogo({
     const svgRef = useRef<SVGSVGElement | null>(null);
     const busy = useRef<boolean>(false);
     const reduced = useReducedMotion();
-    const { pixels, width } = useMemo(() => layoutWord("ALGO·VIEW"), []);
+    const { width } = WORDMARK;
 
     const scatter = (): void => {
         const svg = svgRef.current;
@@ -93,17 +114,7 @@ function PixelLogo({
             aria-hidden="true"
             onPointerEnter={scatter}
         >
-            {pixels.map((pixel, index) => (
-                <rect
-                    key={index}
-                    x={pixel.x}
-                    y={pixel.y}
-                    width={1}
-                    height={1}
-                    fill={pixel.accent ? "var(--accent)" : "currentColor"}
-                    data-logo-px
-                />
-            ))}
+            <WordmarkRects />
         </svg>
     );
 }

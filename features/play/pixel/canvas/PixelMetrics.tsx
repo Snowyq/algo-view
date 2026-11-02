@@ -1,6 +1,7 @@
 import { JSX, memo } from "react";
 import styled from "styled-components";
 import type { AlgorithmMetrics } from "../../../../algorithms/types";
+import { formatNumber } from "../../format";
 import { useStepMetrics } from "../../stepInfoStore";
 import { labelText } from "../primitives/pixel";
 
@@ -56,8 +57,6 @@ type PixelMetricsProps = {
     totals: AlgorithmMetrics | null;
 };
 
-const format = new Intl.NumberFormat("en-US");
-
 function PixelMetrics({ id, totals }: PixelMetricsProps): JSX.Element | null {
     const current = useStepMetrics(id);
     if (!totals) return null;
@@ -73,7 +72,7 @@ function PixelMetrics({ id, totals }: PixelMetricsProps): JSX.Element | null {
                 return (
                     <Item key={key}>
                         <Name>{totals[key].name}</Name>
-                        <Count>{format.format(count)}</Count>
+                        <Count>{formatNumber(count)}</Count>
                         <Meter aria-hidden="true">
                             {Array.from({ length: 10 }, (_, i) => (
                                 <i key={i} data-on={i < lit} />

@@ -1,28 +1,30 @@
 import { JSX, type ReactNode } from "react";
-import styled from "styled-components";
+import styled, { css } from "styled-components";
 import { labelText, pixelFrame } from "./pixel";
 
 type Side = "top" | "bottom";
+
+const showTip = css`
+    & > [role="tooltip"] {
+        visibility: visible;
+    }
+    & > [role="tooltip"] > span {
+        animation: px-type calc(var(--chars) * 18ms) steps(var(--chars)) both;
+    }
+`;
 
 const Wrap = styled.span`
     position: relative;
     display: inline-flex;
 
-    /* Keyboard focus only: a mouse click must not leave the tip stuck. */
     @media (hover: hover) {
-        &:hover > [role="tooltip"] {
-            visibility: visible;
-        }
-        &:hover > [role="tooltip"] > span {
-            animation: px-type calc(var(--chars) * 18ms) steps(var(--chars))
-                both;
+        &:hover {
+            ${showTip}
         }
     }
-    &:has(:focus-visible) > [role="tooltip"] {
-        visibility: visible;
-    }
-    &:has(:focus-visible) > [role="tooltip"] > span {
-        animation: px-type calc(var(--chars) * 18ms) steps(var(--chars)) both;
+    /* focus-visible, not focus: a mouse click must not leave the tip stuck */
+    &:has(:focus-visible) {
+        ${showTip}
     }
 
     @keyframes px-type {
@@ -35,7 +37,7 @@ const Wrap = styled.span`
     }
 `;
 
-/* Types itself in, one character per frame, with a block cursor. */
+/* Types itself in one character per frame, with a block cursor. */
 const Tip = styled.span<{ $side: Side; $align: "center" | "start" | "end" }>`
     position: absolute;
     ${({ $side }) =>

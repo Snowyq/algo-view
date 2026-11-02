@@ -7,20 +7,20 @@ import {
     GROWTH_LADDERS,
     growthExponent,
     mainMetricKey,
+    type GrowthLadder,
     type GrowthPoint,
 } from "../../../../algorithms/growth";
 import type { RootState } from "../../../../store";
+import { formatCompact } from "../../format";
 import { getActiveCategory, getDefaultStepTypes } from "../../playSlice";
 import { labelText, pixelFrame } from "../primitives/pixel";
 import type { AnimalId } from "../sprites/animals";
 import PixelSprite from "../sprites/PixelSprite";
 
 /*
- * Measured growth for About: the algorithm runs in the background on
- * inputs from small to large (same preset and seed as the playground),
- * and its main counter is drawn as pixel bars against n. A fitted
- * exponent turns the bars into one sentence ("≈ n²: doubling n quadruples
- * the work"). Results are cached per algorithm and input recipe.
+ * Runs the algorithm in a worker on growing inputs (same recipe as the
+ * playground) and plots its main counter against n, with a fitted exponent.
+ * Cached per algorithm and input recipe.
  */
 
 const BLOCKS = 12;
@@ -109,8 +109,7 @@ const Column = styled.div`
     }
 `;
 
-/* Flavour with a meaning: the slower the work grows, the faster the
-   animal (the same animals as the speed menu). */
+/* The slower the work grows, the faster the animal. */
 function growthAnimal(k: number): AnimalId {
     if (k < 1.15) return "cheetah";
     if (k < 1.5) return "fox";
@@ -123,13 +122,41 @@ const Pace = styled.span`
     margin: -0.4rem 0 0 1.2rem;
 `;
 
-const compact = new Intl.NumberFormat("en-US", { notation: "compact" });
+type PointPayload = {
+    n: number;
+    steps: number;
+    metrics?: Record<string, { count: number; name: string }>;
+};
 
-function GrowthChart({
-    algorithmId,
-}: {
-    algorithmId: string;
-}): JSX.Element | null {
+const EMPTY_RESULT: Result = {
+    points: [],
+    metricName: "",
+    cutAt: null,
+    done: false,
+};
+
+/* Adds one measured size, valued by its main counter (or steps). */
+function withPoint(result: Result, payload: PointPayload): Result {
+    const metricKey = mainMetricKey(payload.metrics);
+    const metric = metricKey ? payload.metrics?.[metricKey] : undefined;
+    return {
+        ...result,
+        metricName: metric?.name ?? "Steps",
+        points: [
+            ...result.points,
+            {
+                n: payload.n,
+                value: metric?.count ?? payload.steps,
+                steps: payload.steps,
+            },
+        ],
+    };
+}
+
+function useGrowth(algorithmId: string): {
+    ladder: GrowthLadder | undefined;
+    result: Result | null;
+} {
     const category = useSelector<RootState, string>(
         getActiveCategory
     ) as CategoryId;
@@ -142,8 +169,7 @@ function GrowthChart({
                 >
             )[category]?.config ?? {}
     );
-    // Same algorithm options as the panels: sorts only count the step
-    // types they are told to record.
+    // Same options as the panels: sorts only count the steps they record.
     const stepTypes = useSelector(getDefaultStepTypes);
     const ladder = GROWTH_LADDERS[category];
     const key = `${category}:${algorithmId}:${JSON.stringify(config)}`;
@@ -163,39 +189,15 @@ function GrowthChart({
             new URL("../../../../workers/growthWorker.ts", import.meta.url),
             { type: "module" }
         );
-        let current: Result = {
-            points: [],
-            metricName: "",
-            cutAt: null,
-            done: false,
-        };
+        let current = EMPTY_RESULT;
         setResult(current);
         worker.onmessage = (event: MessageEvent) => {
             const { type, payload } = event.data as {
                 type: string;
-                payload?: {
-                    n: number;
-                    steps: number;
-                    metrics?: Record<string, { count: number; name: string }>;
-                };
+                payload?: PointPayload;
             };
             if (type === "point" && payload) {
-                const metricKey = mainMetricKey(payload.metrics);
-                const metric = metricKey
-                    ? payload.metrics?.[metricKey]
-                    : undefined;
-                current = {
-                    ...current,
-                    metricName: metric?.name ?? "Steps",
-                    points: [
-                        ...current.points,
-                        {
-                            n: payload.n,
-                            value: metric?.count ?? payload.steps,
-                            steps: payload.steps,
-                        },
-                    ],
-                };
+                current = withPoint(current, payload);
             } else if (type === "cut" && payload) {
                 current = { ...current, cutAt: payload.n };
             } else if (type === "done") {
@@ -214,6 +216,15 @@ function GrowthChart({
         return () => worker.terminate();
     }, [key, ladder, category, algorithmId, config, stepTypes]);
 
+    return { ladder, result };
+}
+
+function GrowthChart({
+    algorithmId,
+}: {
+    algorithmId: string;
+}): JSX.Element | null {
+    const { ladder, result } = useGrowth(algorithmId);
     if (!ladder) return null;
     const points = result?.points ?? [];
     const max = Math.max(1, ...points.map((p) => p.value));
@@ -234,7 +245,7 @@ function GrowthChart({
                     return (
                         <Column key={n}>
                             <span>
-                                {point ? compact.format(point.value) : ""}
+                                {point ? formatCompact(point.value) : ""}
                             </span>
                             {point
                                 ? Array.from({ length: blocks }, (_, i) => (

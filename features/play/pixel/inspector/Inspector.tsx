@@ -13,11 +13,7 @@ import PixelButton from "../primitives/PixelButton";
 import PixelIcon from "../primitives/PixelIcon";
 import { labelText } from "../primitives/pixel";
 
-/*
- * The Input sidebar (a bottom sheet on phones): the active category's
- * input form. Code, About and the stats of one algorithm live in focus
- * mode instead (click a panel).
- */
+/* Input sidebar (bottom sheet on phones) with the active category's form. */
 
 const Panel = styled.aside`
     display: flex;
@@ -80,7 +76,6 @@ const Title = styled.h2`
     }
 `;
 
-/* InputLayout scrolls its own form below a fixed action. */
 const Body = styled.div`
     flex: 1;
     min-height: 0;

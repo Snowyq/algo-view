@@ -1,14 +1,17 @@
-/*
- * How many columns for n panels on a stage of a given size. Panels
- * always share the stage height (the stage never scrolls). Every column
- * count whose panels stay at least minWidth wide is tried; layouts where
- * rows reach minHeight win, and among those the one that gives panels
- * the most room relative to their minimum. If none reaches minHeight,
- * the one closest to it wins and the panels go compact.
- */
+/** Focus mode, stacked (narrow stages): the panel keeps this top share. */
+export const FOCUS_SHARE = "42%";
+/** Focus mode, side by side (wide stages): the panel keeps this left share. */
+export const FOCUS_SIDE_SHARE = "46%";
+/** Stages at least this wide put the window beside the panel. */
+export const FOCUS_SIDE_MIN_WIDTH = 760;
 
 type Box = { minWidth: number; minHeight: number };
 
+/*
+ * Column count for n panels. Layouts whose rows reach minHeight win, then
+ * the one with the most room relative to the minimum; if none fits, the
+ * closest one wins and the panels go compact.
+ */
 export function panelColumns(
     count: number,
     width: number,
@@ -41,11 +44,8 @@ export function panelColumns(
 }
 
 /*
- * How many panels fit at all: the most n for which some column count
- * keeps panels at least minWidth wide (one column always allowed) and at
- * least a readable compact height. Compact panels drop their counters,
- * so they can go well below the comfortable minHeight, but not below
- * what the category's drawing needs (graphs more than bars).
+ * How many panels fit at all. Compact panels drop their counters, so rows
+ * may go well below minHeight, but not below what the drawing needs.
  */
 export function panelCapacity(
     width: number,

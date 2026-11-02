@@ -1,35 +1,31 @@
 import {
-    Fragment,
     JSX,
     useLayoutEffect,
     useRef,
     useState,
     type ReactNode,
+    type RefObject,
 } from "react";
 import { useSelector } from "react-redux";
 import styled from "styled-components";
 import { CODE_NOTES } from "../../algorithms/codeNotes";
+import type { AlgorithmInstructions } from "../../algorithms/types";
+import useReducedMotion from "../../hooks/useReducedMotion";
+import type { RootState } from "../../store";
 import {
     clearBreakpoints,
     toggleBreakpoint,
     useBreakpoints,
 } from "./breakpoints";
-import type { AlgorithmInstructions } from "../../algorithms/types";
-import useReducedMotion from "../../hooks/useReducedMotion";
-import type { RootState } from "../../store";
 import { categoryOf } from "./categories";
+import { labelText, pixelFrame } from "./pixel/primitives/pixel";
 import { getActiveCategory, getCurrentSpeed } from "./playSlice";
 import { STEP_LEGEND } from "./stepLegend";
 import { useCodeSnapshot } from "./stepInfoStore";
-import { labelText, pixelFrame } from "./pixel/primitives/pixel";
 
 /*
- * Code view rules:
- * - The code is the source the animation is generated from: every step names
- *   the line that produced it (instructionId).
- * - The active line takes the step's legend color; syntax stays monochrome so
- *   color always means "what the algorithm is doing", never "token kind".
- * - Steps without a line (initial, finish) keep the last line highlighted.
+ * Every step names the line that produced it. The active line takes the
+ * step's legend color; syntax stays monochrome so color always means the step.
  */
 
 const SMOOTH_SCROLL_MIN_SPEED_MS = 100;
@@ -60,7 +56,6 @@ const Caption = styled.figcaption`
     white-space: nowrap;
 `;
 
-/* Status swatch blinks once per change: a two-frame "lit" pixel. */
 const Status = styled.span<{ $color: string }>`
     display: inline-flex;
     align-items: center;
@@ -87,8 +82,13 @@ const Scroller = styled.div`
     padding: 0.8rem 0;
 `;
 
-/* A plain-language note above its line: unnumbered, wraps, and lights
-   up in the step color while its line is the one running. */
+/* A finished run has no step color (transparent): use plain text then. */
+function noteColor(active: boolean, color: string): string {
+    if (!active) return "var(--fg-4)";
+    return color === "transparent" ? "var(--fg-2)" : color;
+}
+
+/* Plain-language note above its line, lit while that line runs. */
 const Note = styled.span<{ $indent: number; $active: boolean; $color: string }>`
     display: block;
     max-width: 52ch;
@@ -97,21 +97,14 @@ const Note = styled.span<{ $indent: number; $active: boolean; $color: string }>`
     font-size: 1.15rem;
     line-height: 1.5;
     white-space: normal;
-    /* Lit in the step color while its line runs; a finished run has no
-       step color (transparent), so fall back to plain readable text. */
-    color: ${({ $active, $color }) =>
-        $active && $color !== "transparent"
-            ? $color
-            : $active
-              ? "var(--fg-2)"
-              : "var(--fg-4)"};
+    color: ${({ $active, $color }) => noteColor($active, $color)};
 
     &::before {
         content: "// ";
     }
 `;
 
-/* Comments on/off: a small pixel switch in the caption. */
+/* Comments on/off switch. */
 const NotesToggle = styled.button`
     display: inline-flex;
     align-items: center;
@@ -194,7 +187,7 @@ const Line = styled.span<{ $active: boolean; $color: string }>`
             ? `color-mix(in srgb, ${$color} 18%, transparent)`
             : "transparent"};
 
-    /* Gutter marker: a square pixel block in the step color. */
+    /* Gutter marker in the step color. */
     &::before {
         content: "";
         position: absolute;
@@ -208,8 +201,7 @@ const Line = styled.span<{ $active: boolean; $color: string }>`
     }
 `;
 
-/* The gutter is a button: click a line number to pause whenever that line
-   runs. A breakpoint shows as a red block in front of the number. */
+/* Line number toggles a breakpoint on that line. */
 const LineNumber = styled.button<{ $active: boolean }>`
     position: relative;
     height: 100%;
@@ -314,6 +306,89 @@ function highlight(code: string): ReactNode[] {
     return parts;
 }
 
+/* Scrolls the scroller (never the page) so the line is in view. */
+function useKeepLineInView(
+    scrollerRef: RefObject<HTMLDivElement | null>,
+    lineIndex: number,
+    smooth: boolean
+): void {
+    useLayoutEffect(() => {
+        const scroller = scrollerRef.current;
+        if (!scroller || lineIndex < 0) return;
+        const line = scroller.querySelector<HTMLElement>(
+            `[data-line="${lineIndex}"]`
+        );
+        if (!line) return;
+        // Relative to the scroller itself, whatever offsetParent is.
+        const top =
+            line.getBoundingClientRect().top -
+            scroller.getBoundingClientRect().top +
+            scroller.scrollTop;
+        const bottom = top + line.offsetHeight;
+        const viewTop = scroller.scrollTop;
+        const viewBottom = viewTop + scroller.clientHeight;
+        if (top >= viewTop && bottom <= viewBottom) return;
+        scroller.scrollTo({
+            top: Math.max(0, top - scroller.clientHeight / 3),
+            behavior: smooth ? "smooth" : "auto",
+        });
+    }, [scrollerRef, lineIndex, smooth]);
+}
+
+type CodeLineProps = {
+    index: number;
+    code: string;
+    indent: number;
+    note?: string;
+    active: boolean;
+    color: string;
+    /** Step label shown at the end of the first active line. */
+    tag?: string;
+    hasBreakpoint: boolean;
+    onToggleBreakpoint: () => void;
+};
+
+function CodeLine({
+    index,
+    code,
+    indent,
+    note,
+    active,
+    color,
+    tag,
+    hasBreakpoint,
+    onToggleBreakpoint,
+}: CodeLineProps): JSX.Element {
+    return (
+        <>
+            {note && (
+                <Note $indent={indent} $active={active} $color={color}>
+                    {note}
+                </Note>
+            )}
+            <Line
+                data-line={index}
+                $active={active}
+                $color={color}
+                aria-current={active ? "true" : undefined}
+            >
+                <LineNumber
+                    type="button"
+                    $active={active}
+                    aria-pressed={hasBreakpoint}
+                    aria-label={`Pause on line ${index + 1}`}
+                    title="Pause here"
+                    onClick={onToggleBreakpoint}
+                >
+                    {index + 1}
+                </LineNumber>
+                <LineCode $indent={indent}>{highlight(code)}</LineCode>
+                {tag ? <StepTag $color={color}>{tag}</StepTag> : <span />}
+            </Line>
+        </>
+    );
+}
+
 type CodePanelProps = {
     algorithmId: string;
     name: string;
@@ -337,7 +412,7 @@ function CodePanel({
     const speed = useSelector<RootState, number>(getCurrentSpeed);
     const category = useSelector<RootState, string>(getActiveCategory);
 
-    // Sticky highlight lives in the store, so a view opened mid-run is current.
+    // From the store, so a view opened mid-run is current.
     const {
         highlight: highlighted,
         stepType,
@@ -360,31 +435,11 @@ function CodePanel({
           ? { label: legend.label, color: activeColor }
           : null;
 
-    // Keep the active line in view without scrolling the page.
-    useLayoutEffect(() => {
-        const scroller = scrollerRef.current;
-        if (!scroller || firstActive < 0) return;
-        const line = scroller.querySelector<HTMLElement>(
-            `[data-line="${firstActive}"]`
-        );
-        if (!line) return;
-        // Measure relative to the scroller itself, whatever offsetParent is.
-        const top =
-            line.getBoundingClientRect().top -
-            scroller.getBoundingClientRect().top +
-            scroller.scrollTop;
-        const bottom = top + line.offsetHeight;
-        const viewTop = scroller.scrollTop;
-        const viewBottom = viewTop + scroller.clientHeight;
-        if (top >= viewTop && bottom <= viewBottom) return;
-        scroller.scrollTo({
-            top: Math.max(0, top - scroller.clientHeight / 3),
-            behavior:
-                reduced || speed < SMOOTH_SCROLL_MIN_SPEED_MS
-                    ? "auto"
-                    : "smooth",
-        });
-    }, [firstActive, reduced, speed]);
+    useKeepLineInView(
+        scrollerRef,
+        firstActive,
+        !reduced && speed >= SMOOTH_SCROLL_MIN_SPEED_MS
+    );
 
     return (
         <Figure data-no-observe aria-label={`${name} source code`}>
@@ -420,55 +475,25 @@ function CodePanel({
                     <code>
                         {entries.map(([id, { line, indent }], index) => {
                             const active = activeIds.has(id);
-                            const note = notesVisible ? notes[id] : undefined;
                             return (
-                                <Fragment key={id}>
-                                    {note && (
-                                        <Note
-                                            $indent={indent}
-                                            $active={active}
-                                            $color={activeColor}
-                                        >
-                                            {note}
-                                        </Note>
-                                    )}
-                                    <Line
-                                        data-line={index}
-                                        $active={active}
-                                        $color={activeColor}
-                                        aria-current={
-                                            active ? "true" : undefined
-                                        }
-                                    >
-                                        <LineNumber
-                                            type="button"
-                                            $active={active}
-                                            aria-pressed={breaks.has(id)}
-                                            aria-label={`Pause on line ${index + 1}`}
-                                            title="Pause here"
-                                            onClick={() =>
-                                                toggleBreakpoint(
-                                                    algorithmId,
-                                                    id
-                                                )
-                                            }
-                                        >
-                                            {index + 1}
-                                        </LineNumber>
-                                        <LineCode $indent={indent}>
-                                            {highlight(line)}
-                                        </LineCode>
-                                        {active &&
-                                        index === firstActive &&
-                                        legend ? (
-                                            <StepTag $color={activeColor}>
-                                                {legend.label}
-                                            </StepTag>
-                                        ) : (
-                                            <span />
-                                        )}
-                                    </Line>
-                                </Fragment>
+                                <CodeLine
+                                    key={id}
+                                    index={index}
+                                    code={line}
+                                    indent={indent}
+                                    note={notesVisible ? notes[id] : undefined}
+                                    active={active}
+                                    color={activeColor}
+                                    tag={
+                                        active && index === firstActive
+                                            ? legend?.label
+                                            : undefined
+                                    }
+                                    hasBreakpoint={breaks.has(id)}
+                                    onToggleBreakpoint={() =>
+                                        toggleBreakpoint(algorithmId, id)
+                                    }
+                                />
                             );
                         })}
                     </code>

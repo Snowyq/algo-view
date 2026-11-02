@@ -41,11 +41,7 @@ function drawFrame(
     });
 }
 
-/*
- * A sprite is a tiny canvas at native resolution, scaled up by CSS with
- * pixelated rendering. It only animates while on screen; under reduced
- * motion it shows a single still frame.
- */
+/* Native-size canvas scaled by CSS; animates only on screen, never when reduced. */
 function PixelSprite({
     animal,
     state = "idle",

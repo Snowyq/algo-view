@@ -1,8 +1,4 @@
-/*
- * Pixel icons as bitmaps: "#" is ink, anything else is empty.
- * Drawn by PixelIcon as merged runs of 1×1 cells, so they stay crisp at
- * any integer scale and share the sprite language of the speed animals.
- */
+/* Icon bitmaps: "#" is ink, anything else is empty. */
 
 export const ICONS = {
     play: [

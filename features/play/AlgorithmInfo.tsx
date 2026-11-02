@@ -3,16 +3,13 @@ import { useSelector } from "react-redux";
 import styled from "styled-components";
 import type { AlgorithmRegistryItem } from "../../algorithms/types";
 import type { RootState } from "../../store";
-import { labelText, pixelFrame } from "./pixel/primitives/pixel";
-import { algorithmTraits } from "./traits";
-import type { ActiveAlgorithm } from "./playSlice";
 import { categoryOf } from "./categories";
-import { getActiveAlgorithms } from "./playSlice";
+import { formatNumber } from "./format";
+import { labelText, pixelFrame } from "./pixel/primitives/pixel";
+import { getActiveAlgorithms, type ActiveAlgorithm } from "./playSlice";
+import { algorithmTraits } from "./traits";
 
-/*
- * Spec card for one algorithm, as implemented here. Rendered in the
- * Inspector's Info tab and in a panel's side column when it fits.
- */
+/* Spec card for one algorithm: traits, complexity and facts about this run. */
 
 const Wrap = styled.div`
     display: flex;
@@ -84,7 +81,7 @@ const SectionTitle = styled.h4`
     margin-bottom: 0.4rem;
 `;
 
-/* name ········· value, the dots fill whatever space is left. */
+/* Name and value joined by a dotted leader. */
 const Fact = styled.div`
     display: flex;
     align-items: baseline;
@@ -111,8 +108,6 @@ const Fact = styled.div`
         color: var(--fg);
     }
 `;
-
-const numberFormat = new Intl.NumberFormat("en-US");
 
 function FactRow({
     name,
@@ -198,7 +193,7 @@ function AlgorithmInfo({
                         name="Steps"
                         value={
                             running?.stepsLength
-                                ? numberFormat.format(running.stepsLength)
+                                ? formatNumber(running.stepsLength)
                                 : "–"
                         }
                     />

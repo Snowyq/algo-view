@@ -30,7 +30,6 @@ function Parade({ width }: { width: number }): JSX.Element {
                     { x: -W },
                     {
                         x: width + W,
-                        // Slow animals take longer, like they would.
                         duration: 1.6 + index * 0.45,
                         delay: index * 0.18,
                         ease: `steps(${Math.round(24 + index * 6)})`,

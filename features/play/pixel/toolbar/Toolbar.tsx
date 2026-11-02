@@ -1,5 +1,4 @@
-import Link from "../fx/TransitionLink";
-import { JSX, useRef, useState } from "react";
+import { JSX, useRef, useState, type RefObject } from "react";
 import { useDispatch, useSelector, useStore } from "react-redux";
 import styled from "styled-components";
 import type { AppDispatch, RootState } from "../../../../store";
@@ -11,11 +10,13 @@ import {
 } from "../../playSlice";
 import { setFx } from "../fx/fxStore";
 import { pixelBurst } from "../fx/pixelBurst";
+import Link from "../fx/TransitionLink";
 import PixelButton from "../primitives/PixelButton";
 import PixelIcon from "../primitives/PixelIcon";
 import PixelTooltip from "../primitives/PixelTooltip";
+import { blockPattern } from "../primitives/pixel";
 import { buildShareUrl } from "../share/shareState";
-import { TINY } from "../media";
+import { NARROW, TINY } from "../media";
 import { LibraryPicker } from "../library/Library";
 import PixelLogo from "./PixelLogo";
 
@@ -30,7 +31,7 @@ const Bar = styled.header`
     background-color: var(--bg-2);
     border-bottom: var(--b) solid var(--line);
 
-    @media (max-width: 640px) {
+    @media ${NARROW} {
         gap: 0.8rem;
         padding: 0 0.8rem 0 1.2rem;
     }
@@ -42,7 +43,7 @@ const Home = styled(Link)`
     color: var(--fg);
     padding: 0.8rem 0;
 
-    @media (max-width: 640px) {
+    @media ${NARROW} {
         svg {
             width: 8.7rem;
             height: auto;
@@ -58,13 +59,9 @@ const Home = styled(Link)`
 const Divider = styled.span`
     width: 2px;
     height: 2.4rem;
-    background-image: repeating-linear-gradient(
-        180deg,
-        var(--line-2) 0 2px,
-        transparent 2px 4px
-    );
+    ${blockPattern("var(--line-2)", 2, 2, "180deg")};
 
-    @media (max-width: 640px) {
+    @media ${NARROW} {
         display: none;
     }
 `;
@@ -73,7 +70,7 @@ const Spacer = styled.div`
     flex: 1;
 `;
 
-/* Text next to the icon on wide screens, icon only when space is short. */
+/* Text beside the icon on wide screens only. */
 const Label = styled.span`
     @media (max-width: 900px) {
         display: none;
@@ -89,16 +86,18 @@ const Group = styled.div`
 const Desktop = styled.span`
     display: contents;
 
-    @media (max-width: 640px) {
+    @media ${NARROW} {
         display: none;
     }
 `;
 
-function Toolbar(): JSX.Element {
-    const dispatch = useDispatch<AppDispatch>();
+/* Copies a link to the current setup and puts it in the URL bar. */
+function useShareLink(): {
+    copied: boolean;
+    shareRef: RefObject<HTMLSpanElement | null>;
+    share: () => Promise<void>;
+} {
     const store = useStore<RootState>();
-    const detailsOpen = useSelector<RootState, boolean>(getSidebarOpen);
-    const editorOpen = useSelector<RootState, boolean>(getEditorOpen);
     const [copied, setCopied] = useState<boolean>(false);
     const shareRef = useRef<HTMLSpanElement | null>(null);
     const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -110,7 +109,7 @@ function Toolbar(): JSX.Element {
         try {
             await navigator.clipboard.writeText(url);
         } catch {
-            // Clipboard can be blocked; the URL bar already has the link.
+            // clipboard can be blocked; the URL bar has the link anyway
         }
         setCopied(true);
         const host = shareRef.current;
@@ -125,6 +124,15 @@ function Toolbar(): JSX.Element {
         if (copiedTimer.current) clearTimeout(copiedTimer.current);
         copiedTimer.current = setTimeout(() => setCopied(false), 1600);
     };
+
+    return { copied, shareRef, share };
+}
+
+function Toolbar(): JSX.Element {
+    const dispatch = useDispatch<AppDispatch>();
+    const detailsOpen = useSelector<RootState, boolean>(getSidebarOpen);
+    const editorOpen = useSelector<RootState, boolean>(getEditorOpen);
+    const { copied, shareRef, share } = useShareLink();
 
     return (
         <Bar data-toolbar>

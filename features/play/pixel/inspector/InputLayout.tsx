@@ -7,13 +7,9 @@ import {
     type ReactNode,
 } from "react";
 import styled from "styled-components";
+import { scrollY } from "../primitives/pixel";
 
-/*
- * The Input tab: the "New input" action stays put on top, the form below
- * scrolls on its own. Stepped pixel shadows at the top and bottom edges
- * appear only while there is more to scroll that way, hiding whatever
- * passes under them.
- */
+/* Fixed action on top, scrolling form below with edge shades. */
 
 const Layout = styled.div`
     display: flex;
@@ -36,15 +32,11 @@ const Frame = styled.div`
 
 const Scroll = styled.div`
     height: 100%;
-    overflow-y: auto;
-    /* Room for the scrollbar is always kept, so its appearing never
-       shifts the content sideways. */
-    scrollbar-gutter: stable;
-    overscroll-behavior: contain;
+    ${scrollY};
     padding: 1.2rem 1.6rem 2.4rem;
 `;
 
-/* Three hard steps instead of a smooth fade: the shadow is pixels too. */
+/* three hard steps instead of a smooth fade */
 const Shade = styled.span<{ $edge: "top" | "bottom" }>`
     position: absolute;
     left: 0;
@@ -68,7 +60,6 @@ const Shade = styled.span<{ $edge: "top" | "bottom" }>`
 `;
 
 type InputLayoutProps = {
-    /** The panel's primary action (New input · G). */
     action: ReactNode;
     children: ReactNode;
 };
@@ -87,7 +78,7 @@ function InputLayout({ action, children }: InputLayoutProps): JSX.Element {
         );
     }, []);
 
-    // Content and size change (presets, sliders, resizes): re-measure.
+    // re-measure when the box or its content resizes
     useLayoutEffect(() => {
         const el = scrollRef.current;
         if (!el) return;
@@ -100,7 +91,7 @@ function InputLayout({ action, children }: InputLayoutProps): JSX.Element {
 
     return (
         <Layout>
-            <Action data-generate>{action}</Action>
+            <Action>{action}</Action>
             <Frame>
                 <Shade $edge="top" data-on={edges.top} aria-hidden="true" />
                 <Scroll ref={scrollRef} onScroll={measure}>

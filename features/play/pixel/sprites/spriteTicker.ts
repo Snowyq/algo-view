@@ -1,8 +1,4 @@
-/*
- * One requestAnimationFrame loop for every sprite on the page. It runs
- * only while at least one visible sprite is subscribed, and the browser
- * pauses it for hidden tabs.
- */
+/* One rAF loop for every sprite, running only while something subscribes. */
 
 type Tick = (now: number) => void;
 

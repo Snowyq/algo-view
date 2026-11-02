@@ -9,6 +9,7 @@ import {
     type ReactNode,
 } from "react";
 import styled from "styled-components";
+import { clamp } from "../../../../utils/values";
 import { blockPattern, pixelFrame } from "./pixel";
 
 const Root = styled.div`
@@ -118,15 +119,14 @@ function PixelSlider({
         return () => observer.disconnect();
     }, []);
     const span = Math.max(1, max - min);
-    const ratio = (value: number): number =>
-        Math.min(1, Math.max(0, (value - min) / span));
+    const ratio = (value: number): number => clamp((value - min) / span, 0, 1);
 
     const commit = useCallback(
         (index: number, raw: number): void => {
             const snapped = Math.round(raw / step) * step;
-            let next = Math.min(max, Math.max(min, snapped));
+            let next = clamp(snapped, min, max);
             const copy = [...values];
-            // Range thumbs never cross each other.
+            // range thumbs never cross
             if (copy.length === 2) {
                 if (index === 0) next = Math.min(next, copy[1]);
                 else next = Math.max(next, copy[0]);
@@ -147,7 +147,7 @@ function PixelSlider({
     const handlePointerDown = (event: PointerEvent<HTMLDivElement>): void => {
         if (event.button !== 0) return;
         const value = valueAt(event.clientX);
-        // Grab the nearest thumb.
+        // grab the nearest thumb
         let index = 0;
         if (values.length === 2) {
             index =
@@ -176,12 +176,13 @@ function PixelSlider({
         event: KeyboardEvent<HTMLDivElement>
     ): void => {
         const big = Math.max(step, Math.round(span / 10 / step) * step);
+        const nudge = event.shiftKey ? big : step;
         const current = values[index];
         const map: Record<string, number> = {
-            ArrowRight: current + (event.shiftKey ? big : step),
-            ArrowUp: current + (event.shiftKey ? big : step),
-            ArrowLeft: current - (event.shiftKey ? big : step),
-            ArrowDown: current - (event.shiftKey ? big : step),
+            ArrowRight: current + nudge,
+            ArrowUp: current + nudge,
+            ArrowLeft: current - nudge,
+            ArrowDown: current - nudge,
             PageUp: current + big,
             PageDown: current - big,
             Home: min,

@@ -1,16 +1,14 @@
+import { DisjointSet } from "../../../../utils/disjointSet";
 import type { GraphInput } from "../../../../utils/graphInput";
 import { nodeName } from "../../../../utils/graphInput";
 
-/*
- * Parsers for "your own data": text in, a valid input or a short reason
- * out. Kept free of React so they are easy to test.
- */
+/* Parsers for hand-typed input: text in, a value or a short error out. */
 
 export type Parsed<T> = { ok: true; value: T } | { ok: false; error: string };
 
 const fail = <T>(error: string): Parsed<T> => ({ ok: false, error });
 
-/** "5, 3 9 1" → [5, 3, 9, 1]. Whole numbers only. */
+/** Whole numbers separated by spaces, commas or semicolons. */
 export function parseNumbers(
     text: string,
     {
@@ -50,7 +48,7 @@ export function parseKeys(text: string): Parsed<number[]> {
     return parsed;
 }
 
-/** Plain text for matching: letters, digits, spaces and basic punctuation. */
+/** Collapses whitespace and checks the length. */
 export function parseText(
     text: string,
     { minLength, maxLength }: { minLength: number; maxLength: number }
@@ -63,7 +61,7 @@ export function parseText(
     return { ok: true, value: clean };
 }
 
-/** Edge list for the graphs: "A-B 5" per line (or comma separated). */
+/** Graph edges, one "A-B 5" per line or comma separated. */
 export function parseEdges(
     text: string,
     nodeCount: number
@@ -95,12 +93,12 @@ export function parseEdges(
         seen.add(`${lo}-${hi}`);
         edges.push({ a: lo, b: hi, w });
     }
-    // Every algorithm here assumes one connected graph.
-    const parent = Array.from({ length: nodeCount }, (_, i) => i);
-    const find = (i: number): number =>
-        parent[i] === i ? i : (parent[i] = find(parent[i]));
-    edges.forEach(({ a, b }) => (parent[find(a)] = find(b)));
-    const loose = parent.findIndex((_, i) => find(i) !== find(0));
+    // every graph algorithm here assumes a connected graph
+    const sets = new DisjointSet(nodeCount);
+    edges.forEach(({ a, b }) => sets.union(a, b));
+    const loose = Array.from({ length: nodeCount }, (_, i) => i).findIndex(
+        (i) => sets.find(i) !== sets.find(0)
+    );
     if (loose >= 0)
         return fail(
             `${nodeName(loose)} can't be reached from A: connect every node.`
