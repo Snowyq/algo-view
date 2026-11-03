@@ -1,13 +1,10 @@
-import { JSX, useCallback, useEffect, useState } from "react";
+import { JSX, useCallback, useState } from "react";
 import { useDispatch, useSelector, useStore } from "react-redux";
 import styled from "styled-components";
+import type { CategoryId } from "../../../../algorithms/categoryData";
 import type { AppDispatch, RootState } from "../../../../store";
-import type { DpInput } from "../../../../utils/dpInput";
-import type { FindInput } from "../../../../utils/findInput";
-import { nodeName, type GraphInput } from "../../../../utils/graphInput";
+import { useEscapeKey } from "../../../../hooks/useEscapeKey";
 import type { PointsInput } from "../../../../utils/pointsInput";
-import type { TextInput } from "../../../../utils/textInput";
-import type { TreeInput } from "../../../../utils/treeInput";
 import { categoryOf } from "../../categories";
 import {
     getActiveCategory,
@@ -17,26 +14,17 @@ import {
     setInputValue,
     type GridBrush,
 } from "../../playSlice";
-import EditField from "../inspector/EditField";
-import {
-    edgesToText,
-    parseEdges,
-    parseKeys,
-    parseNumbers,
-    parseText,
-} from "../inspector/ownData";
 import PixelButton from "../primitives/PixelButton";
 import PixelIcon from "../primitives/PixelIcon";
-import { labelText, pixelFrame } from "../primitives/pixel";
+import { labelText, pixelFrame, scrollY } from "../primitives/pixel";
 import PixelSprite from "../sprites/PixelSprite";
 import GridSurface, { type GridDraft, type GridKind } from "./GridSurface";
 import PointsSurface from "./PointsSurface";
+import TextForms from "./TextForms";
 
 /*
- * "Edit data": the current category's input, big, over the whole stage.
- * Grids are drawn on, hull points are clicked, everything else is typed.
- * All of it edits a draft: the panels behind recompute once, when Done
- * applies it. Cancel (or Esc) throws the draft away.
+ * Full-stage editor for the active category's input. Edits a draft that
+ * Done applies in one go; Cancel or Esc drops it.
  */
 
 const Overlay = styled.section`
@@ -100,11 +88,7 @@ const Body = styled.div`
     padding: 0 1.6rem 1.6rem;
 
     &[data-form] {
-        overflow-y: auto;
-        /* Room for the scrollbar is always kept, so its appearing never
-           shifts the content sideways. */
-        scrollbar-gutter: stable;
-        overscroll-behavior: contain;
+        ${scrollY};
         gap: 2.4rem;
         padding-top: 1.2rem;
         max-width: 72rem;
@@ -126,220 +110,80 @@ const BRUSHES: Array<{ id: GridBrush; label: string }> = [
     { id: "erase", label: "Erase" },
 ];
 
-const HINTS: Record<string, string> = {
+const HINTS: Partial<Record<CategoryId, string>> = {
     path: "Drag to paint with the brush; start on a painted cell to erase. Drag the start or end to move it.",
     fill: "Drag to draw walls; start on a wall to erase. Drag the ringed start cell to move it.",
     life: "Drag to bring cells to life; start on a live cell to clear.",
     geometry: "Click empty space to add a point, click a point to remove it.",
 };
 
-type FormProps = {
-    category: string;
+const isGridKind = (category: CategoryId): category is GridKind =>
+    category === "path" || category === "fill" || category === "life";
+
+type BodyProps = {
+    category: CategoryId;
     draft: unknown;
     setDraft: (value: unknown) => void;
-    /** Field key → error (null when fine). */
     setError: (field: string, error: string | null) => void;
 };
 
-/* Typed inputs: each field checks itself as you type and, when valid,
-   writes into the draft. */
-function TextForms({
+/* Drawn, clicked or typed, depending on the category. */
+function EditorBody({
     category,
     draft,
     setDraft,
     setError,
-}: FormProps): JSX.Element {
+}: BodyProps): JSX.Element | null {
+    if (category === "maze") return null;
+    if (isGridKind(category)) {
+        return (
+            <Body>
+                <GridSurface
+                    kind={category}
+                    value={draft as GridDraft}
+                    onChange={setDraft}
+                />
+            </Body>
+        );
+    }
+    if (category === "geometry") {
+        return (
+            <Body>
+                <PointsSurface
+                    value={draft as PointsInput}
+                    onChange={setDraft}
+                />
+            </Body>
+        );
+    }
     const field =
         (key: string, check: (text: string) => string | null) =>
-        (text: string) => {
+        (text: string): string | null => {
             const error = check(text);
             setError(key, error);
             return error;
         };
-    switch (category) {
-        case "sort": {
-            const values = draft as number[];
-            return (
-                <EditField
-                    label="Values"
-                    hint="Whole numbers 1–999, separated by spaces or commas (2 to 1000 of them)."
-                    initial={values.join(" ")}
-                    multiline
-                    rows={6}
-                    onEdit={field("values", (text) => {
-                        const r = parseNumbers(text, {
-                            min: 1,
-                            max: 999,
-                            minCount: 2,
-                            maxCount: 1000,
-                        });
-                        if (!r.ok) return r.error;
-                        setDraft(r.value);
-                        return null;
-                    })}
-                />
-            );
-        }
-        case "find": {
-            const v = draft as FindInput;
-            return (
-                <>
-                    <EditField
-                        label="Values (sorted for you)"
-                        hint="Whole numbers 0–9999; search algorithms need them sorted, so they will be."
-                        initial={v.values.join(" ")}
-                        multiline
-                        rows={5}
-                        onEdit={field("values", (text) => {
-                            const r = parseNumbers(text, {
-                                min: 0,
-                                max: 9999,
-                                minCount: 2,
-                                maxCount: 512,
-                            });
-                            if (!r.ok) return r.error;
-                            setDraft({
-                                ...v,
-                                values: [...r.value].sort((a, b) => a - b),
-                            });
-                            return null;
-                        })}
-                    />
-                    <EditField
-                        label="Target"
-                        hint="The value to look for. It does not have to be in the array."
-                        initial={String(v.target)}
-                        onEdit={field("target", (text) => {
-                            const r = parseNumbers(text, {
-                                min: 0,
-                                max: 9999,
-                                minCount: 1,
-                                maxCount: 1,
-                            });
-                            if (!r.ok) return r.error;
-                            setDraft({ ...v, target: r.value[0] });
-                            return null;
-                        })}
-                    />
-                </>
-            );
-        }
-        case "strings": {
-            const v = draft as TextInput;
-            return (
-                <>
-                    <EditField
-                        label="Text"
-                        hint="4 to 80 characters."
-                        initial={v.text}
-                        multiline
-                        onEdit={field("text", (text) => {
-                            const r = parseText(text, {
-                                minLength: 4,
-                                maxLength: 80,
-                            });
-                            if (!r.ok) return r.error;
-                            if (v.pattern.length > r.value.length)
-                                return "The pattern is longer than this text.";
-                            setDraft({ ...v, text: r.value });
-                            return null;
-                        })}
-                    />
-                    <EditField
-                        label="Pattern"
-                        hint="What to look for: 1 character up to the text's length."
-                        initial={v.pattern}
-                        onEdit={field("pattern", (text) => {
-                            const r = parseText(text, {
-                                minLength: 1,
-                                maxLength: v.text.length,
-                            });
-                            if (!r.ok) return r.error;
-                            setDraft({ ...v, pattern: r.value });
-                            return null;
-                        })}
-                    />
-                </>
-            );
-        }
-        case "tree": {
-            const v = draft as TreeInput;
-            return (
-                <EditField
-                    label="Keys, in insert order"
-                    hint="2 to 31 distinct whole numbers, 1–99. Try them sorted to see a plain BST degrade."
-                    initial={v.keys.join(" ")}
-                    onEdit={field("keys", (text) => {
-                        const r = parseKeys(text);
-                        if (!r.ok) return r.error;
-                        setDraft({ keys: r.value });
-                        return null;
-                    })}
-                />
-            );
-        }
-        case "dp": {
-            const v = draft as DpInput;
-            const word = (key: "a" | "b", label: string) => (
-                <EditField
-                    label={label}
-                    hint="1 to 16 letters. Used by edit distance and LCS."
-                    initial={v[key]}
-                    onEdit={field(key, (text) => {
-                        const clean = text.trim();
-                        if (!/^[\p{L}\d]{1,16}$/u.test(clean))
-                            return "Use 1 to 16 letters or digits, no spaces.";
-                        setDraft({ ...(draft as DpInput), [key]: clean });
-                        return null;
-                    })}
-                />
-            );
-            return (
-                <>
-                    {word("a", "First word")}
-                    {word("b", "Second word")}
-                </>
-            );
-        }
-        case "graph": {
-            const v = draft as GraphInput;
-            const names = v.nodes.map((_, i) => nodeName(i));
-            return (
-                <EditField
-                    label={`Edges between ${names[0]}–${names[names.length - 1]}`}
-                    hint="One per line, like “A-B 5” (weight 1–99). Node positions stay; every node must stay reachable from A."
-                    initial={edgesToText(v.edges)}
-                    multiline
-                    rows={10}
-                    onEdit={field("edges", (text) => {
-                        const r = parseEdges(text, v.nodes.length);
-                        if (!r.ok) return r.error;
-                        setDraft({ ...v, edges: r.value });
-                        return null;
-                    })}
-                />
-            );
-        }
-        default:
-            return <></>;
-    }
+    return (
+        <Body data-form>
+            <TextForms
+                category={category}
+                draft={draft}
+                setDraft={setDraft}
+                field={field}
+            />
+        </Body>
+    );
 }
 
-function DataEditor(): JSX.Element | null {
+function DataEditor(): JSX.Element {
     const dispatch = useDispatch<AppDispatch>();
     const store = useStore<RootState>();
-    const category = useSelector<RootState, string>(getActiveCategory);
+    const category = useSelector<RootState, CategoryId>(getActiveCategory);
     const brush = useSelector<RootState, GridBrush>(getBrush);
     const def = categoryOf(category);
-    // Work on a copy; the panels see it only when Done applies it.
+    // the panels only see the draft once Done applies it
     const [original] = useState<unknown>(
-        () =>
-            (
-                store.getState().play.inputs as Record<
-                    string,
-                    { value: unknown }
-                >
-            )[category]?.value
+        () => store.getState().play.inputs[category].value
     );
     const [draft, setDraft] = useState<unknown>(original);
     const [errors, setErrors] = useState<Record<string, string | null>>({});
@@ -359,25 +203,15 @@ function DataEditor(): JSX.Element | null {
         close();
     };
 
-    // Escape discards, like Cancel.
-    useEffect(() => {
-        const onKey = (event: KeyboardEvent): void => {
-            if (event.key === "Escape") close();
-        };
-        document.addEventListener("keydown", onKey);
-        return () => document.removeEventListener("keydown", onKey);
-    }, [close]);
+    useEscapeKey(true, close);
 
     const setError = useCallback(
-        (fieldKey: string, error: string | null) =>
+        (field: string, error: string | null) =>
             setErrors((prev) =>
-                prev[fieldKey] === error ? prev : { ...prev, [fieldKey]: error }
+                prev[field] === error ? prev : { ...prev, [field]: error }
             ),
         []
     );
-
-    const grid =
-        category === "path" || category === "fill" || category === "life";
 
     return (
         <Overlay
@@ -444,31 +278,12 @@ function DataEditor(): JSX.Element | null {
                         : "Nothing changes until you press Done."}
                 </Hint>
             )}
-            {category === "maze" ? null : grid ? (
-                <Body>
-                    <GridSurface
-                        kind={category as GridKind}
-                        value={draft as GridDraft}
-                        onChange={setDraft}
-                    />
-                </Body>
-            ) : category === "geometry" ? (
-                <Body>
-                    <PointsSurface
-                        value={draft as PointsInput}
-                        onChange={setDraft}
-                    />
-                </Body>
-            ) : (
-                <Body data-form>
-                    <TextForms
-                        category={category}
-                        draft={draft}
-                        setDraft={setDraft}
-                        setError={setError}
-                    />
-                </Body>
-            )}
+            <EditorBody
+                category={category}
+                draft={draft}
+                setDraft={setDraft}
+                setError={setError}
+            />
         </Overlay>
     );
 }

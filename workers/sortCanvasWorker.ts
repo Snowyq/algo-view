@@ -1,16 +1,16 @@
 import type { SortAlgorithm } from "../algorithms/sort/SortAlgorithm";
 import { createCanvasWorker, type DescribeApi } from "./runtime/canvasWorker";
+import { highlight, monoFont } from "./runtime/draw";
 
 /*
- * Sorting: one bar per value, colored by what the current step does to
- * it. Edges snap to device pixels and heights to 2px for a bitmap look.
+ * Sorting: one bar per value, coloured by what the step does to it.
+ * Edges snap to device pixels and heights to 2px.
  */
 
 const BLOCK_RATIO = 0.8;
 const TOP_MARGIN = 15;
 const LABEL_MIN_WIDTH = 10;
 const HEIGHT_STEP = 2;
-const LIT = "rgba(255, 255, 255, 0.28)";
 
 type SortStepLike = {
     type?: string;
@@ -26,8 +26,7 @@ function displayType(step: SortStepLike | undefined, index: number): string {
     return "default";
 }
 
-/* "Compare 23 and 9 → swap": the values come from the array as it is
-   right before this step. */
+/* Values are read from the array as it is right before this step. */
 function describeSort({
     algorithm,
     step,
@@ -73,12 +72,8 @@ function describeSort({
 }
 
 /*
- * Bars in whole device pixels: one bar width and one gap for every bar,
- * so the spacing reads even (rounding each bar's edges on its own made
- * gaps 1px wider or narrower at random). The gap that leaves the least
- * spare width wins; what is left is split as a margin on both sides.
- * Too dense for gaps: bars touch and share the width exactly, since
- * uneven widths don't show without a gap between them.
+ * One bar width and one gap in whole device pixels, so spacing stays even.
+ * Picks the gap that leaves the least spare width; too dense for gaps, bars touch.
  */
 function barLayout(
     n: number,
@@ -121,11 +116,10 @@ createCanvasWorker<number[], SortAlgorithm>({
         if (n === 0) return;
 
         const { offset, bar, pitch } = barLayout(n, width, dpr);
-        const blockW = bar;
         const snap = (v: number): number => Math.round(v * dpr) / dpr;
         const usable = height - TOP_MARGIN;
 
-        ctx.font = "bold 10px ui-monospace, monospace";
+        ctx.font = monoFont(10);
         ctx.textAlign = "center";
         values.forEach((value, i) => {
             const raw = (value / max) * usable * reveal;
@@ -140,15 +134,14 @@ createCanvasWorker<number[], SortAlgorithm>({
             const w = Math.max(1 / dpr, snap(offset + i * pitch + bar) - left);
             const y = height - h;
             const type = displayType(info, i);
-            ctx.fillStyle = color(type, color("default", "#7a6c5a"));
+            ctx.fillStyle = color(type, color("default"));
             ctx.fillRect(left, y, w, h);
             if (w >= 4 && h >= HEIGHT_STEP * 2) {
-                ctx.fillStyle = LIT;
-                ctx.fillRect(left, y, w, HEIGHT_STEP);
+                highlight(ctx, left, y, w, HEIGHT_STEP);
             }
-            if (blockW >= LABEL_MIN_WIDTH && reveal === 1) {
-                ctx.fillStyle = color("label", "#a99d8a");
-                ctx.fillText(String(value), left + blockW / 2, y - 5);
+            if (bar >= LABEL_MIN_WIDTH && reveal === 1) {
+                ctx.fillStyle = color("label");
+                ctx.fillText(String(value), left + bar / 2, y - 5);
             }
         });
     },

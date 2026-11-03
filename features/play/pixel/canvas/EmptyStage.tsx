@@ -15,8 +15,7 @@ import {
 } from "../../../../constants/breakpoints";
 import { COMPACT, NARROW, SHORT, TINY } from "../media";
 
-/* Scrolls when the card is taller than the stage (small phones), and
-   centres it otherwise: margin auto never pushes the top out of reach. */
+/* Centres the card, and scrolls when it is taller than the stage. */
 const Wrap = styled.div`
     position: absolute;
     inset: 0;
@@ -59,8 +58,7 @@ const Card = styled.div`
     }
 `;
 
-/* The category's motif: a tiny picture of what its canvas will draw,
-   blocks popping in along the diagonal. */
+/* The category's motif, blocks popping in along the diagonal. */
 const Motif = styled.div`
     @media (max-height: 640px), ${NARROW} and (max-height: 760px) {
         display: none !important;
@@ -94,8 +92,7 @@ const Lead = styled.p`
     }
 `;
 
-/* The starter label is long ("Try Graham vs Jarvis vs Quickhull"): let it
-   wrap on narrow screens instead of running off the side. */
+/* Long starter labels wrap on narrow screens. */
 const Start = styled(PixelButton)`
     max-width: 100%;
     height: auto;
@@ -105,8 +102,7 @@ const Start = styled(PixelButton)`
     text-align: left;
 `;
 
-/* Where to pick algorithms: the sidebar on the left, or the selects in
-   the toolbar once the sidebar has folded away. */
+/* Points at the sidebar, or at the toolbar once the sidebar folds away. */
 const Wide = styled.span`
     display: contents;
 

@@ -1,9 +1,6 @@
 /*
- * Plain data about each category that the landing page needs too: a tiny
- * 11×6 pixel motif of what its canvas draws, the algorithms a first visit
- * starts with, and a one-line blurb. No components here, so importing it
- * does not pull the visualizers into the landing bundle.
- *
+ * Category data the landing page needs too, kept free of components so it
+ * doesn't pull the visualizers into that bundle.
  * Motif keys: # block, a accent, b swap, t teal, y yellow, p pink,
  * w white, . empty.
  */

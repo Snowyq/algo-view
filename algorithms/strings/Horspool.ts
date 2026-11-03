@@ -1,9 +1,8 @@
 import type { AlgorithmInstructions } from "../types";
 import { StringAlgorithm } from "./StringAlgorithm";
 
-/* Boyer-Moore-Horspool: compares from the right end of the pattern and,
-   on a mismatch, jumps by how far the text's last character sits from
-   the pattern's end. Long jumps on prose. */
+// Boyer-Moore-Horspool: compares from the pattern's right end and on a
+// mismatch skips by where the text's last character sits in the pattern.
 export class Horspool extends StringAlgorithm {
     tableLabel = "skip";
     tableOn = "pattern" as const;

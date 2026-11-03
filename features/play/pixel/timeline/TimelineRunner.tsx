@@ -1,12 +1,5 @@
 import gsap from "gsap";
-import {
-    JSX,
-    useCallback,
-    useEffect,
-    useLayoutEffect,
-    useRef,
-    useState,
-} from "react";
+import { JSX, useCallback, useEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import styled, { css, keyframes } from "styled-components";
 import useReducedMotion from "../../../../hooks/useReducedMotion";
@@ -27,6 +20,7 @@ import PixelSprite from "../sprites/PixelSprite";
 import { animalForSpeed } from "../sprites/speedAnimals";
 import { COMPACT } from "../media";
 import Parade from "./Parade";
+import { useWidth } from "../../../../hooks/useWidth";
 
 const SCALE = 3;
 const SPRITE_W = CANVAS_W * SCALE;
@@ -54,7 +48,7 @@ const Mover = styled.div`
     height: ${SPRITE_H}px;
     will-change: transform;
 
-    /* Two thirds the size on phones; "scale" leaves GSAP's transform alone. */
+    /* "scale", not transform, so GSAP's translate is left alone. */
     @media ${COMPACT} {
         scale: 0.67;
         transform-origin: 50% 100%;
@@ -108,7 +102,7 @@ const puff = keyframes`
     100% { transform: translate(-18px, -6px) scale(0.5); opacity: 0; }
 `;
 
-/* Dust kicked up behind the feet of fast runners: square puffs, 4 frames. */
+/* Dust behind fast runners. */
 const Dust = styled.span`
     position: absolute;
     left: 8px;
@@ -214,7 +208,7 @@ function TimelineRunner(): JSX.Element {
     const trailRef = useRef<HTMLDivElement | null>(null);
     const proxy = useRef<{ x: number }>({ x: -SPRITE_W });
     const entered = useRef<boolean>(false);
-    const [width, setWidth] = useState<number>(0);
+    const width = useWidth(laneRef);
     const [facingLeft, setFacingLeft] = useState<boolean>(false);
 
     const targetAnimal = animalForSpeed(speed);
@@ -226,19 +220,6 @@ function TimelineRunner(): JSX.Element {
     const playing = status === "playing";
     const atEnd = maxStep > 0 && step >= maxStep;
     const sleepSortOpen = active.some((algo) => algo.id === "sleepSort");
-
-    // ---------- Position ----------
-
-    useLayoutEffect(() => {
-        const node = laneRef.current;
-        if (!node) return;
-        setWidth(node.offsetWidth);
-        const observer = new ResizeObserver(([entry]) =>
-            setWidth(entry.contentRect.width)
-        );
-        observer.observe(node);
-        return () => observer.disconnect();
-    }, []);
 
     const apply = useCallback((): void => {
         const x = Math.round(proxy.current.x / 2) * 2;
@@ -299,7 +280,7 @@ function TimelineRunner(): JSX.Element {
         if (playing) setFacingLeft(false);
     }, [playing]);
 
-    // ---------- Rest phases: idle → sit → sleep, or a finish hop ----------
+    // Rest phases: idle, then sit, then sleep; a finish hop first at the end.
 
     const prevPlaying = useRef<boolean>(playing);
     useEffect(() => {
@@ -334,7 +315,7 @@ function TimelineRunner(): JSX.Element {
         return () => timers.forEach(clearTimeout);
     }, [playing, scrubbing, atEnd, sleepSortOpen, step]);
 
-    // ---------- Speed change: old animal blinks out, new one blinks in ----------
+    // Speed change: the old animal squashes out, the new one pops in.
 
     useEffect(() => {
         if (targetAnimal === animal) return;
@@ -375,7 +356,7 @@ function TimelineRunner(): JSX.Element {
         };
     }, [targetAnimal, animal, reduced]);
 
-    // ---------- Easter egg: five quick clicks ----------
+    // Five quick clicks: the animal's trick.
 
     const handleClick = (): void => {
         const now = performance.now();

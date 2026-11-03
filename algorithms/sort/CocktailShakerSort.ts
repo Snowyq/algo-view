@@ -13,7 +13,6 @@ export class CocktailShakerSort extends SortAlgorithm {
 
             for (let i = start; i < end; i++) {
                 this.countConditionChecks();
-                this.countArrayAccess(2);
                 if (this.check(i, ">", i + 1, arr, { instructionId: ["c4"] })) {
                     this.swap(i, i + 1, arr, { instructionId: ["c5"] });
                     swapped = true;
@@ -27,7 +26,6 @@ export class CocktailShakerSort extends SortAlgorithm {
 
             for (let i = end - 1; i >= start; i--) {
                 this.countConditionChecks();
-                this.countArrayAccess(2);
                 if (
                     this.check(i, ">", i + 1, arr, { instructionId: ["c11"] })
                 ) {

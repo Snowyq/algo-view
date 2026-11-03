@@ -1,17 +1,9 @@
 import { JSX } from "react";
-import { useSelector } from "react-redux";
 import styled from "styled-components";
-import type { RootState } from "../../../../store";
-import { categoryOf } from "../../categories";
-import { getActiveCategory } from "../../playSlice";
-import { STEP_LEGEND } from "../../stepLegend";
 import { labelText } from "../primitives/pixel";
+import { Swatch, useLegendItems } from "./legendItems";
 
-/*
- * What the colours mean, always on screen next to the transport. Swatches
- * are the same blocks the canvas draws. Narrow screens hide it and keep
- * the LegendMenu button instead.
- */
+/* Inline legend beside the transport; narrow screens use LegendMenu. */
 
 const List = styled.ul`
     display: flex;
@@ -32,20 +24,8 @@ const Item = styled.li`
     white-space: nowrap;
 `;
 
-const Swatch = styled.span<{ $colorVar: string }>`
-    flex: 0 0 auto;
-    width: 1rem;
-    height: 1.2rem;
-    background-color: ${({ $colorVar }) => `var(${$colorVar})`};
-    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.28);
-`;
-
 function Legend(): JSX.Element {
-    const category = useSelector<RootState, string>(getActiveCategory);
-    const items = categoryOf(category).legend.map((type) => ({
-        type,
-        ...STEP_LEGEND[type],
-    }));
+    const items = useLegendItems();
     return (
         <List aria-label="What the colours mean">
             {items.map((item) => (

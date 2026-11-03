@@ -8,7 +8,7 @@ import { STEP_LEGEND } from "../../stepLegend";
 import { setFx, useFx } from "../fx/fxStore";
 import PixelButton from "../primitives/PixelButton";
 import PixelIcon from "../primitives/PixelIcon";
-import { labelText, pixelFrame } from "../primitives/pixel";
+import { frameShadows, labelText, pixelFrame } from "../primitives/pixel";
 import { ANIMALS } from "../sprites/animals";
 import PixelSprite from "../sprites/PixelSprite";
 import { animalForSpeed, formatSpeed } from "../sprites/speedAnimals";
@@ -89,10 +89,7 @@ const Key = styled.kbd`
     color: var(--fg);
     ${labelText};
     box-shadow:
-        0 calc(var(--b) * -1) 0 0 var(--line-2),
-        0 var(--b) 0 0 var(--line-2),
-        calc(var(--b) * -1) 0 0 0 var(--line-2),
-        var(--b) 0 0 0 var(--line-2),
+        ${frameShadows("var(--line-2)")},
         inset 0 -3px 0 0 rgba(0, 0, 0, 0.35);
 `;
 
@@ -155,10 +152,63 @@ const SHORTCUTS: Array<{ keys: string[]; what: string }> = [
     { keys: ["?"], what: "This screen" },
 ];
 
+function KeyList(): JSX.Element {
+    return (
+        <Keys>
+            {SHORTCUTS.map((item) => (
+                <div key={item.what} style={{ display: "contents" }}>
+                    <dt>
+                        {item.keys.map((key) => (
+                            <Key key={key}>{key}</Key>
+                        ))}
+                    </dt>
+                    <dd>{item.what}</dd>
+                </div>
+            ))}
+        </Keys>
+    );
+}
+
+function SpeedRoster(): JSX.Element {
+    const speeds = useSelector<RootState, number[]>(getSpeeds);
+    return (
+        <Roster>
+            {speeds.map((ms, index) => {
+                const animal = ANIMALS[animalForSpeed(ms)];
+                return (
+                    <li key={ms}>
+                        <PixelSprite
+                            animal={animal.id}
+                            state="idle"
+                            scale={2}
+                        />
+                        <b>
+                            {index + 1} · {formatSpeed(ms)}
+                        </b>
+                        {animal.name}
+                    </li>
+                );
+            })}
+        </Roster>
+    );
+}
+
+function StepColors(): JSX.Element {
+    const category = useSelector<RootState, string>(getActiveCategory);
+    return (
+        <Legend>
+            {categoryOf(category).legend.map((type) => (
+                <li key={type}>
+                    <Swatch $colorVar={STEP_LEGEND[type].colorVar} />
+                    {STEP_LEGEND[type].label}
+                </li>
+            ))}
+        </Legend>
+    );
+}
+
 function ShortcutsOverlay(): JSX.Element | null {
     const open = useFx((fx) => fx.helpOpen);
-    const speeds = useSelector<RootState, number[]>(getSpeeds);
-    const category = useSelector<RootState, string>(getActiveCategory);
     const closeRef = useRef<HTMLButtonElement | null>(null);
 
     useEffect(() => {
@@ -205,55 +255,15 @@ function ShortcutsOverlay(): JSX.Element | null {
                 <Columns>
                     <section>
                         <Heading>Keyboard</Heading>
-                        <Keys>
-                            {SHORTCUTS.map((item) => (
-                                <div
-                                    key={item.what}
-                                    style={{ display: "contents" }}
-                                >
-                                    <dt>
-                                        {item.keys.map((key) => (
-                                            <Key key={key}>{key}</Key>
-                                        ))}
-                                    </dt>
-                                    <dd>{item.what}</dd>
-                                </div>
-                            ))}
-                        </Keys>
+                        <KeyList />
                     </section>
                     <section>
                         <Heading>Speeds</Heading>
-                        <Roster>
-                            {speeds.map((ms, index) => {
-                                const animal = ANIMALS[animalForSpeed(ms)];
-                                return (
-                                    <li key={ms}>
-                                        <PixelSprite
-                                            animal={animal.id}
-                                            state="idle"
-                                            scale={2}
-                                        />
-                                        <b>
-                                            {index + 1} · {formatSpeed(ms)}
-                                        </b>
-                                        {animal.name}
-                                    </li>
-                                );
-                            })}
-                        </Roster>
+                        <SpeedRoster />
                     </section>
                     <section>
                         <Heading>Step colors</Heading>
-                        <Legend>
-                            {categoryOf(category).legend.map((type) => (
-                                <li key={type}>
-                                    <Swatch
-                                        $colorVar={STEP_LEGEND[type].colorVar}
-                                    />
-                                    {STEP_LEGEND[type].label}
-                                </li>
-                            ))}
-                        </Legend>
+                        <StepColors />
                     </section>
                 </Columns>
                 <Secret>Some animals have tricks. Try clicking.</Secret>

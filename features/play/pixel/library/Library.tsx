@@ -6,6 +6,7 @@ import {
     useRef,
     useState,
     type CSSProperties,
+    type RefObject,
 } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import styled from "styled-components";
@@ -32,15 +33,19 @@ import {
 import { categoryOf } from "../../categories";
 import PixelIcon from "../primitives/PixelIcon";
 import { NARROW, SHORT, TINY } from "../media";
-import { labelText, pixelCorners, pixelFrame } from "../primitives/pixel";
+import {
+    blockPattern,
+    labelText,
+    pixelCorners,
+    pixelFrame,
+    scrollY,
+} from "../primitives/pixel";
+import { useEscapeKey } from "../../../../hooks/useEscapeKey";
 import AlgorithmPeek from "./AlgorithmPeek";
 
 /*
- * Category and algorithm choice. Wide screens: a sidebar, "1 Category"
- * keys on top, "2 Algorithms" checklist below. Below LIBRARY_COLLAPSE the
- * sidebar folds into two selects in the toolbar (LibraryPicker), each
- * opening the same lists in a sheet, so the panels and Details keep the
- * width.
+ * Algorithm checklist: a sidebar on wide screens, a toolbar select with a
+ * sheet below LIBRARY_COLLAPSE (LibraryPicker).
  */
 
 const Dock = styled.nav`
@@ -64,7 +69,6 @@ const Section = styled.div`
     padding: 1.6rem 1.2rem 0.8rem 1.6rem;
 `;
 
-/* "1 Category", "2 Algorithms": the order to read the sidebar in. */
 const Heading = styled.h2`
     display: flex;
     align-items: baseline;
@@ -85,7 +89,7 @@ const Heading = styled.h2`
     }
 `;
 
-/* Plain text button: small enough to sit beside the heading. */
+/* Plain text button, small enough to sit beside the heading. */
 const Clear = styled.button`
     flex: 0 0 auto;
     display: inline-flex;
@@ -100,25 +104,17 @@ const Clear = styled.button`
     font-size: 1rem;
 
     @media (hover: hover) {
-        &:hover:not(:disabled) {
+        &:hover {
             color: var(--danger);
             background-color: var(--surface);
         }
-    }
-    &:disabled {
-        opacity: 0.4;
-        cursor: default;
     }
 `;
 
 const Scroll = styled.div`
     flex: 1;
     min-height: 0;
-    overflow-y: auto;
-    /* Room for the scrollbar is always kept, so its appearing never
-       shifts the content sideways. */
-    scrollbar-gutter: stable;
-    overscroll-behavior: contain;
+    ${scrollY};
     padding: 0.4rem 1.2rem 1.6rem;
 `;
 
@@ -145,19 +141,14 @@ const GroupLabel = styled.li`
         content: "";
         flex: 1;
         height: 2px;
-        background-image: repeating-linear-gradient(
-            90deg,
-            var(--line) 0 2px,
-            transparent 2px 4px
-        );
+        ${blockPattern("var(--line)", 2, 2)};
     }
 `;
 
 const Row = styled.button`
     position: relative;
     display: grid;
-    /* The name gets its full width first; complexity takes what is left
-       and is the one that truncates. */
+    /* name gets its full width first; complexity truncates */
     grid-template-columns: auto minmax(0, max-content) minmax(0, 1fr);
     align-items: center;
     gap: 1rem;
@@ -185,7 +176,7 @@ const Row = styled.button`
         color: var(--fg);
     }
 
-    /* Selected rows get a pixel notch on the left edge. */
+    /* selected rows get a notch on the left edge */
     &[aria-pressed="true"]::before {
         content: "";
         position: absolute;
@@ -213,7 +204,7 @@ const Row = styled.button`
     }
 `;
 
-/* Pixel checkbox: the tick draws itself in three frames. */
+/* Checkbox whose tick draws itself in three frames. */
 const Box = styled.span`
     display: grid;
     place-items: center;
@@ -243,8 +234,7 @@ const Box = styled.span`
     }
 `;
 
-/* One line, always: the row's icon zeroes line-height for the button,
-   so a wrapped name would draw its lines on top of each other. */
+/* Single line: the row's icon zeroes line-height, so wrapped lines would overlap. */
 const Name = styled.span`
     min-width: 0;
     overflow: hidden;
@@ -279,10 +269,7 @@ const Note = styled.p`
     }
 `;
 
-/* ---------- Toolbar picker: two selects + a sheet ---------- */
-
-/* Category lives here at every width; the Algorithms select only where
-   the sidebar has folded away. */
+/* Category select at every width; Algorithms only once the sidebar folds. */
 const Picker = styled.div`
     display: flex;
     align-items: center;
@@ -321,7 +308,7 @@ const Select = styled.button`
         font-weight: 400;
         color: var(--accent);
     }
-    /* Chevron flips while its sheet is open. */
+    /* chevron flips while its sheet is open */
     [data-chevron] {
         display: inline-flex;
         flex: 0 0 auto;
@@ -335,13 +322,13 @@ const Select = styled.button`
     }
     ${pixelCorners("var(--accent)", "&:hover, &:focus-visible", "0.8rem")};
 
-    /* The count never gives way; names do. */
+    /* the count never shrinks; names do */
     [data-count] {
         flex: 0 0 auto;
         overflow: visible;
     }
 
-    /* Phones: icon + count; the words come back on wider screens. */
+    /* phones: icon and count only */
     @media ${NARROW} {
         padding: 0 0.8rem;
         gap: 0.6rem;
@@ -350,7 +337,7 @@ const Select = styled.button`
             display: none;
         }
     }
-    /* Smallest phones: the category is just its icon. */
+    /* smallest phones: category is just its icon */
     @media ${TINY} {
         [data-name] {
             display: none;
@@ -369,18 +356,14 @@ const Sheet = styled.div`
     right: 0;
     z-index: 60;
     max-height: min(70svh, 56rem);
-    overflow-y: auto;
-    /* Room for the scrollbar is always kept, so its appearing never
-       shifts the content sideways. */
-    scrollbar-gutter: stable;
-    overscroll-behavior: contain;
+    ${scrollY};
     padding: 1.6rem 1.2rem 2rem;
     background-color: var(--bg-2);
     border-bottom: var(--b) solid var(--line-2);
     box-shadow: 0 1.2rem 0 rgba(21, 18, 15, 0.6);
     animation: px-dither-in 160ms steps(4) both;
 
-    /* Two columns of algorithms when the sheet is wide enough. */
+    /* two columns when the sheet is wide enough */
     ul {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(26rem, 1fr));
@@ -399,24 +382,19 @@ const SheetHead = styled.div`
     margin-bottom: 1.2rem;
 `;
 
-type SheetKind = "algorithms" | null;
-
 function useWidthBelow(px: number): boolean {
     const { size } = useWindowSize();
     return size.width > 0 && size.width < px;
 }
 
-/* Everything both layouts need: data, the lists and the Clear button. */
+/* Data both layouts need. */
 function useLibrary(): {
     active: ActiveAlgorithm[];
     algorithms: RegistryAlgorithm[];
     category: string;
     capacity: number;
     full: boolean;
-    algorithmGroups: JSX.Element;
-    clearButton: JSX.Element | null;
 } {
-    const dispatch = useDispatch<AppDispatch>();
     const active = useSelector<RootState, ActiveAlgorithm[]>(
         getActiveAlgorithms
     );
@@ -426,43 +404,67 @@ function useLibrary(): {
     const category = useSelector<RootState, string>(getActiveCategory);
     const capacity = useSelector<RootState, number>(getPanelCapacity);
     const full = active.length >= capacity;
+    return { active, algorithms, category, capacity, full };
+}
 
-    const renderRow = (algo: RegistryAlgorithm, index: number): JSX.Element => {
-        const selected = active.some((item) => item.id === algo.id);
-        return (
-            <li
-                key={algo.id}
-                data-lib-row
-                data-id={algo.id}
-                style={{ "--i": index } as CSSProperties}
+type AlgorithmRowProps = {
+    algo: RegistryAlgorithm;
+    index: number;
+    selected: boolean;
+};
+
+function AlgorithmRow({
+    algo,
+    index,
+    selected,
+}: AlgorithmRowProps): JSX.Element {
+    const dispatch = useDispatch<AppDispatch>();
+    return (
+        <li
+            data-lib-row
+            data-id={algo.id}
+            style={{ "--i": index } as CSSProperties}
+        >
+            <Row
+                type="button"
+                aria-pressed={selected}
+                onClick={() =>
+                    dispatch(
+                        selected
+                            ? closeAlgorithm(algo.id)
+                            : openAlgorithm(algo.id)
+                    )
+                }
             >
-                <Row
-                    type="button"
-                    aria-pressed={selected}
-                    onClick={() =>
-                        dispatch(
-                            selected
-                                ? closeAlgorithm(algo.id)
-                                : openAlgorithm(algo.id)
-                        )
-                    }
-                >
-                    <Box data-box aria-hidden="true">
-                        <PixelIcon name="check" scale={2} />
-                    </Box>
-                    <Name title={algo.name}>{algo.name}</Name>
-                    <Complexity data-complexity>
-                        {algo.timeComplexity}
-                    </Complexity>
-                </Row>
-            </li>
-        );
-    };
+                <Box data-box aria-hidden="true">
+                    <PixelIcon name="check" scale={2} />
+                </Box>
+                <Name title={algo.name}>{algo.name}</Name>
+                <Complexity data-complexity>{algo.timeComplexity}</Complexity>
+            </Row>
+        </li>
+    );
+}
 
+function AlgorithmGroups({
+    algorithms,
+    active,
+}: {
+    algorithms: RegistryAlgorithm[];
+    active: ActiveAlgorithm[];
+}): JSX.Element {
+    const renderRow = (algo: RegistryAlgorithm, index: number): JSX.Element => (
+        <AlgorithmRow
+            key={algo.id}
+            algo={algo}
+            index={index}
+            selected={active.some((item) => item.id === algo.id)}
+        />
+    );
     const classic = algorithms.filter((algo) => algo.group !== "fun");
     const fun = algorithms.filter((algo) => algo.group === "fun");
 
-    const algorithmGroups = (
+    return (
         <>
             <Group aria-label="Classic">
                 <GroupLabel aria-hidden="true">Classic</GroupLabel>
@@ -479,60 +481,38 @@ function useLibrary(): {
             )}
         </>
     );
-
-    const clearButton =
-        active.length === 0 ? null : (
-            <Clear
-                type="button"
-                aria-label="Close all algorithms"
-                disabled={active.length === 0}
-                onClick={() => dispatch(closeAllAlgorithms())}
-            >
-                <PixelIcon name="trash" scale={1} />
-                Clear
-            </Clear>
-        );
-
-    return {
-        active,
-        algorithms,
-        category,
-        capacity,
-        full,
-        algorithmGroups,
-        clearButton,
-    };
 }
 
-/* Wide screens: the algorithm checklist as a sidebar (category is in the
-   toolbar at every width). */
-function Library(): JSX.Element {
-    const {
-        active,
-        algorithms,
-        category,
-        algorithmGroups,
-        clearButton,
-        capacity,
-        full,
-    } = useLibrary();
-    // Visibility is CSS only (see Dock): deciding it in JS too made the
-    // sidebar flicker or vanish while a resize crossed the breakpoint.
-    const dockRef = useRef<HTMLElement | null>(null);
-    const [peek, setPeek] = useState<{
-        id: string;
-        top: number;
-        left: number;
-    } | null>(null);
-    const peekTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+function ClearButton(): JSX.Element {
+    const dispatch = useDispatch<AppDispatch>();
+    return (
+        <Clear
+            type="button"
+            aria-label="Close all algorithms"
+            onClick={() => dispatch(closeAllAlgorithms())}
+        >
+            <PixelIcon name="trash" scale={1} />
+            Clear
+        </Clear>
+    );
+}
 
-    // Hover (mouse) or keyboard focus on a row: a short delay, then the
-    // card; leaving hides it at once.
+type Peek = { id: string; top: number; left: number };
+
+/* Hover or focus on a row shows its card after `delay`; leaving hides it at once. */
+function useRowPeek(dockRef: RefObject<HTMLElement | null>): {
+    peek: Peek | null;
+    showPeek: (target: EventTarget | null, delay: number) => void;
+    hidePeek: () => void;
+} {
+    const [peek, setPeek] = useState<Peek | null>(null);
+    const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
     const showPeek = (target: EventTarget | null, delay: number): void => {
         const row = (target as HTMLElement | null)?.closest<HTMLElement>(
             "[data-lib-row]"
         );
-        if (peekTimer.current) clearTimeout(peekTimer.current);
+        if (timer.current) clearTimeout(timer.current);
         if (!row?.dataset.id) {
             setPeek(null);
             return;
@@ -540,13 +520,23 @@ function Library(): JSX.Element {
         const id = row.dataset.id;
         const top = row.getBoundingClientRect().top;
         const left = (dockRef.current?.getBoundingClientRect().right ?? 0) + 8;
-        peekTimer.current = setTimeout(() => setPeek({ id, top, left }), delay);
+        timer.current = setTimeout(() => setPeek({ id, top, left }), delay);
     };
     const hidePeek = (): void => {
-        if (peekTimer.current) clearTimeout(peekTimer.current);
+        if (timer.current) clearTimeout(timer.current);
         setPeek(null);
     };
     useEffect(() => hidePeek, []);
+
+    return { peek, showPeek, hidePeek };
+}
+
+/* Wide screens: the algorithm checklist as a sidebar. */
+function Library(): JSX.Element {
+    const { active, algorithms, category, capacity, full } = useLibrary();
+    // visibility is CSS only (see Dock); doing it in JS flickered across the breakpoint
+    const dockRef = useRef<HTMLElement | null>(null);
+    const { peek, showPeek, hidePeek } = useRowPeek(dockRef);
 
     const peeked = peek
         ? algorithms.find((algo) => algo.id === peek.id)
@@ -561,7 +551,7 @@ function Library(): JSX.Element {
                         {active.length}/{algorithms.length}
                     </b>
                 </Heading>
-                {clearButton}
+                {active.length > 0 && <ClearButton />}
             </Section>
             {full && capacity < algorithms.length && (
                 <Note role="status" data-full>
@@ -579,7 +569,7 @@ function Library(): JSX.Element {
                 onBlur={hidePeek}
                 onScroll={hidePeek}
             >
-                {algorithmGroups}
+                <AlgorithmGroups algorithms={algorithms} active={active} />
             </Scroll>
             {peeked && peek && (
                 <AlgorithmPeek
@@ -596,46 +586,26 @@ function Library(): JSX.Element {
 }
 
 /*
- * Narrower screens: two selects in the toolbar. Each opens its list in a
- * sheet under the toolbar; picking a category closes it, the algorithm
- * checklist stays open for several picks. Escape or a click outside closes.
+ * Narrower screens: toolbar selects. Category opens the overview; Algorithms
+ * opens a checklist sheet that stays open for several picks.
  */
 export function LibraryPicker(): JSX.Element | null {
     const dispatch = useDispatch<AppDispatch>();
     const overviewOpen = useSelector<RootState, boolean>(getOverviewOpen);
-    const {
-        active,
-        algorithms,
-        category,
-        capacity,
-        full,
-        algorithmGroups,
-        clearButton,
-    } = useLibrary();
+    const { active, algorithms, category, capacity, full } = useLibrary();
     const current = categoryOf(category);
     const collapsed = useWidthBelow(LIBRARY_MIN_WIDTH);
-    const [sheet, setSheet] = useState<SheetKind>(null);
+    const [sheetOpen, setSheetOpen] = useState<boolean>(false);
     const sheetId = useId();
-    const closeSheet = useCallback(() => setSheet(null), []);
+    const closeSheet = useCallback(() => setSheetOpen(false), []);
     const { ref } = useClickOutside<HTMLDivElement>(closeSheet);
 
-    // Sheets close with Escape, and never linger once the sidebar is back.
+    // never linger once the sidebar is back
     useEffect(() => {
-        if (!sheet) return;
-        if (!collapsed) {
-            // eslint-disable-next-line react-hooks/set-state-in-effect
-            setSheet(null);
-            return;
-        }
-        const onKey = (event: KeyboardEvent): void => {
-            if (event.key === "Escape") setSheet(null);
-        };
-        document.addEventListener("keydown", onKey);
-        return () => document.removeEventListener("keydown", onKey);
-    }, [sheet, collapsed]);
-
-    const toggle = (kind: Exclude<SheetKind, null>): void =>
-        setSheet((open) => (open === kind ? null : kind));
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        if (sheetOpen && !collapsed) setSheetOpen(false);
+    }, [sheetOpen, collapsed]);
+    useEscapeKey(sheetOpen && collapsed, closeSheet);
 
     return (
         <Picker ref={ref}>
@@ -645,7 +615,7 @@ export function LibraryPicker(): JSX.Element | null {
                 aria-controls={sheetId}
                 aria-label={`Category: ${current.label}. Change`}
                 onClick={() => {
-                    setSheet(null);
+                    setSheetOpen(false);
                     dispatch(setOverviewOpen(!overviewOpen));
                 }}
             >
@@ -658,10 +628,10 @@ export function LibraryPicker(): JSX.Element | null {
             <Select
                 type="button"
                 data-algorithms-select
-                aria-expanded={sheet === "algorithms"}
+                aria-expanded={sheetOpen}
                 aria-controls={sheetId}
                 aria-label={`Algorithms: ${active.length} of ${algorithms.length} open. Choose`}
-                onClick={() => toggle("algorithms")}
+                onClick={() => setSheetOpen((open) => !open)}
             >
                 <span data-word>Algorithms</span>
                 <span data-count>
@@ -671,21 +641,19 @@ export function LibraryPicker(): JSX.Element | null {
                     <PixelIcon name="chevronDown" scale={2} />
                 </i>
             </Select>
-            {sheet === "algorithms" && collapsed && (
+            {sheetOpen && collapsed && (
                 <Sheet id={sheetId} data-sheet>
-                    <>
-                        <SheetHead>
-                            <Heading>{current.label} algorithms</Heading>
-                            {clearButton}
-                        </SheetHead>
-                        {full && (
-                            <Note role="status">
-                                Room for {capacity} at this size: opening
-                                another closes the oldest.
-                            </Note>
-                        )}
-                        {algorithmGroups}
-                    </>
+                    <SheetHead>
+                        <Heading>{current.label} algorithms</Heading>
+                        {active.length > 0 && <ClearButton />}
+                    </SheetHead>
+                    {full && (
+                        <Note role="status">
+                            Room for {capacity} at this size: opening another
+                            closes the oldest.
+                        </Note>
+                    )}
+                    <AlgorithmGroups algorithms={algorithms} active={active} />
                 </Sheet>
             )}
         </Picker>

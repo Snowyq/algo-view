@@ -1,23 +1,15 @@
 import { createGlobalStyle } from "styled-components";
 import { ditherKeyframes } from "./dither";
 
-/*
- * Design system: "Bitmap Instrument" (/play only).
- * Everything sits on a 4px grid and moves in discrete steps. The step
- * palette is the sorting legend; the UI accent is a single warm terracotta.
- * `:root:root` outranks the site-wide tokens while this route is mounted.
- */
+/* Pixel theme for the landing and /play. `:root:root` outranks GlobalStyles. */
 const PlayTheme = createGlobalStyle`
 ${ditherKeyframes}
 
 :root:root {
   color-scheme: dark;
 
-  /* ---------- Grid ---------- */
-  --px: 4px;
   --b: 2px;                 /* pixel border width */
 
-  /* ---------- Surfaces (warm graphite, never #000) ---------- */
   --bg: #15120f;
   --bg-2: #1b1713;
   --surface: #221d18;
@@ -31,14 +23,12 @@ ${ditherKeyframes}
   --fg-3: #a99d8a;          /*  7.0:1 */
   --fg-4: #8a7f6e;          /*  4.7:1 on --surface */
 
-  --accent: #e8825c;        /* UI accent: terracotta */
+  --accent: #e8825c;
   --accent-2: #f3a37f;
   --accent-ink: #1d110b;
-  --terracotta: #d97757;
   --danger: #ff7a68;
-  --ok: #8fdc8a;
 
-  /* ---------- Step palette (= legend, read by the canvas worker) ---------- */
+  /* Step palette, read by the canvas workers. */
   --color-step-default: #7a6c5a;
   --color-step-label: #a99d8a;
   --color-step-swap: #7fb0ff;
@@ -54,7 +44,7 @@ ${ditherKeyframes}
   --color-step-copy-to: #95886f;
   --color-step-finish: #5fd6c6;
 
-  /* Path finding: same legend colors, plus the grid's materials. */
+  /* Path finding: legend colors plus grid materials. */
   --color-step-frontier: var(--color-step-check);
   --color-step-visit: var(--color-step-swap);
   --color-step-current: var(--color-step-select);
@@ -66,14 +56,14 @@ ${ditherKeyframes}
   --color-path-start: #e8825c;
   --color-path-end: #f4ede0;
 
-  /* Searching: the value being looked for. */
+  /* Searching */
   --color-find-target: #e8825c;
   --color-step-probe: var(--color-step-check);
   --color-step-narrow: var(--color-step-select);
   --color-step-found: var(--color-step-finish);
   --color-step-miss: var(--color-step-check-false);
 
-  /* Legacy names some shared pieces still read. */
+  /* Names the GlobalStyles rules still read. */
   --swap: var(--color-step-swap);
   --finish: var(--color-step-finish);
   --text: var(--fg);
@@ -81,19 +71,12 @@ ${ditherKeyframes}
   --text-muted: var(--fg-3);
   --text-faint: var(--fg-4);
 
-  /* ---------- Type (faces loaded in the root layout) ---------- */
+  /* Faces are loaded in the root layout. */
   --f-display: var(--font-jersey), var(--font-silk), monospace;
   --f-label: var(--font-silk), monospace;
   --f-body: var(--font-pixelify), system-ui, sans-serif;
   --f-mono: var(--font-mono), ui-monospace, monospace;
 
-  /* ---------- Motion ---------- */
-  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-snap: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --t-fast: 120ms;
-  --t-base: 220ms;
-
-  /* ---------- Layout ---------- */
   --toolbar-h: 5.6rem;
   --library-w: 23.2rem;
   --inspector-w: 38.4rem;
@@ -135,7 +118,7 @@ canvas, svg[data-pixel] {
   shape-rendering: crispEdges;
 }
 
-/* Pixel focus ring: square, offset, always visible for keyboard users. */
+/* Square pixel focus ring. */
 :focus-visible {
   outline: var(--b) solid var(--accent);
   outline-offset: 2px;
@@ -155,7 +138,7 @@ canvas, svg[data-pixel] {
   }
 }
 
-/* Phones in landscape and other short windows: thinner chrome. */
+/* Short windows (landscape phones): thinner toolbar. */
 @media (max-height: 520px) {
   :root:root {
     --toolbar-h: 4.4rem;

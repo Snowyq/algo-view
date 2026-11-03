@@ -1,11 +1,11 @@
-import { createRng } from "./randoms";
+import { DisjointSet } from "./disjointSet";
+import { createRng, randomInt, type Rng } from "./randoms";
+import { clamp, isOneOf } from "./values";
 
 /*
- * Graph input: nodes spread evenly at random (sorted left to right,
- * so A is always the leftmost node and the start), joined by a planar set
- * of weighted edges. The Euclidean MST goes in first so the graph is
- * always connected; shorter non-crossing edges are added on top until
- * the preset's density is reached, so nothing overlaps on screen.
+ * Graph input: evenly spread nodes joined by planar weighted edges. The
+ * Euclidean MST goes in first so the graph is connected; shorter
+ * non-crossing edges are added until the preset's density is reached.
  */
 
 export const GRAPH_PRESETS = ["sparse", "dense", "grid"] as const;
@@ -25,10 +25,7 @@ const ASPECT = 1.4;
 const MAX_WEIGHT = 9;
 
 export function isGraphPreset(value: unknown): value is GraphPreset {
-    return (
-        typeof value === "string" &&
-        (GRAPH_PRESETS as readonly string[]).includes(value)
-    );
+    return isOneOf(GRAPH_PRESETS, value);
 }
 
 export function nodeName(index: number): string {
@@ -50,39 +47,30 @@ function crosses(
     );
 }
 
-export function generateGraphInput({
-    preset,
-    nodes: count,
-    seed,
-}: GraphConfig): GraphInput {
-    const rng = createRng(seed);
-    const n = Math.max(GRAPH_MIN_NODES, Math.min(GRAPH_MAX_NODES, count));
-    const weight = (): number => 1 + Math.floor(rng() * MAX_WEIGHT);
-
-    if (preset === "grid") {
-        const cols = Math.max(2, Math.round(Math.sqrt(n * ASPECT)));
-        const rows = Math.ceil(n / cols);
-        const nodes: GraphNode[] = [];
-        for (let i = 0; i < n; i += 1) {
-            const c = i % cols;
-            const r = Math.floor(i / cols);
-            nodes.push({
-                x: cols === 1 ? 0.5 : c / (cols - 1),
-                y: rows === 1 ? 0.5 : r / (rows - 1),
-            });
-        }
-        const edges: GraphEdge[] = [];
-        for (let i = 0; i < n; i += 1) {
-            const c = i % cols;
-            if (c + 1 < cols && i + 1 < n)
-                edges.push({ a: i, b: i + 1, w: weight() });
-            if (i + cols < n) edges.push({ a: i, b: i + cols, w: weight() });
-        }
-        return sortLeftToRight(nodes, edges);
+function gridGraph(n: number, weight: () => number): GraphInput {
+    const cols = Math.max(2, Math.round(Math.sqrt(n * ASPECT)));
+    const rows = Math.ceil(n / cols);
+    const nodes: GraphNode[] = [];
+    for (let i = 0; i < n; i += 1) {
+        const c = i % cols;
+        const r = Math.floor(i / cols);
+        nodes.push({
+            x: cols === 1 ? 0.5 : c / (cols - 1),
+            y: rows === 1 ? 0.5 : r / (rows - 1),
+        });
     }
+    const edges: GraphEdge[] = [];
+    for (let i = 0; i < n; i += 1) {
+        const c = i % cols;
+        if (c + 1 < cols && i + 1 < n)
+            edges.push({ a: i, b: i + 1, w: weight() });
+        if (i + cols < n) edges.push({ a: i, b: i + cols, w: weight() });
+    }
+    return { nodes, edges };
+}
 
-    // Mitchell's best candidate: each new node is the farthest of a few
-    // random tries, which spreads nodes evenly without looking like a grid.
+/** Mitchell's best candidate: even spread that does not look like a grid. */
+function spreadNodes(rng: Rng, n: number): GraphNode[] {
     const nodes: GraphNode[] = [{ x: rng(), y: rng() }];
     const gap = (p: GraphNode): number =>
         Math.min(
@@ -101,7 +89,11 @@ export function generateGraphInput({
         }
         nodes.push(best);
     }
-    // Stretch to fill the frame.
+    stretchToFrame(nodes);
+    return nodes;
+}
+
+function stretchToFrame(nodes: GraphNode[]): void {
     const xs = nodes.map((p) => p.x);
     const ys = nodes.map((p) => p.y);
     const [x0, x1, y0, y1] = [
@@ -114,32 +106,36 @@ export function generateGraphInput({
         p.x = (p.x - x0) / Math.max(1e-6, x1 - x0);
         p.y = (p.y - y0) / Math.max(1e-6, y1 - y0);
     });
+}
 
+/** All node pairs, shortest first. */
+function pairsByLength(nodes: GraphNode[]): Array<[number, number]> {
     const pairs: Array<[number, number, number]> = [];
-    for (let a = 0; a < n; a += 1) {
-        for (let b = a + 1; b < n; b += 1) {
+    for (let a = 0; a < nodes.length; a += 1) {
+        for (let b = a + 1; b < nodes.length; b += 1) {
             const dx = (nodes[a].x - nodes[b].x) * ASPECT;
             const dy = nodes[a].y - nodes[b].y;
             pairs.push([a, b, dx * dx + dy * dy]);
         }
     }
     pairs.sort((p, q) => p[2] - q[2]);
+    return pairs.map(([a, b]) => [a, b]);
+}
 
+function planarEdges(
+    nodes: GraphNode[],
+    target: number,
+    weight: () => number
+): GraphEdge[] {
+    const pairs = pairsByLength(nodes);
     const edges: GraphEdge[] = [];
     const chosen = new Set<number>();
-    const parent = Array.from({ length: n }, (_, i) => i);
-    const find = (i: number): number =>
-        parent[i] === i ? i : (parent[i] = find(parent[i]));
+    const sets = new DisjointSet(nodes.length);
     pairs.forEach(([a, b], k) => {
-        const ra = find(a);
-        const rb = find(b);
-        if (ra === rb) return;
-        parent[ra] = rb;
+        if (!sets.union(a, b)) return;
         chosen.add(k);
         edges.push({ a, b, w: weight() });
     });
-
-    const target = Math.round(n * (preset === "dense" ? 2.2 : 1.35));
     for (let k = 0; k < pairs.length && edges.length < target; k += 1) {
         if (chosen.has(k)) continue;
         const [a, b] = pairs[k];
@@ -153,11 +149,11 @@ export function generateGraphInput({
         );
         if (!blocked) edges.push({ a, b, w: weight() });
     }
-    return sortLeftToRight(nodes, edges);
+    return edges;
 }
 
 /** Renumber so node 0 is the leftmost (then topmost) one. */
-function sortLeftToRight(nodes: GraphNode[], edges: GraphEdge[]): GraphInput {
+function sortLeftToRight({ nodes, edges }: GraphInput): GraphInput {
     const order = nodes
         .map((p, i) => i)
         .sort((i, j) => nodes[i].x - nodes[j].x || nodes[i].y - nodes[j].y);
@@ -170,4 +166,23 @@ function sortLeftToRight(nodes: GraphNode[], edges: GraphEdge[]): GraphInput {
             return ra < rb ? { a: ra, b: rb, w } : { a: rb, b: ra, w };
         }),
     };
+}
+
+export function generateGraphInput({
+    preset,
+    nodes: count,
+    seed,
+}: GraphConfig): GraphInput {
+    const rng = createRng(seed);
+    const n = clamp(count, GRAPH_MIN_NODES, GRAPH_MAX_NODES);
+    const weight = (): number => 1 + randomInt(rng, MAX_WEIGHT);
+
+    if (preset === "grid") return sortLeftToRight(gridGraph(n, weight));
+
+    const nodes = spreadNodes(rng, n);
+    const target = Math.round(n * (preset === "dense" ? 2.2 : 1.35));
+    return sortLeftToRight({
+        nodes,
+        edges: planarEdges(nodes, target, weight),
+    });
 }

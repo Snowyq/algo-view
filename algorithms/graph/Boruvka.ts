@@ -1,3 +1,4 @@
+import { DisjointSet } from "../../utils/disjointSet";
 import type { AlgorithmInstructions } from "../types";
 import {
     EDGE_IDLE,
@@ -8,19 +9,12 @@ import {
     NODE_DONE,
 } from "./GraphAlgorithm";
 
-/* Every piece picks its cheapest outgoing edge, all at once; pieces
-   merge and the round repeats. At most log n rounds, easy to parallelise. */
+// Every piece picks its cheapest outgoing edge at once, then pieces merge.
+// At most log n rounds, and easy to parallelise.
 export class Boruvka extends GraphAlgorithm {
     protected run(): void {
         const n = this.nodeCount;
-        const parent = Array.from({ length: n }, (_, i) => i);
-        const find = (i: number): number =>
-            parent[i] === i ? i : (parent[i] = find(parent[i]));
-        const state = new Uint8Array(this.edgeList.length);
-        const mark = (edge: number, value: number): void => {
-            state[edge] = value;
-            this.setEdge(edge, value);
-        };
+        const sets = new DisjointSet(n);
         let pieces = n;
         while (pieces > 1) {
             this.emit("visit", -1, -1, { instructionId: ["b0"] });
@@ -31,16 +25,16 @@ export class Boruvka extends GraphAlgorithm {
                 (this.edgeList[edge].w === this.edgeList[than].w &&
                     edge < than);
             this.edgeList.forEach(({ a, b }, edge) => {
-                if (state[edge] === EDGE_TREE || state[edge] === EDGE_REJECT)
-                    return;
-                const [ra, rb] = [find(a), find(b)];
+                const state = this.edgeAt(edge);
+                if (state === EDGE_TREE || state === EDGE_REJECT) return;
+                const [ra, rb] = [sets.find(a), sets.find(b)];
                 if (ra === rb) {
-                    mark(edge, EDGE_REJECT);
+                    this.setEdge(edge, EDGE_REJECT);
                     this.emit("reject", -1, edge, { instructionId: ["b3"] });
                     return;
                 }
                 this.count("checks");
-                if (state[edge] === EDGE_IDLE) mark(edge, EDGE_SEEN);
+                if (state === EDGE_IDLE) this.setEdge(edge, EDGE_SEEN);
                 if (better(edge, cheapest[ra])) cheapest[ra] = edge;
                 if (better(edge, cheapest[rb])) cheapest[rb] = edge;
                 this.emit("check", -1, edge, { instructionId: ["b1"] });
@@ -49,14 +43,12 @@ export class Boruvka extends GraphAlgorithm {
             cheapest.forEach((edge) => {
                 if (edge < 0) return;
                 const { a, b, w } = this.edgeList[edge];
-                const [ra, rb] = [find(a), find(b)];
-                if (ra === rb) return;
-                parent[ra] = rb;
+                if (!sets.union(a, b)) return;
                 pieces -= 1;
                 merged += 1;
                 this.count("updates");
                 this.count("weight", w);
-                mark(edge, EDGE_TREE);
+                this.setEdge(edge, EDGE_TREE);
                 this.setNode(a, NODE_DONE);
                 this.setNode(b, NODE_DONE);
                 this.emit("take", b, edge, { instructionId: ["b2"] });

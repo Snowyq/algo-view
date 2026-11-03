@@ -1,17 +1,14 @@
 import type { TextInput } from "../../utils/textInput";
-import { Algorithm } from "../Algorithm";
-import type {
-    AlgorithmInstructions,
-    StepAlgorithm,
-    StepMetrics,
-} from "../types";
+import {
+    ForwardReplay,
+    RecordedAlgorithm,
+    type StepOptions,
+} from "../RecordedAlgorithm";
+import type { StepMetrics } from "../types";
 
 /*
- * Pattern matching: the pattern slides along the text. Steps are
- * compares (one character pair), shifts (new alignment), matches, and
- * writes into the helper table some algorithms precompute (KMP prefix
- * table, Horspool shift table, Z array). Matches and the table are
- * cumulative and replayed incrementally.
+ * The pattern slides along the text. Steps are compares, shifts, matches
+ * and writes into the helper table (KMP prefix table, Horspool skips, Z array).
  */
 
 export type StringStepType =
@@ -44,15 +41,19 @@ export type StringState = StringStep & {
     tableOn: "pattern" | "text" | "none";
 };
 
-type StepOptions = { instructionId?: string[] };
+type StepFields = Pick<
+    StringStep,
+    "i" | "j" | "ok" | "tableIndex" | "tableValue"
+>;
 
-export abstract class StringAlgorithm
-    extends Algorithm
-    implements StepAlgorithm<StringStep, StringState>
-{
+type StringHistory = { matches: number[]; table: Float64Array };
+
+export abstract class StringAlgorithm extends RecordedAlgorithm<
+    StringStep,
+    StringState
+> {
     text: string;
     pattern: string;
-    steps: StringStep[] = [];
     protected shiftAt = 0;
     tableLabel = "";
     tableOn: "pattern" | "text" | "none" = "none";
@@ -61,20 +62,25 @@ export abstract class StringAlgorithm
         shifts: { count: 0, name: "Shifts" },
         matches: { count: 0, name: "Matches" },
     };
-    private replay: {
-        index: number;
-        matches: number[];
-        table: Float64Array;
-    } | null = null;
+    private history = new ForwardReplay<StringHistory>(
+        () => ({
+            matches: [],
+            table: new Float64Array(this.tableSize()).fill(Number.NaN),
+        }),
+        ({ matches, table }, index) => {
+            const step = this.steps[index];
+            if (step.type === "match") matches.push(step.i);
+            if (step.type === "table") table[step.tableIndex] = step.tableValue;
+        }
+    );
 
     constructor(input: TextInput, options: Record<string, unknown> = {}) {
-        super();
-        this.options = options;
+        super(options);
         this.text = input.text;
         this.pattern = input.pattern;
-        this.push("initial", -1, -1, false, -1, Number.NaN, {});
+        this.push("initial", {});
         this.search();
-        this.push("finish", -1, -1, false, -1, Number.NaN, {});
+        this.push("finish", {});
     }
 
     abstract search(): void;
@@ -86,15 +92,15 @@ export abstract class StringAlgorithm
 
     private push(
         type: StringStepType,
-        i: number,
-        j: number,
-        ok: boolean,
-        tableIndex: number,
-        tableValue: number,
-        { instructionId }: StepOptions
+        { instructionId }: StepOptions,
+        {
+            i = -1,
+            j = -1,
+            ok = false,
+            tableIndex = -1,
+            tableValue = Number.NaN,
+        }: Partial<StepFields> = {}
     ): void {
-        const metrics: StepMetrics = {};
-        for (const key in this.metrics) metrics[key] = { ...this.metrics[key] };
         this.steps.push({
             type,
             shift: this.shiftAt,
@@ -104,7 +110,7 @@ export abstract class StringAlgorithm
             tableIndex,
             tableValue,
             instructionId,
-            metrics,
+            metrics: this.metricsSnapshot(),
         });
     }
 
@@ -116,19 +122,19 @@ export abstract class StringAlgorithm
     ): boolean {
         const ok = this.text[i] === this.pattern[j];
         this.metrics.compares.count += 1;
-        this.push("compare", i, j, ok, -1, Number.NaN, options);
+        this.push("compare", options, { i, j, ok });
         return ok;
     }
 
     protected shiftTo(shift: number, options: StepOptions = {}): void {
         this.shiftAt = shift;
         this.metrics.shifts.count += 1;
-        this.push("shift", -1, -1, false, -1, Number.NaN, options);
+        this.push("shift", options);
     }
 
     protected matchAt(shift: number, options: StepOptions = {}): void {
         this.metrics.matches.count += 1;
-        this.push("match", shift, -1, true, -1, Number.NaN, options);
+        this.push("match", options, { i: shift, ok: true });
     }
 
     protected writeTable(
@@ -136,51 +142,18 @@ export abstract class StringAlgorithm
         value: number,
         options: StepOptions = {}
     ): void {
-        this.push("table", -1, -1, false, index, value, options);
-    }
-
-    // ---------- Replay API ----------
-
-    getStepsLength(): number {
-        return this.steps.length;
-    }
-
-    getStepByIndex(index: number): StringStep | undefined {
-        return this.steps[index];
-    }
-
-    getMetrics(): StepMetrics {
-        return this.steps[this.steps.length - 1]?.metrics ?? this.metrics;
+        this.push("table", options, { tableIndex: index, tableValue: value });
     }
 
     getStateByStepsIndex(index: number): StringState {
-        const k = Math.max(0, Math.min(index, this.steps.length - 1));
-        let replay = this.replay;
-        if (!replay || replay.index > k) {
-            replay = {
-                index: 0,
-                matches: [],
-                table: new Float64Array(this.tableSize()).fill(Number.NaN),
-            };
-        }
-        for (let s = replay.index + 1; s <= k; s += 1) {
-            const step = this.steps[s];
-            if (step.type === "match") replay.matches.push(step.i);
-            if (step.type === "table")
-                replay.table[step.tableIndex] = step.tableValue;
-        }
-        replay.index = k;
-        this.replay = replay;
+        const k = this.clampStep(index);
+        const { matches, table } = this.history.at(k);
         return {
             ...this.steps[k],
-            matches: replay.matches.slice(),
-            table: replay.table,
+            matches: matches.slice(),
+            table,
             tableLabel: this.tableLabel,
             tableOn: this.tableOn,
         };
-    }
-
-    static getInstructions(): AlgorithmInstructions {
-        return {};
     }
 }

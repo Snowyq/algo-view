@@ -1,11 +1,9 @@
 import { createRng } from "./randoms";
+import { clamp, isOneOf } from "./values";
 
 /*
- * Cellular-automaton input: one starting grid (wrapping at the edges)
- * every rule evolves. A soup is random noise, a symmetric soup is the
- * same noise mirrored four ways (rules that keep symmetry make
- * kaleidoscopes), and the R-pentomino is five cells that keep Conway's
- * Life busy for over a thousand generations.
+ * Starting grid for the automata (wraps at the edges). The R-pentomino is
+ * five cells that keep Conway's Life busy for over a thousand generations.
  */
 
 export const LIFE_PRESETS = ["soup", "symmetric", "rpentomino"] as const;
@@ -19,10 +17,7 @@ export const LIFE_MAX_COLS = 96;
 export const LIFE_DEFAULT_COLS = 56;
 
 export function isLifePreset(value: unknown): value is LifePreset {
-    return (
-        typeof value === "string" &&
-        (LIFE_PRESETS as readonly string[]).includes(value)
-    );
+    return isOneOf(LIFE_PRESETS, value);
 }
 
 export function lifeRows(cols: number): number {
@@ -35,10 +30,7 @@ export function generateLifeInput({
     seed,
 }: LifeConfig): LifeInput {
     const rng = createRng(seed);
-    const cols = Math.max(
-        LIFE_MIN_COLS,
-        Math.min(LIFE_MAX_COLS, Math.round(wanted))
-    );
+    const cols = clamp(Math.round(wanted), LIFE_MIN_COLS, LIFE_MAX_COLS);
     const rows = lifeRows(cols);
     const cells = new Array<number>(cols * rows).fill(0);
     const at = (x: number, y: number): number => y * cols + x;
@@ -55,6 +47,7 @@ export function generateLifeInput({
     } else if (preset === "symmetric") {
         const mx = Math.floor(cols / 2);
         const my = Math.floor(rows / 2);
+        // Noise in the top-left quarter, mirrored four ways.
         for (let y = y0; y < my; y += 1) {
             for (let x = x0; x < mx; x += 1) {
                 if (rng() >= 0.35) continue;
@@ -65,6 +58,7 @@ export function generateLifeInput({
             }
         }
     } else {
+        // R-pentomino in the centre.
         const cx = Math.floor(cols / 2);
         const cy = Math.floor(rows / 2);
         for (const [dx, dy] of [

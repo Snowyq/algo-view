@@ -1,8 +1,7 @@
 import type { AlgorithmInstructions } from "../types";
 import { FindAlgorithm } from "./FindAlgorithm";
 
-/* Two probes per round, keeping one third. More probes than binary
-   search, despite cutting deeper each round. */
+// Two probes per round, keeping one third. Still more probes than binary search.
 export class TernarySearch extends FindAlgorithm {
     search(): void {
         let lo = 0;

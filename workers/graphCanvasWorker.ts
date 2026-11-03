@@ -8,19 +8,46 @@ import {
 } from "../algorithms/graph/GraphAlgorithm";
 import { type GraphInput, nodeName } from "../utils/graphInput";
 import { createCanvasWorker, type DescribeApi } from "./runtime/canvasWorker";
-import { pixelLine } from "./runtime/pixelLine";
+import {
+    DARK,
+    focusRing,
+    highlight,
+    LIT_SOFT,
+    monoFont,
+    pixelLine,
+} from "./runtime/draw";
 
 /*
- * Graphs: square pixel nodes joined by stepped pixel lines. Edges change
- * colour as they are considered, taken into the tree or dropped (dotted);
- * the edge in focus is drawn thick. Each node carries its letter, and a
- * small tag with its label (distance, hops, order…) once it has one.
+ * Graphs: square nodes joined by stepped lines. Edges change colour as they
+ * are checked, taken or dropped (dotted); the edge in focus is drawn thick.
+ * Nodes carry their letter and, once set, a tag with their label.
  */
 
-const DARK = "#1d110b";
 const PAD = 30;
 
-/* "Relax D–H (7): H is now 12 away". */
+type Point = { x: number; y: number };
+
+/* Pixel chevron pointing at b, just outside the node. */
+function arrowhead(
+    ctx: OffscreenCanvasRenderingContext2D,
+    A: Point,
+    B: Point,
+    half: number
+): void {
+    const len = Math.hypot(B.x - A.x, B.y - A.y) || 1;
+    const ux = (B.x - A.x) / len;
+    const uy = (B.y - A.y) / len;
+    const tipX = B.x - ux * (half + 4);
+    const tipY = B.y - uy * (half + 4);
+    for (let k = 0; k < 4; k += 1) {
+        for (const side of [-1, 1]) {
+            const x = tipX - ux * k * 2 + -uy * side * k * 2;
+            const y = tipY - uy * k * 2 + ux * side * k * 2;
+            ctx.fillRect(Math.round(x) - 1, Math.round(y) - 1, 3, 3);
+        }
+    }
+}
+
 function describeGraph({
     algorithm,
     input,
@@ -70,17 +97,17 @@ createCanvasWorker<GraphInput, GraphAlgorithm>({
         const { nodes, edges } = input;
         const n = nodes.length;
 
-        const idleEdge = color("path-wall", "#6b5f50");
-        const seen = color("check", "#f5cd4e");
-        const tree = color("path", "#5fd6c6");
-        const reject = color("check-false", "#ff7a68");
-        const frontier = color("frontier", "#f5cd4e");
+        const idleEdge = color("path-wall");
+        const seen = color("check");
+        const tree = color("path");
+        const reject = color("check-false");
+        const frontier = color("frontier");
         const done = color("visit", "#f08a5d");
-        const current = color("current", "#ee8fd0");
-        const idleNode = color("default", "#7a6c5a");
+        const current = color("current");
+        const idleNode = color("default");
         const ink = color("label", "#d4cab9");
-        const fg = color("fg", "#f4ede0");
-        const tagBg = color("path-empty", "#2b251f");
+        const fg = color("fg");
+        const tagBg = color("path-empty");
 
         const size = Math.max(
             16,
@@ -100,7 +127,6 @@ createCanvasWorker<GraphInput, GraphAlgorithm>({
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
 
-        // Edges.
         const focusColor =
             state.type === "take"
                 ? tree
@@ -109,54 +135,28 @@ createCanvasWorker<GraphInput, GraphAlgorithm>({
                   : state.type === "relax"
                     ? frontier
                     : seen;
+        const edgeColor = (value: number): string =>
+            value === EDGE_TREE
+                ? tree
+                : value === EDGE_SEEN
+                  ? seen
+                  : value === EDGE_REJECT
+                    ? reject
+                    : idleEdge;
+
         edges.forEach(({ a, b, w }, e) => {
             if (a >= shownNodes || b >= shownNodes) return;
             const value = state.edges[e];
             const focus = !finished && state.edge === e;
-            const t = focus || value === EDGE_TREE ? 4 : 2;
-            ctx.fillStyle = focus
-                ? focusColor
-                : value === EDGE_TREE
-                  ? tree
-                  : value === EDGE_SEEN
-                    ? seen
-                    : value === EDGE_REJECT
-                      ? reject
-                      : idleEdge;
-            ctx.globalAlpha = value === EDGE_REJECT && !focus ? 0.5 : 1;
+            const dropped = value === EDGE_REJECT && !focus;
             const A = at[a];
             const B = at[b];
-            pixelLine(
-                ctx,
-                A.x,
-                A.y,
-                B.x,
-                B.y,
-                t,
-                value === EDGE_REJECT && !focus
-            );
+            ctx.fillStyle = focus ? focusColor : edgeColor(value);
+            ctx.globalAlpha = dropped ? 0.5 : 1;
+            const t = focus || value === EDGE_TREE ? 4 : 2;
+            pixelLine(ctx, A.x, A.y, B.x, B.y, t, dropped);
             ctx.globalAlpha = 1;
-
-            // Arrowhead (directed graphs): a pixel chevron near b.
-            if (state.directed) {
-                const len = Math.hypot(B.x - A.x, B.y - A.y) || 1;
-                const ux = (B.x - A.x) / len;
-                const uy = (B.y - A.y) / len;
-                const tipX = B.x - ux * (half + 4);
-                const tipY = B.y - uy * (half + 4);
-                for (let k = 0; k < 4; k += 1) {
-                    for (const side of [-1, 1]) {
-                        const x = tipX - ux * k * 2 + -uy * side * k * 2;
-                        const y = tipY - uy * k * 2 + ux * side * k * 2;
-                        ctx.fillRect(
-                            Math.round(x) - 1,
-                            Math.round(y) - 1,
-                            3,
-                            3
-                        );
-                    }
-                }
-            }
+            if (state.directed) arrowhead(ctx, A, B, half);
 
             // Weight tag at the midpoint.
             if (algorithm.edgeList.length && size >= 16) {
@@ -165,12 +165,28 @@ createCanvasWorker<GraphInput, GraphAlgorithm>({
                 ctx.fillStyle = value === EDGE_TREE ? tree : tagBg;
                 ctx.fillRect(mx - 7, my - 6, 14, 12);
                 ctx.fillStyle = value === EDGE_TREE ? DARK : ink;
-                ctx.font = "bold 10px ui-monospace, monospace";
+                ctx.font = monoFont(10);
                 ctx.fillText(String(w), mx, my + 1);
             }
         });
 
-        // Nodes.
+        const labelTag = (
+            x: number,
+            y: number,
+            label: number,
+            fill: string
+        ) => {
+            const text = label === Infinity ? "∞" : String(label);
+            ctx.font = monoFont(10);
+            const w = Math.max(12, Math.ceil(ctx.measureText(text).width) + 6);
+            const tx = x + half - 2;
+            const ty = y - half - 8;
+            ctx.fillStyle = DARK;
+            ctx.fillRect(tx, ty, w, 12);
+            ctx.fillStyle = fill === idleNode ? ink : fill;
+            ctx.fillText(text, tx + w / 2, ty + 7);
+        };
+
         for (let i = 0; i < shownNodes; i += 1) {
             const { x, y } = at[i];
             const value = state.nodes[i];
@@ -182,35 +198,15 @@ createCanvasWorker<GraphInput, GraphAlgorithm>({
                   : value === NODE_FRONTIER
                     ? frontier
                     : idleNode;
-            if (isCurrent) {
-                ctx.fillStyle = fg;
-                ctx.fillRect(x - half - 3, y - half - 3, size + 6, size + 6);
-                ctx.fillStyle = DARK;
-                ctx.fillRect(x - half - 1, y - half - 1, size + 2, size + 2);
-            }
+            if (isCurrent) focusRing(ctx, x - half, y - half, size, fg);
             ctx.fillStyle = fill;
             ctx.fillRect(x - half, y - half, size, size);
-            ctx.fillStyle = "rgba(255, 255, 255, 0.22)";
-            ctx.fillRect(x - half, y - half, size, 2);
+            highlight(ctx, x - half, y - half, size, 2, LIT_SOFT);
             ctx.fillStyle = fill === idleNode ? fg : DARK;
-            ctx.font = `bold ${Math.max(10, Math.floor(size * 0.5))}px ui-monospace, monospace`;
+            ctx.font = monoFont(Math.max(10, Math.floor(size * 0.5)));
             ctx.fillText(nodeName(i), x, y + 1);
-
             const label = state.labels[i];
-            if (!Number.isNaN(label)) {
-                const text = label === Infinity ? "∞" : String(label);
-                ctx.font = "bold 10px ui-monospace, monospace";
-                const w = Math.max(
-                    12,
-                    Math.ceil(ctx.measureText(text).width) + 6
-                );
-                const tx = x + half - 2;
-                const ty = y - half - 8;
-                ctx.fillStyle = DARK;
-                ctx.fillRect(tx, ty, w, 12);
-                ctx.fillStyle = fill === idleNode ? ink : fill;
-                ctx.fillText(text, tx + w / 2, ty + 7);
-            }
+            if (!Number.isNaN(label)) labelTag(x, y, label, fill);
         }
     },
 });

@@ -1,29 +1,14 @@
-import { JSX, useCallback, useEffect, useRef, type MouseEvent } from "react";
-import styled from "styled-components";
+import { JSX, useCallback, useRef, type MouseEvent } from "react";
+import { Surface, useCanvasSurface, type Paint } from "./surface";
 import { POINTS_MAX, type PointsInput } from "../../../../utils/pointsInput";
 
 /*
- * Hull points, big: click empty space to add a point, click a point to
- * remove it. Edits a draft; the editor's Done applies it. Same mapping as the geometry worker (padding, capped
- * stretch), so the picture matches the panels.
+ * Hull points: click empty space to add one, click a point to remove it.
+ * Uses the geometry worker's mapping so the picture matches the panels.
  */
 
 const PAD = 20;
 const HIT = 12;
-
-const Surface = styled.div`
-    position: relative;
-    flex: 1;
-    min-height: 0;
-    cursor: crosshair;
-
-    canvas {
-        position: absolute;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-    }
-`;
 
 function mapping(w: number, h: number) {
     const spanY = h - PAD * 2;
@@ -39,45 +24,25 @@ function PointsSurface({
     value: PointsInput;
     onChange: (next: PointsInput) => void;
 }): JSX.Element {
-    const surfaceRef = useRef<HTMLDivElement | null>(null);
-    const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const hoverRef = useRef<number>(-1);
 
-    const draw = useCallback((): void => {
-        const surface = surfaceRef.current;
-        const canvas = canvasRef.current;
-        const ctx = canvas?.getContext("2d");
-        if (!surface || !canvas || !ctx) return;
-        const dpr = window.devicePixelRatio || 1;
-        const w = surface.offsetWidth;
-        const h = surface.offsetHeight;
-        canvas.width = Math.round(w * dpr);
-        canvas.height = Math.round(h * dpr);
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        const css = getComputedStyle(document.documentElement);
-        const v = (name: string): string => css.getPropertyValue(name).trim();
-        const { spanX, spanY, left } = mapping(w, h);
-        ctx.strokeStyle = v("--line");
-        ctx.strokeRect(left, PAD, spanX, spanY);
-        input.points.forEach((p, i) => {
-            const x = Math.round(left + p.x * spanX);
-            const y = Math.round(PAD + p.y * spanY);
-            ctx.fillStyle =
-                i === hoverRef.current
-                    ? v("--danger")
-                    : v("--color-step-default");
-            ctx.fillRect(x - 5, y - 5, 10, 10);
-        });
-    }, [input]);
-
-    useEffect(() => {
-        draw();
-        const surface = surfaceRef.current;
-        if (!surface) return;
-        const observer = new ResizeObserver(draw);
-        observer.observe(surface);
-        return () => observer.disconnect();
-    }, [draw]);
+    const paint = useCallback<Paint>(
+        (ctx, w, h, color) => {
+            const { spanX, spanY, left } = mapping(w, h);
+            ctx.strokeStyle = color("--line");
+            ctx.strokeRect(left, PAD, spanX, spanY);
+            input.points.forEach((p, i) => {
+                const x = Math.round(left + p.x * spanX);
+                const y = Math.round(PAD + p.y * spanY);
+                ctx.fillStyle = color(
+                    i === hoverRef.current ? "--danger" : "--color-step-default"
+                );
+                ctx.fillRect(x - 5, y - 5, 10, 10);
+            });
+        },
+        [input]
+    );
+    const { surfaceRef, canvasRef, draw } = useCanvasSurface(paint);
 
     const pointAt = (event: MouseEvent<HTMLDivElement>) => {
         const rect = event.currentTarget.getBoundingClientRect();

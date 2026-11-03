@@ -1,6 +1,7 @@
-import { JSX, useCallback, useEffect, useRef, type PointerEvent } from "react";
+import { JSX, useCallback, useRef, type PointerEvent } from "react";
 import { useSelector } from "react-redux";
 import styled from "styled-components";
+import { Surface, useCanvasSurface, type Paint } from "./surface";
 import type { RootState } from "../../../../store";
 import type { FillInput } from "../../../../utils/fillInput";
 import {
@@ -15,32 +16,18 @@ import type { LifeInput } from "../../../../utils/lifeInput";
 import { getBrush, type GridBrush } from "../../playSlice";
 
 /*
- * A big drawing surface for grid inputs: Path (walls and mud, start and
- * end), Fill (walls, start) and Life (live cells). It draws the grid
- * itself, so it works with the panels hidden behind the editor. Drag to
- * paint; a stroke that starts on a painted cell erases; drag a ringed
- * marker to move it. It only edits a draft: the panels recompute once,
- * when the editor's Done applies it.
+ * Drawing surface for grid inputs (path, fill, life). Drag to paint, a stroke
+ * starting on a painted cell erases, drag a marker to move it.
  */
 
 export type GridKind = "path" | "fill" | "life";
 export type GridDraft = GridInput | FillInput | LifeInput;
 
-const Surface = styled.div`
-    position: relative;
-    flex: 1;
-    min-height: 0;
+const GridCanvas = styled(Surface)`
     touch-action: none;
-    cursor: crosshair;
 
     &[data-over="marker"] {
         cursor: grab;
-    }
-    canvas {
-        position: absolute;
-        inset: 0;
-        width: 100%;
-        height: 100%;
     }
 `;
 
@@ -81,8 +68,8 @@ function viewOf(kind: GridKind, draft: GridDraft): View {
     return { cols: v.cols, rows: v.rows, cells: v.cells, markers: [] };
 }
 
-/* Same rules as the store: markers are never painted over, a marker moved
-   onto a wall clears it, two markers never share a cell. */
+/* Same rules as the store: markers are never painted over, a marker dropped
+   on a wall clears it, two markers never share a cell. */
 function applyDrag(kind: GridKind, draft: GridDraft, drag: Drag): GridDraft {
     const view = viewOf(kind, draft);
     const markerCells = new Set(view.markers.map((m) => m.cell));
@@ -130,7 +117,7 @@ function cellsBetween(a: number, b: number, cols: number): number[] {
     return out;
 }
 
-/* What a stroke paints, from the first cell it touches. */
+/* What a stroke paints, decided by the first cell it touches. */
 function strokeValue(
     kind: GridKind,
     brush: GridBrush,
@@ -152,82 +139,65 @@ function GridSurface({
     onChange: (next: GridDraft) => void;
 }): JSX.Element {
     const brush = useSelector<RootState, GridBrush>(getBrush);
-    const surfaceRef = useRef<HTMLDivElement | null>(null);
-    const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const dragRef = useRef<Drag | null>(null);
     const hoverRef = useRef<number>(-1);
 
-    const draw = useCallback((): void => {
-        const surface = surfaceRef.current;
-        const canvas = canvasRef.current;
-        const ctx = canvas?.getContext("2d");
-        if (!surface || !canvas || !ctx) return;
-        const dpr = window.devicePixelRatio || 1;
-        const w = surface.offsetWidth;
-        const h = surface.offsetHeight;
-        if (canvas.width !== Math.round(w * dpr))
-            canvas.width = Math.round(w * dpr);
-        if (canvas.height !== Math.round(h * dpr))
-            canvas.height = Math.round(h * dpr);
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        ctx.clearRect(0, 0, w, h);
-        const view = viewOf(kind, value);
-        const l = gridLayout(view.cols, view.rows, w, h);
-        const size = l.cell - l.gap;
-        const css = getComputedStyle(document.documentElement);
-        const v = (name: string): string => css.getPropertyValue(name).trim();
-        const colorOf = (cell: number): string => {
-            if (kind === "life")
-                return cell ? v("--color-path-end") : v("--color-path-empty");
-            if (cell === CELL_WALL) return v("--color-path-wall");
-            if (cell === CELL_MUD) return v("--color-path-mud-dot");
-            return v("--color-path-empty");
-        };
-        const box = (cell: number, fill: string): void => {
-            ctx.fillStyle = fill;
-            ctx.fillRect(
-                l.x + (cell % view.cols) * l.cell,
-                l.y + Math.floor(cell / view.cols) * l.cell,
-                size,
-                size
+    const paint = useCallback<Paint>(
+        (ctx, w, h, color) => {
+            const view = viewOf(kind, value);
+            const l = gridLayout(view.cols, view.rows, w, h);
+            const size = l.cell - l.gap;
+            const colorOf = (cell: number): string => {
+                if (kind === "life")
+                    return color(
+                        cell ? "--color-path-end" : "--color-path-empty"
+                    );
+                if (cell === CELL_WALL) return color("--color-path-wall");
+                if (cell === CELL_MUD) return color("--color-path-mud-dot");
+                return color("--color-path-empty");
+            };
+            const box = (cell: number, fill: string): void => {
+                ctx.fillStyle = fill;
+                ctx.fillRect(
+                    l.x + (cell % view.cols) * l.cell,
+                    l.y + Math.floor(cell / view.cols) * l.cell,
+                    size,
+                    size
+                );
+            };
+            const drag = dragRef.current;
+            const painted = drag?.kind === "paint" ? drag : null;
+            view.cells.forEach((cellValue, cell) =>
+                box(
+                    cell,
+                    colorOf(
+                        painted?.cells.has(cell) ? painted.value : cellValue
+                    )
+                )
             );
-        };
-        const drag = dragRef.current;
-        const painted = drag?.kind === "paint" ? drag : null;
-        view.cells.forEach((cellValue, cell) =>
-            box(
-                cell,
-                colorOf(painted?.cells.has(cell) ? painted.value : cellValue)
-            )
-        );
-        view.markers.forEach(({ name, cell }) => {
-            const at =
-                drag?.kind === "marker" && drag.name === name
-                    ? drag.cell
-                    : cell;
-            box(
-                at,
-                v(name === "start" ? "--color-path-start" : "--color-path-end")
-            );
-        });
-        if (!drag && hoverRef.current >= 0) {
-            ctx.globalAlpha = 0.25;
-            box(hoverRef.current, v("--fg"));
-            ctx.globalAlpha = 1;
-        }
-    }, [kind, value]);
-
-    useEffect(() => {
-        draw();
-    }, [draw]);
-
-    useEffect(() => {
-        const surface = surfaceRef.current;
-        if (!surface) return;
-        const observer = new ResizeObserver(draw);
-        observer.observe(surface);
-        return () => observer.disconnect();
-    }, [draw]);
+            view.markers.forEach(({ name, cell }) => {
+                const at =
+                    drag?.kind === "marker" && drag.name === name
+                        ? drag.cell
+                        : cell;
+                box(
+                    at,
+                    color(
+                        name === "start"
+                            ? "--color-path-start"
+                            : "--color-path-end"
+                    )
+                );
+            });
+            if (!drag && hoverRef.current >= 0) {
+                ctx.globalAlpha = 0.25;
+                box(hoverRef.current, color("--fg"));
+                ctx.globalAlpha = 1;
+            }
+        },
+        [kind, value]
+    );
+    const { surfaceRef, canvasRef, draw } = useCanvasSurface(paint);
 
     const cellFrom = (event: PointerEvent<HTMLDivElement>): number => {
         const surface = surfaceRef.current;
@@ -300,7 +270,7 @@ function GridSurface({
     };
 
     return (
-        <Surface
+        <GridCanvas
             ref={surfaceRef}
             onPointerDown={onDown}
             onPointerMove={onMove}
@@ -312,7 +282,7 @@ function GridSurface({
             }}
         >
             <canvas ref={canvasRef} aria-hidden="true" />
-        </Surface>
+        </GridCanvas>
     );
 }
 

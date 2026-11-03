@@ -1,8 +1,9 @@
 import gsap from "gsap";
-import { JSX, useEffect, useMemo, useRef } from "react";
+import { JSX, useEffect, useRef } from "react";
 import styled from "styled-components";
+import { prefersReducedMotion } from "../play/pixel/fx/dom";
 import { useFx } from "../play/pixel/fx/fxStore";
-import { layoutWord } from "../play/pixel/toolbar/PixelLogo";
+import { WORDMARK } from "../play/pixel/toolbar/PixelLogo";
 
 const Svg = styled.svg`
     display: block;
@@ -16,25 +17,20 @@ const Svg = styled.svg`
     }
 `;
 
-const RADIUS = 5.5; // in pixel cells
+// Both in pixel cells.
+const RADIUS = 5.5;
 const PUSH = 1.6;
 
-/*
- * The wordmark as the hero's focal object: every pixel is a cell that
- * shies away from the pointer and snaps back, moving on a half-cell grid.
- * Fine pointers only; on touch and under reduced motion it stays still.
- */
+/* Hero wordmark whose pixels shy away from the pointer (fine pointers only). */
 function InteractiveWordmark(): JSX.Element {
     const svgRef = useRef<SVGSVGElement | null>(null);
     const ready = useFx((fx) => fx.introDone);
-    const { pixels, width } = useMemo(() => layoutWord("ALGO·VIEW"), []);
+    const { pixels, width } = WORDMARK;
 
-    // Entrance: pixels drop into place in random order, in steps.
+    // Entrance: pixels drop into place in random order.
     useEffect(() => {
         const svg = svgRef.current;
-        if (!svg || !ready) return;
-        if (window.matchMedia("(prefers-reduced-motion: reduce)").matches)
-            return;
+        if (!svg || !ready || prefersReducedMotion()) return;
         const rects = svg.querySelectorAll("rect");
         const tween = gsap.from(rects, {
             y: () => -gsap.utils.random(2, 6, 1),
@@ -51,9 +47,7 @@ function InteractiveWordmark(): JSX.Element {
 
     useEffect(() => {
         const svg = svgRef.current;
-        if (!svg) return;
-        if (window.matchMedia("(prefers-reduced-motion: reduce)").matches)
-            return;
+        if (!svg || prefersReducedMotion()) return;
         if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches)
             return;
 

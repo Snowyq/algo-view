@@ -1,8 +1,8 @@
 import type { AlgorithmInstructions } from "../types";
 import { MazeAlgorithm } from "./MazeAlgorithm";
 
-/* Each room opens either north or east, coin flip. The simplest maze
-   there is: two open edges and a visible diagonal bias. */
+/* Each room opens north or east at random. Simple, with a strong
+   diagonal bias. */
 export class BinaryTree extends MazeAlgorithm {
     generate(): void {
         for (const room of this.rooms()) {

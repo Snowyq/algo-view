@@ -1,9 +1,8 @@
 import type { AlgorithmInstructions } from "../types";
 import { TreeAlgorithm } from "./TreeAlgorithm";
 
-/* A min-heap stored in an array, drawn as the complete tree it encodes.
-   New keys go to the next free slot and swap upward while smaller than
-   their parent. Not a search tree: only the root is ordered. */
+// Min-heap in an array, drawn as the tree it encodes. New keys swap up
+// while smaller than their parent.
 export class BinaryHeap extends TreeAlgorithm {
     get movesName(): string {
         return "Swaps";

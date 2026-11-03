@@ -1,16 +1,11 @@
 import type { TreeInput } from "../../utils/treeInput";
-import { Algorithm } from "../Algorithm";
-import type {
-    AlgorithmInstructions,
-    StepAlgorithm,
-    StepMetrics,
-} from "../types";
+import { RecordedAlgorithm, type StepOptions } from "../RecordedAlgorithm";
+import type { StepMetrics } from "../types";
 
 /*
- * Trees built by inserting keys one at a time. Nodes live in slots
- * (key / left / right / parent / tag arrays); rotations rewire them in
- * place. The trees are tiny (≤ 31 nodes), so every step simply keeps a
- * full snapshot and any step replays in O(1).
+ * Trees built by inserting keys one at a time. Nodes live in slot arrays
+ * and rotations rewire them in place. Trees are tiny (31 nodes at most),
+ * so every step keeps a full snapshot.
  */
 
 export type TreeStepType =
@@ -35,7 +30,7 @@ export type TreeStep = {
     other: number;
     /** Index of the key being inserted. */
     keyIndex: number;
-    /** [root, size, keys…, left…, right…, tag…] */
+    /** [root, size, keys, left, right, tag] */
     snapshot: Int16Array;
     instructionId?: string[];
     metrics: StepMetrics;
@@ -55,14 +50,11 @@ export type TreeState = {
     type: TreeStepType;
 };
 
-type StepOptions = { instructionId?: string[] };
-
-export abstract class TreeAlgorithm
-    extends Algorithm
-    implements StepAlgorithm<TreeStep, TreeState>
-{
+export abstract class TreeAlgorithm extends RecordedAlgorithm<
+    TreeStep,
+    TreeState
+> {
     capacity: number;
-    steps: TreeStep[] = [];
     protected key: number[];
     protected left: number[];
     protected right: number[];
@@ -78,8 +70,7 @@ export abstract class TreeAlgorithm
     };
 
     constructor(input: TreeInput, options: Record<string, unknown> = {}) {
-        super();
-        this.options = options;
+        super(options);
         const n = input.keys.length;
         this.capacity = n;
         this.key = new Array<number>(n).fill(0);
@@ -97,7 +88,7 @@ export abstract class TreeAlgorithm
         this.emit("finish", NIL, NIL, {});
     }
 
-    /* Prototype getters: valid while the base constructor runs. */
+    // Getters, not fields, so they already work inside the constructor.
     get movesName(): string {
         return "Rotations";
     }
@@ -107,8 +98,6 @@ export abstract class TreeAlgorithm
     }
 
     protected abstract insert(key: number): void;
-
-    // ---------- Building blocks ----------
 
     protected newNode(key: number, tag = 0): number {
         const id = this.size;
@@ -129,8 +118,7 @@ export abstract class TreeAlgorithm
         return key < this.key[slot];
     }
 
-    /** Plain BST descent; the new node hangs as a leaf. It only gets
-        a slot once attached, so snapshots never hold a loose node. */
+    /** Plain BST insert. The slot is taken only once attached, so no snapshot holds a loose node. */
     protected insertLeaf(
         key: number,
         tag = 0,
@@ -174,22 +162,25 @@ export abstract class TreeAlgorithm
     }
 
     protected rotateLeft(x: number, options: StepOptions = {}): void {
-        const y = this.right[x];
-        this.right[x] = this.left[y];
-        if (this.left[y] !== NIL) this.parent[this.left[y]] = x;
-        this.relink(x, y);
-        this.left[y] = x;
-        this.metrics.moves.count += 1;
-        this.afterRotate(x, y);
-        this.emit("rotate", y, x, options);
+        this.rotate(x, this.right, this.left, options);
     }
 
     protected rotateRight(x: number, options: StepOptions = {}): void {
-        const y = this.left[x];
-        this.left[x] = this.right[y];
-        if (this.right[y] !== NIL) this.parent[this.right[y]] = x;
+        this.rotate(x, this.left, this.right, options);
+    }
+
+    /** Lifts x's child on the `up` side above x. */
+    private rotate(
+        x: number,
+        up: number[],
+        across: number[],
+        options: StepOptions
+    ): void {
+        const y = up[x];
+        up[x] = across[y];
+        if (across[y] !== NIL) this.parent[across[y]] = x;
         this.relink(x, y);
-        this.right[y] = x;
+        across[y] = x;
         this.metrics.moves.count += 1;
         this.afterRotate(x, y);
         this.emit("rotate", y, x, options);
@@ -217,46 +208,32 @@ export abstract class TreeAlgorithm
         { instructionId }: StepOptions
     ): void {
         this.metrics.height.count = this.heightOf(this.root);
-        const metrics: StepMetrics = {};
-        for (const k in this.metrics) metrics[k] = { ...this.metrics[k] };
-        const n = this.capacity;
-        const snapshot = new Int16Array(2 + n * 4);
-        snapshot[0] = this.root;
-        snapshot[1] = this.size;
-        for (let i = 0; i < n; i += 1) {
-            snapshot[2 + i] = this.key[i];
-            snapshot[2 + n + i] = this.left[i];
-            snapshot[2 + 2 * n + i] = this.right[i];
-            snapshot[2 + 3 * n + i] = this.tag[i];
-        }
+        const metrics = this.metricsSnapshot();
         this.steps.push({
             type,
             focus,
             other,
             keyIndex: this.keyIndex,
-            snapshot,
+            snapshot: this.snapshot(),
             instructionId,
             metrics,
         });
     }
 
-    // ---------- Replay API ----------
-
-    getStepsLength(): number {
-        return this.steps.length;
-    }
-
-    getStepByIndex(index: number): TreeStep | undefined {
-        return this.steps[index];
-    }
-
-    getMetrics(): StepMetrics {
-        return this.steps[this.steps.length - 1]?.metrics ?? this.metrics;
+    private snapshot(): Int16Array {
+        const n = this.capacity;
+        const snapshot = new Int16Array(2 + n * 4);
+        snapshot[0] = this.root;
+        snapshot[1] = this.size;
+        snapshot.set(this.key, 2);
+        snapshot.set(this.left, 2 + n);
+        snapshot.set(this.right, 2 + 2 * n);
+        snapshot.set(this.tag, 2 + 3 * n);
+        return snapshot;
     }
 
     getStateByStepsIndex(index: number): TreeState {
-        const k = Math.max(0, Math.min(index, this.steps.length - 1));
-        const step = this.steps[k];
+        const step = this.steps[this.clampStep(index)];
         const s = step.snapshot;
         const n = this.capacity;
         return {
@@ -272,9 +249,5 @@ export abstract class TreeAlgorithm
             keyIndex: step.keyIndex,
             type: step.type,
         };
-    }
-
-    static getInstructions(): AlgorithmInstructions {
-        return {};
     }
 }

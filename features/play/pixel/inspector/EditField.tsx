@@ -2,12 +2,7 @@ import { JSX, useState, type KeyboardEvent } from "react";
 import styled from "styled-components";
 import { labelText, pixelFrame } from "../primitives/pixel";
 
-/*
- * "Your own data": a text field checked as you type. Valid text goes
- * straight into the editor's draft; an error shows under the field and
- * holds the editor's Done until it is fixed. Nothing reaches the panels
- * until Done.
- */
+/* Text field validated on every keystroke; an error blocks the editor's Done. */
 
 const Wrap = styled.div`
     display: flex;
@@ -54,12 +49,10 @@ const Wrap = styled.div`
 type EditFieldProps = {
     label: string;
     hint: string;
-    /** Starting text (the draft's current value). */
     initial: string;
     multiline?: boolean;
     rows?: number;
-    /** Checks the text; when valid, the caller updates its draft.
-        Returns an error message, or null. */
+    /** Returns an error message, or null when the text is valid. */
     onEdit: (text: string) => string | null;
 };
 
@@ -78,7 +71,7 @@ function EditField({
         setText(next);
         setError(onEdit(next));
     };
-    // Keep playback shortcuts (space, arrows, G…) out of the field.
+    // keep playback shortcuts out of the field
     const onKey = (event: KeyboardEvent): void => {
         if (event.key !== "Escape") event.stopPropagation();
     };

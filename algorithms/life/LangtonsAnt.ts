@@ -1,21 +1,21 @@
 import type { AlgorithmInstructions } from "../types";
+import { DIRS } from "../GridAlgorithm";
 import { LifeAlgorithm } from "./LifeAlgorithm";
 
 const MOVES_PER_STEP = 40;
-const DX = [0, 1, 0, -1];
-const DY = [-1, 0, 1, 0];
 
-/* Not a neighbourhood rule at all: one ant on the grid. On a dead cell
-   turn right, on a live one turn left; flip the cell, step forward. Chaos
-   for ~10 000 moves, then it suddenly builds a straight "highway". */
+/* One ant: on a dead cell turn right, on a live one turn left, flip the
+   cell, step forward. Chaos for ~10 000 moves, then a straight highway. */
 export class LangtonsAnt extends LifeAlgorithm {
     get settles(): boolean {
         return false;
     }
 
     protected setup(): void {
-        this.marker =
-            Math.floor(this.rows / 2) * this.cols + Math.floor(this.cols / 2);
+        this.marker = this.at(
+            Math.floor(this.cols / 2),
+            Math.floor(this.rows / 2)
+        );
         this.heading = 0;
     }
 
@@ -25,11 +25,12 @@ export class LangtonsAnt extends LifeAlgorithm {
         for (let k = 0; k < MOVES_PER_STEP; k += 1) {
             this.heading = (this.heading + (out[at] ? 3 : 1)) % 4;
             out[at] = out[at] ? 0 : 1;
-            const x = (at % this.cols) + DX[this.heading];
-            const y = Math.floor(at / this.cols) + DY[this.heading];
-            at =
-                ((y + this.rows) % this.rows) * this.cols +
-                ((x + this.cols) % this.cols);
+            const [x, y] = this.xy(at);
+            const [dx, dy] = DIRS[this.heading];
+            at = this.at(
+                (x + dx + this.cols) % this.cols,
+                (y + dy + this.rows) % this.rows
+            );
         }
         this.marker = at;
         return out;

@@ -1,15 +1,18 @@
 import { useGSAP } from "@gsap/react";
-import { ditherReveal, hideForReveal } from "./ditherReveal";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { JSX, useRef, useState } from "react";
 import styled from "styled-components";
 import { labelText, pixelFrame } from "../play/pixel/primitives/pixel";
+import { ditherReveal, hideForReveal } from "./ditherReveal";
+import {
+    Eyebrow,
+    Section as BaseSection,
+    Title as BaseTitle,
+} from "./sectionStyles";
 import SplitWords from "./SplitWords";
 
 gsap.registerPlugin(ScrollTrigger, useGSAP);
-
-/* ---------- Content (case study copy, unchanged) ---------- */
 
 const TECH_STACK = [
     "React",
@@ -50,25 +53,11 @@ const ENTRIES = [
     { id: "stack", title: "Tech stack", body: "" },
 ];
 
-const Section = styled.section`
-    position: relative;
-    padding: 14.4rem clamp(1.6rem, 3vw, 3.2rem) 9.6rem;
-    border-top: var(--b) solid var(--line);
+const Section = styled(BaseSection)`
+    padding-top: 14.4rem;
 `;
 
-const Eyebrow = styled.p`
-    ${labelText};
-    color: var(--accent);
-    margin-bottom: 1.6rem;
-`;
-
-const Title = styled.h2`
-    font-family: var(--f-display);
-    font-weight: 400;
-    font-size: clamp(4rem, 2rem + 4vw, 8.8rem);
-    line-height: 0.82;
-    text-transform: uppercase;
-    color: var(--fg);
+const Title = styled(BaseTitle)`
     margin-bottom: 6.4rem;
 `;
 
@@ -82,7 +71,7 @@ const Layout = styled.div`
     }
 `;
 
-/* Sticky index: the current entry wears the ▶ cursor. */
+/* Sticky index; the current entry gets a blinking cursor. */
 const Index = styled.ol`
     display: none;
     list-style: none;
@@ -195,7 +184,7 @@ function BuildLog(): JSX.Element {
             );
             const mm = gsap.matchMedia();
             mm.add("(prefers-reduced-motion: no-preference)", () => {
-                // Words of each paragraph step in as it arrives, once.
+                // Each paragraph's words dither in once as it arrives.
                 root.querySelectorAll<HTMLElement>(
                     "[data-reveal='log']"
                 ).forEach((el) => {

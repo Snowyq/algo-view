@@ -1,10 +1,9 @@
-import { createRng } from "./randoms";
+import { createRng, type Rng } from "./randoms";
+import { clamp, isOneOf } from "./values";
 
 /*
- * Geometry input: points in the unit square (y grows downward, like the
- * screen). Presets change how many points end up on the hull: a scatter
- * has a few, a cluster even fewer, a ring puts most of them on it, which
- * is where output-sensitive algorithms like Jarvis march slow down.
+ * Points in the unit square (y grows downward, like the screen). A ring
+ * puts most points on the hull, where output-sensitive algorithms slow down.
  */
 
 export const POINTS_PRESETS = ["scatter", "cluster", "ring"] as const;
@@ -23,13 +22,51 @@ export const POINTS_MAX = 60;
 export const POINTS_DEFAULT = 24;
 
 export function isPointsPreset(value: unknown): value is PointsPreset {
-    return (
-        typeof value === "string" &&
-        (POINTS_PRESETS as readonly string[]).includes(value)
-    );
+    return isOneOf(POINTS_PRESETS, value);
 }
 
-const round = (v: number): number => Math.round(v * 1000) / 1000;
+/** Keep a margin and round to 3 decimals. */
+const tidy = (v: number): number =>
+    Math.round(clamp(v, 0.03, 0.97) * 1000) / 1000;
+
+// No duplicates or collinear triples: hull algorithms disagree on
+// degenerate input, which would make the comparison unfair.
+function fits(points: Point[], q: Point): boolean {
+    for (let a = 0; a < points.length; a += 1) {
+        const pa = points[a];
+        if (pa.x === q.x && pa.y === q.y) return false;
+        for (let b = a + 1; b < points.length; b += 1) {
+            const pb = points[b];
+            const cross =
+                (pb.x - pa.x) * (q.y - pa.y) - (pb.y - pa.y) * (q.x - pa.x);
+            if (Math.abs(cross) < 1e-7) return false;
+        }
+    }
+    return true;
+}
+
+/** Candidate point number i of n. */
+function candidate(
+    rng: Rng,
+    preset: PointsPreset,
+    i: number,
+    n: number
+): Point {
+    if (preset === "scatter") {
+        return { x: 0.03 + rng() * 0.94, y: 0.03 + rng() * 0.94 };
+    }
+    let r: number;
+    let a: number;
+    if (preset === "cluster") {
+        // Box-Muller radius: a soft blob around the centre.
+        r = Math.min(0.45, Math.sqrt(-2 * Math.log(1 - rng())) * 0.16);
+        a = rng() * Math.PI * 2;
+    } else {
+        a = rng() * Math.PI * 2;
+        r = i < n * 0.65 ? 0.46 : rng() * 0.36;
+    }
+    return { x: 0.5 + Math.cos(a) * r, y: 0.5 + Math.sin(a) * r };
+}
 
 export function generatePointsInput({
     preset,
@@ -37,48 +74,12 @@ export function generatePointsInput({
     seed,
 }: PointsConfig): PointsInput {
     const rng = createRng(seed);
-    const n = Math.max(POINTS_MIN, Math.min(POINTS_MAX, Math.round(count)));
+    const n = clamp(Math.round(count), POINTS_MIN, POINTS_MAX);
     const points: Point[] = [];
-    const clamp = (v: number): number => Math.max(0.03, Math.min(0.97, v));
-    // No duplicates and no three points on one line: hull algorithms
-    // disagree on degenerate input, and the comparison should be fair.
-    const fits = (q: Point): boolean => {
-        for (let a = 0; a < points.length; a += 1) {
-            const pa = points[a];
-            if (pa.x === q.x && pa.y === q.y) return false;
-            for (let b = a + 1; b < points.length; b += 1) {
-                const pb = points[b];
-                const cross =
-                    (pb.x - pa.x) * (q.y - pa.y) - (pb.y - pa.y) * (q.x - pa.x);
-                if (Math.abs(cross) < 1e-7) return false;
-            }
-        }
-        return true;
-    };
     for (let tries = 0; points.length < n && tries < n * 50; tries += 1) {
-        const i = points.length;
-        let x: number;
-        let y: number;
-        if (preset === "scatter") {
-            x = 0.03 + rng() * 0.94;
-            y = 0.03 + rng() * 0.94;
-        } else if (preset === "cluster") {
-            // Box-Muller: a soft blob around the centre.
-            const r = Math.min(
-                0.45,
-                Math.sqrt(-2 * Math.log(1 - rng())) * 0.16
-            );
-            const a = rng() * Math.PI * 2;
-            x = 0.5 + Math.cos(a) * r;
-            y = 0.5 + Math.sin(a) * r;
-        } else {
-            const a = rng() * Math.PI * 2;
-            const r = i < n * 0.65 ? 0.46 : rng() * 0.36;
-            x = 0.5 + Math.cos(a) * r;
-            y = 0.5 + Math.sin(a) * r;
-        }
-        const q = { x: round(clamp(x)), y: round(clamp(y)) };
-        if (fits(q)) points.push(q);
+        const { x, y } = candidate(rng, preset, points.length, n);
+        const q = { x: tidy(x), y: tidy(y) };
+        if (fits(points, q)) points.push(q);
     }
     return { points };
 }

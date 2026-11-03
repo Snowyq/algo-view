@@ -31,70 +31,60 @@ function useShortcuts(): void {
     const store = useStore<RootState>();
 
     useEffect(() => {
-        const onKey = (event: KeyboardEvent): void => {
-            if (event.metaKey || event.ctrlKey || event.altKey) return;
-            if (event.defaultPrevented || isOwnedTarget(event.target)) return;
-            if (getFx().helpOpen) return;
-
-            const { play } = store.getState();
-            const { status, maxStep, step, speeds } = {
-                ...play.animation,
-                speeds: play.animation.speeds,
-            };
-            const hasSteps = maxStep > 0;
+        /* Playback keys; returns false when the key is not one of them. */
+        const onPlaybackKey = (event: KeyboardEvent): boolean => {
+            const { status, maxStep, step } = store.getState().play.animation;
             const key = event.key;
+            const isToggle = key === " " || key === "k";
+            const isStep = key === "ArrowRight" || key === "ArrowLeft";
+            const isJump = key === "Home" || key === "End";
+            if (!isToggle && !isStep && !isJump) return false;
+            // space on a focused button should still press that button
+            if (isToggle && (event.target as HTMLElement)?.closest("button, a"))
+                return true;
+            if (maxStep <= 0) return true;
+            event.preventDefault();
 
-            if (key === " " || key === "k") {
-                // Space on a focused button should still press that button.
-                if ((event.target as HTMLElement)?.closest("button, a")) return;
-                if (!hasSteps) return;
-                event.preventDefault();
-                if (status === "playing") dispatch(stopAnimation());
-                else {
-                    if (step.value >= maxStep)
-                        dispatch(changeStep({ value: 0 }));
-                    dispatch(startAnimation());
-                }
-                return;
-            }
-            if (key === "ArrowRight" || key === "ArrowLeft") {
-                if (!hasSteps) return;
-                event.preventDefault();
+            if (isStep) {
                 const value = event.shiftKey ? 10 : 1;
                 dispatch(
                     key === "ArrowRight"
                         ? increaseStep({ value })
                         : decreaseStep({ value })
                 );
-                return;
-            }
-            if (key === "Home" || key === "End") {
-                if (!hasSteps) return;
-                event.preventDefault();
+            } else if (isJump) {
                 dispatch(changeStep({ value: key === "Home" ? 0 : maxStep }));
-                return;
+            } else if (status === "playing") {
+                dispatch(stopAnimation());
+            } else {
+                if (step.value >= maxStep) dispatch(changeStep({ value: 0 }));
+                dispatch(startAnimation());
             }
+            return true;
+        };
+
+        const onKey = (event: KeyboardEvent): void => {
+            if (event.metaKey || event.ctrlKey || event.altKey) return;
+            if (event.defaultPrevented || isOwnedTarget(event.target)) return;
+            if (getFx().helpOpen) return;
+            if (onPlaybackKey(event)) return;
+
+            const { play } = store.getState();
+            const key = event.key.length === 1 ? event.key.toLowerCase() : "";
             if (/^[1-9]$/.test(key)) {
-                const speed = speeds[Number(key) - 1];
+                const speed = play.animation.speeds[Number(key) - 1];
                 if (speed !== undefined) dispatch(changeSpeed(speed));
-                return;
-            }
-            if (key === "g" || key === "G") {
+            } else if (key === "g") {
                 const { stepWorkerReady, canvasWorkerLoadingCount } = play.ui;
-                if (!stepWorkerReady || canvasWorkerLoadingCount > 0) return;
-                dispatch(regenerateInput(play));
-                return;
-            }
-            if (key === "e" || key === "E") {
+                if (stepWorkerReady && canvasWorkerLoadingCount === 0) {
+                    dispatch(regenerateInput(play));
+                }
+            } else if (key === "e") {
                 event.preventDefault();
-                dispatch(setEditorOpen(!store.getState().play.ui.editorOpen));
-                return;
-            }
-            if (key === "i" || key === "I") {
+                dispatch(setEditorOpen(!play.ui.editorOpen));
+            } else if (key === "i") {
                 dispatch(toggleSidebar());
-                return;
-            }
-            if (key === "?") {
+            } else if (key === "?") {
                 setFx({ helpOpen: true });
             }
         };

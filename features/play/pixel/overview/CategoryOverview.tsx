@@ -1,11 +1,15 @@
-import { JSX, useEffect, useRef } from "react";
+import { JSX, useCallback, useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import styled from "styled-components";
 import registryApi from "../../../../algorithms/algorithmsRegistryApi";
 import useReducedMotion from "../../../../hooks/useReducedMotion";
 import type { AppDispatch, RootState } from "../../../../store";
-import { CATEGORIES } from "../../categories";
-import { CATEGORY_PREVIEW, MOTIF_COLORS } from "../../categoryPreview";
+import { CATEGORIES, type CategoryDef } from "../../categories";
+import {
+    CATEGORY_PREVIEW,
+    MOTIF_COLORS,
+    type CategoryPreview,
+} from "../../categoryPreview";
 import {
     changeCategory,
     closeAllAlgorithms,
@@ -18,15 +22,19 @@ import {
 } from "../../playSlice";
 import PixelButton from "../primitives/PixelButton";
 import PixelIcon from "../primitives/PixelIcon";
-import { labelText, pixelCorners, pixelFrame } from "../primitives/pixel";
+import { cssVar } from "../fx/dom";
+import {
+    labelText,
+    pixelCorners,
+    pixelFrame,
+    scrollY,
+} from "../primitives/pixel";
 import PixelSprite from "../sprites/PixelSprite";
+import { useEscapeKey } from "../../../../hooks/useEscapeKey";
 
 /*
- * The playground's front door and its category picker: every family on
- * one screen, each with a live pixel preview. A preview builds its motif
- * the way the algorithms work: the structure first, then the coloured
- * "steps" one by one, a pause, and again. One shared canvas loop drives
- * all of them; reduced motion shows the finished pictures.
+ * Category picker and the playground's front door. Each card's motif builds
+ * like an algorithm run: structure, then steps, pause, repeat.
  */
 
 const CELL = 12;
@@ -41,11 +49,7 @@ const Overlay = styled.section`
     right: 0;
     bottom: 0;
     z-index: 55;
-    overflow-y: auto;
-    /* Room for the scrollbar is always kept, so its appearing never
-       shifts the content sideways. */
-    scrollbar-gutter: stable;
-    overscroll-behavior: contain;
+    ${scrollY};
     padding: 4rem clamp(1.6rem, 4vw, 4.8rem) 6.4rem;
     background-color: var(--bg);
     background-image: radial-gradient(var(--line) 1px, transparent 1px);
@@ -80,7 +84,7 @@ const Title = styled.h1`
     color: var(--fg);
 `;
 
-/* Cards dither in one after another when the overview opens. */
+/* Cards dither in one after another. */
 const Grid = styled.ul`
     & > li {
         animation: px-dither-in 220ms both;
@@ -159,11 +163,16 @@ const Top = styled.span`
     gap: 1rem;
 `;
 
-/* Draw every card's motif, revealed up to `progress` (0..1). */
+type Cell = [number, number];
+
+const previewOf = (id: string): CategoryPreview =>
+    CATEGORY_PREVIEW[id as keyof typeof CATEGORY_PREVIEW];
+
+/* Draws a motif revealed up to `progress` (0..1). */
 function drawMotif(
     canvas: HTMLCanvasElement,
     rows: string[],
-    order: Array<[number, number]>,
+    order: Cell[],
     progress: number,
     colors: Record<string, string>
 ): void {
@@ -177,7 +186,7 @@ function drawMotif(
         ctx.fillStyle = visible ? colors[rows[y][x]] : colors.ghost;
         ctx.fillRect(x * (CELL + GAP), y * (CELL + GAP), CELL, CELL);
         if (visible && k === shown - 1 && progress < 1) {
-            // The newest block: a lit top edge, like the step being run.
+            // newest block gets a lit top edge, like the step being run
             ctx.fillStyle = "rgba(255, 255, 255, 0.55)";
             ctx.fillRect(x * (CELL + GAP), y * (CELL + GAP), CELL, 3);
         }
@@ -185,9 +194,9 @@ function drawMotif(
 }
 
 /* Structure ('#') first in reading order, then the coloured steps. */
-function buildOrder(rows: string[]): Array<[number, number]> {
-    const structure: Array<[number, number]> = [];
-    const steps: Array<[number, number]> = [];
+function buildOrder(rows: string[]): Cell[] {
+    const structure: Cell[] = [];
+    const steps: Cell[] = [];
     rows.forEach((row, y) =>
         [...row].forEach((cell, x) => {
             if (cell === ".") return;
@@ -198,34 +207,29 @@ function buildOrder(rows: string[]): Array<[number, number]> {
 }
 
 function resolveColors(): Record<string, string> {
-    const style = getComputedStyle(document.documentElement);
+    const root = document.documentElement;
     const out: Record<string, string> = {
-        ghost: style.getPropertyValue("--surface-2").trim() || "#2b251f",
+        ghost: cssVar(root, "--surface-2", "#2b251f"),
     };
     for (const [key, value] of Object.entries(MOTIF_COLORS)) {
         const name = value.match(/var\((--[^)]+)\)/)?.[1];
-        out[key] = (name && style.getPropertyValue(name).trim()) || "#7a6c5a";
+        out[key] = name ? cssVar(root, name, "#7a6c5a") : "#7a6c5a";
     }
     return out;
 }
 
-function CategoryOverview(): JSX.Element | null {
-    const dispatch = useDispatch<AppDispatch>();
-    const open = useSelector<RootState, boolean>(getOverviewOpen);
-    const current = useSelector<RootState, string>(getActiveCategory);
-    const active = useSelector<RootState, ActiveAlgorithm[]>(
-        getActiveAlgorithms
-    );
+/* One paint loop for all card canvases, each slightly out of phase. */
+function useMotifPreviews(
+    open: boolean
+): (id: string) => (el: HTMLCanvasElement | null) => void {
     const reduced = useReducedMotion();
     const canvases = useRef<Map<string, HTMLCanvasElement>>(new Map());
 
-    // One loop for every preview; each card runs a little out of phase.
     useEffect(() => {
         if (!open) return;
         const colors = resolveColors();
         const cards = CATEGORIES.map((def, index) => {
-            const rows =
-                CATEGORY_PREVIEW[def.id as keyof typeof CATEGORY_PREVIEW].motif;
+            const rows = previewOf(def.id).motif;
             return {
                 id: def.id,
                 rows,
@@ -249,7 +253,7 @@ function CategoryOverview(): JSX.Element | null {
         let frame = 0;
         let last = 0;
         const tick = (now: number): void => {
-            // ~12 fps is plenty for blocks appearing, and stays cheap.
+            // ~12 fps is plenty for blocks appearing
             if (now - last > 80) {
                 last = now;
                 paint(now);
@@ -260,30 +264,89 @@ function CategoryOverview(): JSX.Element | null {
         return () => cancelAnimationFrame(frame);
     }, [open, reduced]);
 
-    // Escape goes back, but only if there is something to go back to.
-    useEffect(() => {
-        if (!open) return;
-        const onKey = (event: KeyboardEvent): void => {
-            if (event.key === "Escape" && active.length > 0)
-                dispatch(setOverviewOpen(false));
-        };
-        document.addEventListener("keydown", onKey);
-        return () => document.removeEventListener("keydown", onKey);
-    }, [open, active.length, dispatch]);
+    return useCallback(
+        (id: string) => (el: HTMLCanvasElement | null) => {
+            if (el) canvases.current.set(id, el);
+            else canvases.current.delete(id);
+        },
+        []
+    );
+}
+
+type CategoryCardProps = {
+    def: CategoryDef;
+    index: number;
+    current: boolean;
+    canvasRef: (el: HTMLCanvasElement | null) => void;
+    onChoose: (id: string) => void;
+};
+
+function CategoryCard({
+    def,
+    index,
+    current,
+    canvasRef,
+    onChoose,
+}: CategoryCardProps): JSX.Element {
+    const preview = previewOf(def.id);
+    const category = registryApi.getCategory(def.id);
+    const names = preview.starter.map(
+        (id) => category?.items.find((item) => item.id === id)?.meta.name ?? id
+    );
+    const cols = preview.motif[0].length;
+    const rows = preview.motif.length;
+    return (
+        <li style={{ animationDelay: `${index * 35}ms` }}>
+            <Card
+                type="button"
+                aria-current={current || undefined}
+                onClick={() => onChoose(def.id)}
+            >
+                <Top>
+                    <small>{category?.items.length ?? 0} algorithms</small>
+                    <span data-go>Open ▸</span>
+                </Top>
+                <canvas
+                    ref={canvasRef}
+                    width={cols * (CELL + GAP) - GAP}
+                    height={rows * (CELL + GAP) - GAP}
+                    aria-hidden="true"
+                />
+                <span>
+                    <strong>{category?.name ?? def.label}</strong>
+                    <p>{preview.blurb}</p>
+                </span>
+                <small>Starts with {names.join(" · ")}</small>
+            </Card>
+        </li>
+    );
+}
+
+function CategoryOverview(): JSX.Element | null {
+    const dispatch = useDispatch<AppDispatch>();
+    const open = useSelector<RootState, boolean>(getOverviewOpen);
+    const current = useSelector<RootState, string>(getActiveCategory);
+    const active = useSelector<RootState, ActiveAlgorithm[]>(
+        getActiveAlgorithms
+    );
+    const canvasRef = useMotifPreviews(open);
+
+    // Escape goes back, but only if there is something to go back to
+    useEscapeKey(open, () => {
+        if (active.length > 0) dispatch(setOverviewOpen(false));
+    });
 
     if (!open) return null;
 
     const choose = (id: string): void => {
-        const starter =
-            CATEGORY_PREVIEW[id as keyof typeof CATEGORY_PREVIEW].starter;
-        // Same family with panels open: just go back to them.
+        // same family with panels open: just go back to them
         if (id === current && active.length > 0) {
             dispatch(setOverviewOpen(false));
             return;
         }
         dispatch(changeCategory(id));
         dispatch(closeAllAlgorithms());
-        starter.forEach((algo) => dispatch(openAlgorithm(algo)));
+        previewOf(id).starter.forEach((algo) => dispatch(openAlgorithm(algo)));
         dispatch(setOverviewOpen(false));
     };
 
@@ -321,56 +384,16 @@ function CategoryOverview(): JSX.Element | null {
                 )}
             </Head>
             <Grid>
-                {CATEGORIES.map((def, index) => {
-                    const preview =
-                        CATEGORY_PREVIEW[
-                            def.id as keyof typeof CATEGORY_PREVIEW
-                        ];
-                    const category = registryApi.getCategory(def.id);
-                    const names = preview.starter.map(
-                        (id) =>
-                            category?.items.find((item) => item.id === id)?.meta
-                                .name ?? id
-                    );
-                    const cols = preview.motif[0].length;
-                    const rows = preview.motif.length;
-                    return (
-                        <li
-                            key={def.id}
-                            style={{ animationDelay: `${index * 35}ms` }}
-                        >
-                            <Card
-                                type="button"
-                                aria-current={def.id === current || undefined}
-                                onClick={() => choose(def.id)}
-                            >
-                                <Top>
-                                    <small>
-                                        {category?.items.length ?? 0} algorithms
-                                    </small>
-                                    <span data-go>Open ▸</span>
-                                </Top>
-                                <canvas
-                                    ref={(el) => {
-                                        if (el)
-                                            canvases.current.set(def.id, el);
-                                        else canvases.current.delete(def.id);
-                                    }}
-                                    width={cols * (CELL + GAP) - GAP}
-                                    height={rows * (CELL + GAP) - GAP}
-                                    aria-hidden="true"
-                                />
-                                <span>
-                                    <strong>
-                                        {category?.name ?? def.label}
-                                    </strong>
-                                    <p>{preview.blurb}</p>
-                                </span>
-                                <small>Starts with {names.join(" · ")}</small>
-                            </Card>
-                        </li>
-                    );
-                })}
+                {CATEGORIES.map((def, index) => (
+                    <CategoryCard
+                        key={def.id}
+                        def={def}
+                        index={index}
+                        current={def.id === current}
+                        canvasRef={canvasRef(def.id)}
+                        onChoose={choose}
+                    />
+                ))}
             </Grid>
         </Overlay>
     );

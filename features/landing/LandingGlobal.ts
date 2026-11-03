@@ -1,14 +1,8 @@
 import { createGlobalStyle } from "styled-components";
-import { ditherKeyframes } from "../../styles/dither";
 
-/*
- * The landing page scrolls the document itself (native scrollbar, find in
- * page, Lenis in native mode). The app shell pins <body> for /play, so
- * this route releases it while mounted.
- */
+/* The global styles pin <body> for /play; the landing scrolls the document,
+   so it releases that while mounted. Dither keyframes come from PlayTheme. */
 const LandingGlobal = createGlobalStyle`
-${ditherKeyframes}
-
 html {
   height: auto;
   scroll-behavior: auto;

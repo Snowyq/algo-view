@@ -32,10 +32,8 @@ const Dock = styled.section`
         padding: 0 1.6rem 0.6rem;
     }
 
-    /* Nothing open: no disabled transport, no 0 / 0 counter; the empty
-       stage's "Try…" button is the one thing to do. Keyed to open panels,
-       not to computed steps: hiding the dock while steps are computed
-       would resize the stage under the panels and flip their columns. */
+    /* Hidden with no panels open. Keyed to open panels, not computed steps,
+       so the stage doesn't resize while a run is computing. */
     &[data-empty="true"] {
         display: none;
     }
@@ -59,7 +57,7 @@ const Controls = styled.div`
     }
 `;
 
-/* Inline legend where it fits on one or two lines; a button elsewhere. */
+/* Inline legend on wide screens; LegendMenu button on narrow ones. */
 const LegendCell = styled.div`
     min-width: 0;
 

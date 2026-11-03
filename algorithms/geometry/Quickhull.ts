@@ -1,9 +1,8 @@
 import type { AlgorithmInstructions } from "../types";
 import { HullAlgorithm, POINT_HULL, POINT_INSIDE } from "./HullAlgorithm";
 
-/* Split by the line between the leftmost and rightmost points; on each
-   side take the farthest point, drop everything inside the triangle, and
-   recurse on the two new edges. Quicksort's cousin: O(n log n) typical. */
+// Split by leftmost -> rightmost, take the farthest point on each side,
+// drop the triangle and recurse on the two new edges.
 export class Quickhull extends HullAlgorithm {
     protected run(): number[] {
         const p = this.points;
@@ -44,7 +43,7 @@ export class Quickhull extends HullAlgorithm {
             expand(a, far, outerA);
             expand(far, b, outerB);
         };
-        // Points below a → b (screen) are right of left→right in math terms.
+        // Points below left -> right on screen are on its right in math terms.
         expand(left, right, side(left, right, all));
         expand(right, left, side(right, left, all));
         return ring;

@@ -78,12 +78,12 @@ import {
     randomSeed,
     type InputConfig,
 } from "../utils/randoms";
+import { clamp } from "../utils/values";
 
 /*
  * Data side of every category, free of React so reducers and workers can
- * use it: how its input is made, which canvas worker draws it, and how
- * its input travels in a share link. The UI side lives in
- * features/play/categories.ts.
+ * use it: input generation, canvas worker and share-link format. The UI
+ * side lives in features/play/categories.ts.
  */
 
 export type WorkerName =
@@ -100,7 +100,7 @@ export type WorkerName =
     | "lifeCanvasWorker.ts";
 
 export type InputSlot<TConfig, TValue> = {
-    /** The recipe (preset, size, seed…). */
+    /** The recipe (preset, size, seed). */
     config: TConfig;
     /** What the algorithms actually get. */
     value: TValue;
@@ -110,8 +110,7 @@ export type InputSlot<TConfig, TValue> = {
 
 type CategoryData<TConfig, TValue> = {
     worker: WorkerName;
-    /** Playback speed (ms per step) on switching to this category, so a
-        run of 20 steps and one of 4,000 both take roughly 8–15 seconds. */
+    /** Initial ms per step, picked so a typical run takes 8 to 15 seconds. */
     defaultSpeed: number;
     defaultConfig: () => TConfig;
     generate: (config: TConfig) => TValue;
@@ -126,10 +125,46 @@ type CategoryData<TConfig, TValue> = {
     };
 };
 
+type Share<TConfig, TValue> = CategoryData<TConfig, TValue>["share"];
+
 const seedOf = (params: URLSearchParams): number | null => {
     const seed = Number.parseInt(params.get("s") ?? "", 36);
     return Number.isFinite(seed) ? seed >>> 0 : null;
 };
+
+const writeSeed = (params: URLSearchParams, seed: number): void =>
+    params.set("s", seed.toString(36));
+
+type PresetConfig<P extends string, K extends string> = {
+    preset: P;
+    seed: number;
+} & Record<K, number>;
+
+/** Share format for configs made of a preset, one size field and a seed. */
+function presetShare<P extends string, K extends string, TValue>(
+    isPreset: (value: unknown) => value is P,
+    sizeField: K,
+    presetParam: string,
+    sizeParam: string
+): Share<PresetConfig<P, K>, TValue> {
+    return {
+        write: ({ config }, params) => {
+            params.set(presetParam, config.preset);
+            params.set(sizeParam, String(config[sizeField]));
+            writeSeed(params, config.seed);
+        },
+        read: (params) => {
+            const preset = params.get(presetParam);
+            const size = Number(params.get(sizeParam));
+            const seed = seedOf(params);
+            if (!isPreset(preset) || !Number.isFinite(size) || seed === null) {
+                return null;
+            }
+            const config = { preset, [sizeField]: size, seed };
+            return { config: config as PresetConfig<P, K> };
+        },
+    };
+}
 
 const sort: CategoryData<InputConfig, number[]> = {
     worker: "sortCanvasWorker.ts",
@@ -144,9 +179,10 @@ const sort: CategoryData<InputConfig, number[]> = {
     generate: (config) =>
         generateInput({
             ...config,
-            length: Math.max(
+            length: clamp(
+                config.length,
                 SORT_MIN_INPUT_LENGTH,
-                Math.min(SORT_MAX_INPUT_LENGTH, config.length)
+                SORT_MAX_INPUT_LENGTH
             ),
         }),
     share: {
@@ -154,7 +190,7 @@ const sort: CategoryData<InputConfig, number[]> = {
             params.set("p", config.preset);
             params.set("n", String(config.length));
             params.set("r", `${config.min}-${config.max}`);
-            params.set("s", config.seed.toString(36));
+            writeSeed(params, config.seed);
         },
         read: (params) => {
             const preset = params.get("p");
@@ -175,6 +211,24 @@ const sort: CategoryData<InputConfig, number[]> = {
     },
 };
 
+/** The hand-edited map from a share link, if there is a valid one. */
+function readEditedGrid(
+    params: URLSearchParams,
+    cols: number
+): GridInput | null {
+    const [encoded, start, end] = (params.get("g") ?? "").split(".");
+    if (!encoded) return null;
+    const size = gridSize(cols);
+    const n = size.cols * size.rows;
+    const cells = decodeCells(encoded, n);
+    const s = Number(start);
+    const e = Number(end);
+    const inside = (i: number): boolean =>
+        Number.isInteger(i) && i >= 0 && i < n;
+    if (!cells || !inside(s) || !inside(e) || s === e) return null;
+    return { ...size, cells, start: s, end: e };
+}
+
 const path: CategoryData<GridConfig, GridInput> = {
     worker: "pathCanvasWorker.ts",
     defaultSpeed: 16,
@@ -188,8 +242,8 @@ const path: CategoryData<GridConfig, GridInput> = {
         write: ({ config, value, edited }, params) => {
             params.set("m", config.preset);
             params.set("w", String(config.cols));
-            params.set("s", config.seed.toString(36));
-            // A map edited by hand travels as 2 bits per cell.
+            writeSeed(params, config.seed);
+            // A hand-edited map travels as 2 bits per cell.
             if (edited) {
                 params.set(
                     "g",
@@ -209,18 +263,8 @@ const path: CategoryData<GridConfig, GridInput> = {
                 return null;
             }
             const config: GridConfig = { preset, cols, seed };
-            const [encoded, start, end] = (params.get("g") ?? "").split(".");
-            if (!encoded) return { config };
-            const size = gridSize(cols);
-            const n = size.cols * size.rows;
-            const cells = decodeCells(encoded, n);
-            const s = Number(start);
-            const e = Number(end);
-            const inside = (i: number): boolean =>
-                Number.isInteger(i) && i >= 0 && i < n;
-            if (!cells || !inside(s) || !inside(e) || s === e)
-                return { config };
-            return { config, value: { ...size, cells, start: s, end: e } };
+            const value = readEditedGrid(params, cols);
+            return value ? { config, value } : { config };
         },
     },
 };
@@ -240,7 +284,7 @@ const find: CategoryData<FindConfig, FindInput> = {
             params.set("fp", config.preset);
             params.set("fn", String(config.length));
             params.set("ft", config.target);
-            params.set("s", config.seed.toString(36));
+            writeSeed(params, config.seed);
         },
         read: (params) => {
             const preset = params.get("fp");
@@ -270,7 +314,7 @@ const maze: CategoryData<MazeConfig, MazeInput> = {
     share: {
         write: ({ config }, params) => {
             params.set("w", String(config.cols));
-            params.set("s", config.seed.toString(36));
+            writeSeed(params, config.seed);
         },
         read: (params) => {
             const cols = Number(params.get("w"));
@@ -290,26 +334,7 @@ const dp: CategoryData<DpConfig, DpInput> = {
         seed: randomSeed(),
     }),
     generate: generateDpInput,
-    share: {
-        write: ({ config }, params) => {
-            params.set("dp", config.preset);
-            params.set("dn", String(config.size));
-            params.set("s", config.seed.toString(36));
-        },
-        read: (params) => {
-            const preset = params.get("dp");
-            const size = Number(params.get("dn"));
-            const seed = seedOf(params);
-            if (
-                !isDpPreset(preset) ||
-                !Number.isFinite(size) ||
-                seed === null
-            ) {
-                return null;
-            }
-            return { config: { preset, size, seed } };
-        },
-    },
+    share: presetShare(isDpPreset, "size", "dp", "dn"),
 };
 
 const strings: CategoryData<TextConfig, TextInput> = {
@@ -321,26 +346,7 @@ const strings: CategoryData<TextConfig, TextInput> = {
         seed: randomSeed(),
     }),
     generate: generateTextInput,
-    share: {
-        write: ({ config }, params) => {
-            params.set("tp", config.preset);
-            params.set("tn", String(config.length));
-            params.set("s", config.seed.toString(36));
-        },
-        read: (params) => {
-            const preset = params.get("tp");
-            const length = Number(params.get("tn"));
-            const seed = seedOf(params);
-            if (
-                !isTextPreset(preset) ||
-                !Number.isFinite(length) ||
-                seed === null
-            ) {
-                return null;
-            }
-            return { config: { preset, length, seed } };
-        },
-    },
+    share: presetShare(isTextPreset, "length", "tp", "tn"),
 };
 
 const graph: CategoryData<GraphConfig, GraphInput> = {
@@ -352,26 +358,7 @@ const graph: CategoryData<GraphConfig, GraphInput> = {
         seed: randomSeed(),
     }),
     generate: generateGraphInput,
-    share: {
-        write: ({ config }, params) => {
-            params.set("gp", config.preset);
-            params.set("gn", String(config.nodes));
-            params.set("s", config.seed.toString(36));
-        },
-        read: (params) => {
-            const preset = params.get("gp");
-            const nodes = Number(params.get("gn"));
-            const seed = seedOf(params);
-            if (
-                !isGraphPreset(preset) ||
-                !Number.isFinite(nodes) ||
-                seed === null
-            ) {
-                return null;
-            }
-            return { config: { preset, nodes, seed } };
-        },
-    },
+    share: presetShare(isGraphPreset, "nodes", "gp", "gn"),
 };
 
 const tree: CategoryData<TreeConfig, TreeInput> = {
@@ -383,26 +370,7 @@ const tree: CategoryData<TreeConfig, TreeInput> = {
         seed: randomSeed(),
     }),
     generate: generateTreeInput,
-    share: {
-        write: ({ config }, params) => {
-            params.set("kp", config.preset);
-            params.set("kn", String(config.count));
-            params.set("s", config.seed.toString(36));
-        },
-        read: (params) => {
-            const preset = params.get("kp");
-            const count = Number(params.get("kn"));
-            const seed = seedOf(params);
-            if (
-                !isTreePreset(preset) ||
-                !Number.isFinite(count) ||
-                seed === null
-            ) {
-                return null;
-            }
-            return { config: { preset, count, seed } };
-        },
-    },
+    share: presetShare(isTreePreset, "count", "kp", "kn"),
 };
 
 const geometry: CategoryData<PointsConfig, PointsInput> = {
@@ -414,26 +382,7 @@ const geometry: CategoryData<PointsConfig, PointsInput> = {
         seed: randomSeed(),
     }),
     generate: generatePointsInput,
-    share: {
-        write: ({ config }, params) => {
-            params.set("xp", config.preset);
-            params.set("xn", String(config.count));
-            params.set("s", config.seed.toString(36));
-        },
-        read: (params) => {
-            const preset = params.get("xp");
-            const count = Number(params.get("xn"));
-            const seed = seedOf(params);
-            if (
-                !isPointsPreset(preset) ||
-                !Number.isFinite(count) ||
-                seed === null
-            ) {
-                return null;
-            }
-            return { config: { preset, count, seed } };
-        },
-    },
+    share: presetShare(isPointsPreset, "count", "xp", "xn"),
 };
 
 const fill: CategoryData<FillConfig, FillInput> = {
@@ -445,26 +394,7 @@ const fill: CategoryData<FillConfig, FillInput> = {
         seed: randomSeed(),
     }),
     generate: generateFillInput,
-    share: {
-        write: ({ config }, params) => {
-            params.set("lp", config.preset);
-            params.set("lc", String(config.cols));
-            params.set("s", config.seed.toString(36));
-        },
-        read: (params) => {
-            const preset = params.get("lp");
-            const cols = Number(params.get("lc"));
-            const seed = seedOf(params);
-            if (
-                !isFillPreset(preset) ||
-                !Number.isFinite(cols) ||
-                seed === null
-            ) {
-                return null;
-            }
-            return { config: { preset, cols, seed } };
-        },
-    },
+    share: presetShare(isFillPreset, "cols", "lp", "lc"),
 };
 
 const life: CategoryData<LifeConfig, LifeInput> = {
@@ -476,26 +406,7 @@ const life: CategoryData<LifeConfig, LifeInput> = {
         seed: randomSeed(),
     }),
     generate: generateLifeInput,
-    share: {
-        write: ({ config }, params) => {
-            params.set("ap", config.preset);
-            params.set("ac", String(config.cols));
-            params.set("s", config.seed.toString(36));
-        },
-        read: (params) => {
-            const preset = params.get("ap");
-            const cols = Number(params.get("ac"));
-            const seed = seedOf(params);
-            if (
-                !isLifePreset(preset) ||
-                !Number.isFinite(cols) ||
-                seed === null
-            ) {
-                return null;
-            }
-            return { config: { preset, cols, seed } };
-        },
-    },
+    share: presetShare(isLifePreset, "cols", "ap", "ac"),
 };
 
 export const CATEGORY_DATA = {
@@ -535,42 +446,31 @@ export function isCategoryId(value: unknown): value is CategoryId {
     return typeof value === "string" && value in CATEGORY_DATA;
 }
 
-/* Generate a value from a config, for whichever category. */
+function dataOf<C extends CategoryId>(
+    category: C
+): CategoryData<ConfigOf<C>, ValueOf<C>> {
+    return CATEGORY_DATA[category] as unknown as CategoryData<
+        ConfigOf<C>,
+        ValueOf<C>
+    >;
+}
+
 export function generateFor<C extends CategoryId>(
     category: C,
     config: ConfigOf<C>
 ): ValueOf<C> {
-    const data = CATEGORY_DATA[category] as unknown as CategoryData<
-        ConfigOf<C>,
-        ValueOf<C>
-    >;
-    return data.generate(config);
+    return dataOf(category).generate(config);
 }
 
 export function initialInputs(): CategoryInputs {
-    const slot = <C extends CategoryId>(category: C): CategoryInputs[C] => {
-        const data = CATEGORY_DATA[category] as unknown as CategoryData<
-            ConfigOf<C>,
-            ValueOf<C>
-        >;
-        const config = data.defaultConfig();
-        return {
+    const inputs: Partial<Record<CategoryId, unknown>> = {};
+    for (const category of Object.keys(CATEGORY_DATA) as CategoryId[]) {
+        const config = dataOf(category).defaultConfig();
+        inputs[category] = {
             config,
-            value: data.generate(config),
+            value: generateFor(category, config),
             edited: false,
-        } as CategoryInputs[C];
-    };
-    return {
-        sort: slot("sort"),
-        path: slot("path"),
-        find: slot("find"),
-        maze: slot("maze"),
-        dp: slot("dp"),
-        strings: slot("strings"),
-        graph: slot("graph"),
-        tree: slot("tree"),
-        geometry: slot("geometry"),
-        fill: slot("fill"),
-        life: slot("life"),
-    };
+        };
+    }
+    return inputs as CategoryInputs;
 }

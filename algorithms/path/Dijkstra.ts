@@ -2,12 +2,12 @@ import { MinHeap } from "../../utils/minHeap";
 import type { AlgorithmInstructions } from "../types";
 import { PathAlgorithm } from "./PathAlgorithm";
 
-/* Always expands the cheapest known cell. Mud costs more, so the route
-   it finds is the cheapest, not just the shortest. */
+/* Always expands the cheapest known cell, so the route is the cheapest
+   one, mud included. */
 export class Dijkstra extends PathAlgorithm {
     search(): void {
         const { start, end } = this.grid;
-        const cameFrom = new Int32Array(this.size).fill(-1);
+        const cameFrom = this.emptyCameFrom();
         const dist = new Float64Array(this.size).fill(Infinity);
         const done = new Uint8Array(this.size);
         const heap = new MinHeap();

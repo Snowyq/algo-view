@@ -1,7 +1,8 @@
-import { JSX, useEffect, useId, useState } from "react";
+import { JSX, useId, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import styled from "styled-components";
 import registryApi from "../../../../algorithms/algorithmsRegistryApi";
+import { GROWTH_LADDERS } from "../../../../algorithms/growth";
 import type { AppDispatch, RootState } from "../../../../store";
 import AlgorithmInfo from "../../AlgorithmInfo";
 import CodePanel from "../../CodePanel";
@@ -14,20 +15,22 @@ import {
     openAlgorithmWindow,
     type ActiveAlgorithm,
 } from "../../playSlice";
+import { useEscapeKey } from "../../../../hooks/useEscapeKey";
 import PixelButton from "../primitives/PixelButton";
-import { FOCUS_SHARE, FOCUS_SIDE_SHARE } from "./focusShare";
-import { GROWTH_LADDERS } from "../../../../algorithms/growth";
-import GrowthChart from "./GrowthChart";
-import PixelMetrics from "./PixelMetrics";
 import PixelIcon from "../primitives/PixelIcon";
-import { labelText, pixelCorners, pixelFrame } from "../primitives/pixel";
+import {
+    labelText,
+    pixelCorners,
+    pixelFrame,
+    scrollY,
+} from "../primitives/pixel";
+import GrowthChart from "./GrowthChart";
+import { FOCUS_SHARE, FOCUS_SIDE_SHARE } from "./panelLayout";
+import PixelMetrics from "./PixelMetrics";
 
 /*
- * Focus mode, at every size: clicking a panel (or its "i") hides the other
- * panels and opens this window beside the clicked one (below it on narrow
- * stages). One "Algorithm" view: the live stats on top, shared by the
- * Code and About tabs underneath. The timeline stays in view, so playback
- * runs while the code lights up line by line.
+ * Focus mode: the clicked panel stays, the others hide, and this window
+ * shows its live stats over Code / About / Growth tabs.
  */
 
 /* Stacked: below the focused panel. Side: to its right. */
@@ -55,7 +58,7 @@ const Window = styled.section`
     animation: px-dither-in 160ms steps(4) both;
 `;
 
-/* The algorithm's counters, shared by both tabs. */
+/* The algorithm's counters, above every tab. */
 const Stats = styled.div`
     padding: 0.8rem 1.6rem 0;
 `;
@@ -67,9 +70,7 @@ const Head = styled.header`
     padding: 1rem 0.8rem 0 1.6rem;
 `;
 
-/* The other open algorithms, one tap away (the panel beside follows). */
-/* Wraps onto further rows rather than scrolling sideways, so every open
-   algorithm stays visible however many there are. */
+/* The other open algorithms; wraps so every one stays visible. */
 const Switcher = styled.div`
     display: flex;
     flex-wrap: wrap;
@@ -148,17 +149,13 @@ const Tab = styled.button`
     }
 `;
 
-/* Switching tabs dithers the new content in (rare, so it may show). */
+/* Switching tabs dithers the new content in. */
 const Body = styled.div`
     flex: 1;
     min-height: 0;
     animation: px-dither-in 160ms both;
     padding: 1.2rem;
-    overflow-y: auto;
-    /* Room for the scrollbar is always kept, so its appearing never
-       shifts the content sideways. */
-    scrollbar-gutter: stable;
-    overscroll-behavior: contain;
+    ${scrollY};
 
     &[data-fill="true"] {
         overflow: hidden;
@@ -166,6 +163,12 @@ const Body = styled.div`
 `;
 
 type WindowTab = "code" | "about" | "growth";
+
+const TAB_LABELS: Record<WindowTab, string> = {
+    code: "Code",
+    about: "About",
+    growth: "Growth",
+};
 
 function AlgorithmWindow(): JSX.Element | null {
     const dispatch = useDispatch<AppDispatch>();
@@ -182,14 +185,7 @@ function AlgorithmWindow(): JSX.Element | null {
     );
     const baseId = useId();
 
-    useEffect(() => {
-        if (!id) return;
-        const onKey = (event: KeyboardEvent): void => {
-            if (event.key === "Escape") dispatch(closeAlgorithmWindow());
-        };
-        document.addEventListener("keydown", onKey);
-        return () => document.removeEventListener("keydown", onKey);
-    }, [id, dispatch]);
+    useEscapeKey(Boolean(id), () => dispatch(closeAlgorithmWindow()));
 
     const registry = id
         ? registryApi.getAlgorithmRegistry(category, id)
@@ -199,12 +195,12 @@ function AlgorithmWindow(): JSX.Element | null {
     const hasGrowth = Boolean(
         GROWTH_LADDERS[category as keyof typeof GROWTH_LADDERS]
     );
-    const shown: WindowTab =
-        tab === "code" && !instructions
-            ? "about"
-            : tab === "growth" && !hasGrowth
-              ? "about"
-              : tab;
+    const tabs: WindowTab[] = [
+        ...(instructions ? ["code" as const] : []),
+        "about",
+        ...(hasGrowth ? ["growth" as const] : []),
+    ];
+    const shown: WindowTab = tabs.includes(tab) ? tab : "about";
 
     return (
         <Window
@@ -249,37 +245,18 @@ function AlgorithmWindow(): JSX.Element | null {
                 </Stats>
             )}
             <Tabs role="tablist" aria-label={registry.meta.name}>
-                {instructions && (
+                {tabs.map((name) => (
                     <Tab
+                        key={name}
                         type="button"
                         role="tab"
-                        id={`${baseId}-code`}
-                        aria-selected={shown === "code"}
-                        onClick={() => setTab("code")}
+                        id={`${baseId}-${name}`}
+                        aria-selected={shown === name}
+                        onClick={() => setTab(name)}
                     >
-                        Code
+                        {TAB_LABELS[name]}
                     </Tab>
-                )}
-                <Tab
-                    type="button"
-                    role="tab"
-                    id={`${baseId}-about`}
-                    aria-selected={shown === "about"}
-                    onClick={() => setTab("about")}
-                >
-                    About
-                </Tab>
-                {hasGrowth && (
-                    <Tab
-                        type="button"
-                        role="tab"
-                        id={`${baseId}-growth`}
-                        aria-selected={shown === "growth"}
-                        onClick={() => setTab("growth")}
-                    >
-                        Growth
-                    </Tab>
-                )}
+                ))}
             </Tabs>
             <Body
                 key={`${registry.id}-${shown}`}

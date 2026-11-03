@@ -1,7 +1,7 @@
 import type { AlgorithmInstructions } from "../types";
 import { FindAlgorithm } from "./FindAlgorithm";
 
-/* Checks every element in order. Needs no sorting, never skips ahead. */
+// Checks every element in order. Needs no sorting.
 export class LinearSearch extends FindAlgorithm {
     search(): void {
         for (let i = 0; i < this.values.length; i += 1) {

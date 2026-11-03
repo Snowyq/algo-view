@@ -8,7 +8,7 @@ const store = configureStore({
     },
     middleware: (getDefaultMiddleware) =>
         getDefaultMiddleware({
-            serializableCheck: false, // <-- disable the serializability check
+            serializableCheck: false,
         }),
     devTools: true,
 });

@@ -1,16 +1,14 @@
 import type { DpInput } from "../../utils/dpInput";
-import { Algorithm } from "../Algorithm";
-import type {
-    AlgorithmInstructions,
-    StepAlgorithm,
-    StepMetrics,
-} from "../types";
+import {
+    RecordedAlgorithm,
+    Snapshots,
+    type StepOptions,
+} from "../RecordedAlgorithm";
+import type { StepMetrics } from "../types";
 
 /*
- * Dynamic programming as a table filled cell by cell. Every write shows
- * the cells it was computed from; at the end the answer is traced back
- * through the table. Subclasses describe the table (setup) and fill it
- * (solve); this base records and replays.
+ * A DP table filled cell by cell; each write shows the cells it was read
+ * from. Subclasses describe the table (setup) and fill it (solve).
  */
 
 export type DpStepType = "initial" | "fill" | "trace" | "finish";
@@ -45,36 +43,30 @@ export type DpState = {
     type: DpStepType;
 };
 
-type StepOptions = { instructionId?: string[] };
+type DpCells = { values: Float64Array; traced: Uint8Array };
 
 const SNAPSHOT_EVERY = 64;
 
-export abstract class DpAlgorithm
-    extends Algorithm
-    implements StepAlgorithm<DpStep, DpState>
-{
-    table: DpTable = {
-        rows: 0,
-        cols: 0,
-        rowLabels: [],
-        colLabels: [],
-        corner: "",
-    };
-    steps: DpStep[] = [];
-    protected values: Float64Array = new Float64Array(0);
-    private snapshots = new Map<
-        number,
-        { values: Float64Array; traced: Uint8Array }
-    >();
+export abstract class DpAlgorithm extends RecordedAlgorithm<DpStep, DpState> {
+    table: DpTable;
+    protected values: Float64Array;
     metrics: StepMetrics = {
         cells: { count: 0, name: "Cells" },
         reads: { count: 0, name: "Reads" },
         answer: { count: 0, name: "Answer" },
     };
+    private snapshots = new Snapshots<DpCells>(
+        SNAPSHOT_EVERY,
+        () => this.emptyCells(),
+        ({ values, traced }) => ({
+            values: values.slice(),
+            traced: traced.slice(),
+        }),
+        (cells, index) => this.applyStep(cells, this.steps[index])
+    );
 
     constructor(input: DpInput, options: Record<string, unknown> = {}) {
-        super();
-        this.options = options;
+        super(options);
         this.table = this.setup(input);
         this.values = new Float64Array(this.table.rows * this.table.cols).fill(
             Number.NaN
@@ -82,13 +74,11 @@ export abstract class DpAlgorithm
         this.push("initial", -1, Number.NaN, [], {});
         this.solve(input);
         this.push("finish", -1, Number.NaN, [], {});
-        this.buildSnapshots();
+        this.snapshots.build(this.steps.length);
     }
 
     protected abstract setup(input: DpInput): DpTable;
     protected abstract solve(input: DpInput): void;
-
-    // ---------- Recording ----------
 
     private push(
         type: DpStepType,
@@ -97,24 +87,20 @@ export abstract class DpAlgorithm
         deps: number[],
         { instructionId }: StepOptions
     ): void {
-        const metrics: StepMetrics = {};
-        for (const key in this.metrics) metrics[key] = { ...this.metrics[key] };
+        const metrics = this.metricsSnapshot();
         this.steps.push({ type, cell, value, deps, instructionId, metrics });
     }
 
-    private buildSnapshots(): void {
-        const values = new Float64Array(this.values.length).fill(Number.NaN);
-        const traced = new Uint8Array(this.values.length);
-        this.steps.forEach((step, index) => {
-            if (step.type === "fill") values[step.cell] = step.value;
-            if (step.type === "trace") traced[step.cell] = 1;
-            if (index % SNAPSHOT_EVERY === 0) {
-                this.snapshots.set(index, {
-                    values: values.slice(),
-                    traced: traced.slice(),
-                });
-            }
-        });
+    private emptyCells(): DpCells {
+        return {
+            values: new Float64Array(this.values.length).fill(Number.NaN),
+            traced: new Uint8Array(this.values.length),
+        };
+    }
+
+    private applyStep({ values, traced }: DpCells, step: DpStep): void {
+        if (step.type === "fill") values[step.cell] = step.value;
+        if (step.type === "trace") traced[step.cell] = 1;
     }
 
     protected idx(r: number, c: number): number {
@@ -154,47 +140,15 @@ export abstract class DpAlgorithm
         this.metrics.answer.count = Number.isFinite(value) ? value : -1;
     }
 
-    // ---------- Replay API ----------
-
-    getStepsLength(): number {
-        return this.steps.length;
-    }
-
-    getStepByIndex(index: number): DpStep | undefined {
-        return this.steps[index];
-    }
-
-    getMetrics(): StepMetrics {
-        return this.steps[this.steps.length - 1]?.metrics ?? this.metrics;
-    }
-
     getStateByStepsIndex(index: number): DpState {
-        const last = Math.max(0, Math.min(index, this.steps.length - 1));
-        const base = last - (last % SNAPSHOT_EVERY);
-        const snap = this.snapshots.get(base);
-        const values = snap
-            ? snap.values.slice()
-            : new Float64Array(this.values.length).fill(Number.NaN);
-        const traced = snap
-            ? snap.traced.slice()
-            : new Uint8Array(this.values.length);
-        for (let i = base + 1; i <= last; i += 1) {
-            const step = this.steps[i];
-            if (step.type === "fill") values[step.cell] = step.value;
-            if (step.type === "trace") traced[step.cell] = 1;
-        }
+        const last = this.clampStep(index);
         const step = this.steps[last];
         return {
             table: this.table,
-            values,
-            traced,
+            ...this.snapshots.at(last),
             cell: step?.cell ?? -1,
             deps: step?.deps ?? [],
             type: step?.type ?? "initial",
         };
-    }
-
-    static getInstructions(): AlgorithmInstructions {
-        return {};
     }
 }

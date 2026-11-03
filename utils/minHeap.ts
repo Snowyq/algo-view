@@ -1,4 +1,4 @@
-/* Binary min-heap of (priority, value, tie) entries for path finding. */
+/** Binary min-heap of (priority, value, tie) entries; ties break on `tie`. */
 export class MinHeap {
     private items: Array<[number, number, number]> = [];
 

@@ -1,8 +1,7 @@
 import type { AlgorithmInstructions } from "../types";
 import { StringAlgorithm } from "./StringAlgorithm";
 
-/* Tries every alignment and compares left to right until a mismatch.
-   Fine on prose, quadratic on aaaa…ab. */
+// Tries every alignment, comparing left to right. Quadratic on aaaa...ab.
 export class NaiveMatch extends StringAlgorithm {
     search(): void {
         const n = this.text.length;

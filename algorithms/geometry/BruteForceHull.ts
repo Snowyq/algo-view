@@ -1,8 +1,7 @@
 import type { AlgorithmInstructions } from "../types";
 import { HullAlgorithm, POINT_HULL, POINT_INSIDE } from "./HullAlgorithm";
 
-/* For every pair a → b, check whether all other points lie on its left;
-   if so, it is a hull edge. Simple and O(n³) — watch the test count. */
+// A pair a -> b is a hull edge when every other point lies on its left. O(n^3).
 export class BruteForceHull extends HullAlgorithm {
     protected run(): number[] {
         const n = this.points.length;

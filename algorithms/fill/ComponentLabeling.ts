@@ -1,10 +1,8 @@
 import type { AlgorithmInstructions } from "../types";
 import { FillAlgorithm } from "./FillAlgorithm";
 
-/* Two-pass connected-component labelling: scan row by row giving each
-   cell its left/upper neighbour's label (or a new one), remembering which
-   labels touch in a union-find; a second pass rewrites every label to
-   its final region. Labels every region, not just the start's. */
+/* Two-pass connected-component labelling with union-find. Labels every
+   region, not just the one around the start. */
 export class ComponentLabeling extends FillAlgorithm {
     get metricNames(): [string, string, string] {
         return ["Labelled", "Merges", "Regions"];
@@ -18,15 +16,15 @@ export class ComponentLabeling extends FillAlgorithm {
         const parent: number[] = [0];
         const find = (i: number): number =>
             parent[i] === i ? i : (parent[i] = find(parent[i]));
+        const labelAt = (x: number, y: number): number =>
+            this.open(x, y) ? this.marks[this.at(x, y)] : 0;
+        // First pass: take the left or upper label (or a new one) and
+        // remember which labels touch.
         for (let y = 0; y < this.rows; y += 1) {
             for (let x = 0; x < this.cols; x += 1) {
                 if (!this.open(x, y)) continue;
-                const left = this.open(x - 1, y)
-                    ? this.marks[this.at(x - 1, y)]
-                    : 0;
-                const up = this.open(x, y - 1)
-                    ? this.marks[this.at(x, y - 1)]
-                    : 0;
+                const left = labelAt(x - 1, y);
+                const up = labelAt(x, y - 1);
                 let label: number;
                 if (!left && !up) {
                     label = parent.length;
@@ -39,13 +37,11 @@ export class ComponentLabeling extends FillAlgorithm {
                 } else {
                     label = left || up;
                 }
-                this.filled += 1;
-                this.metrics.filled.count = this.filled;
-                this.setMark(this.at(x, y), label);
+                this.paint(this.at(x, y), label);
                 this.emit("label", this.at(x, y), { instructionId: ["c1"] });
             }
         }
-        // Second pass, one row per step: compact final ids 1..k.
+        // Second pass, one row per step: final region ids 1..k.
         const finalId = new Map<number, number>();
         for (let y = 0; y < this.rows; y += 1) {
             let changed = false;

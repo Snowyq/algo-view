@@ -25,10 +25,7 @@ type AlgorithmCanvasApi = {
     onStatusType: (type: string, cb?: (payload: unknown) => void) => void;
 };
 
-/*
- * Bridge to a canvas worker. Every category's worker speaks the same
- * protocol (workers/runtime/canvasWorker.ts); only the file differs.
- */
+/* Bridge to a canvas worker; all of them speak workers/runtime/canvasWorker.ts. */
 function useAlgorithmCanvas(
     canvasRef: RefObject<HTMLCanvasElement | null>,
     id: string,
@@ -47,7 +44,7 @@ function useAlgorithmCanvas(
         });
     }, [worker, id]);
 
-    // Initialize offscreen canvas
+    // A canvas can be transferred only once; the data flag survives remounts.
     useEffect(() => {
         if (!offscreenRef.current && worker && canvasRef.current) {
             const canvas = canvasRef.current;
@@ -62,8 +59,6 @@ function useAlgorithmCanvas(
             offscreenRef.current = offscreen;
         }
     }, [offscreenRef, canvasRef, worker]);
-
-    // Callbacks
 
     const changeSize = useCallback(
         (parentRect: CanvasRect) => {
@@ -115,11 +110,8 @@ function useAlgorithmCanvas(
     };
 }
 
-// Utils
-
 function getDevicePixelRatio(): number {
-    const dpr = window.devicePixelRatio;
-    return dpr || 1;
+    return window.devicePixelRatio || 1;
 }
 
 function getCssVar(name: string): string {
@@ -135,14 +127,13 @@ export function getStepColors(): StepColors {
     }
     stepColors.default = getCssVar("--color-step-default");
     stepColors.label = getCssVar("--color-step-label");
-    // Path finding: step colors plus the grid's own materials.
+    // Path finding: step colors plus grid materials.
     for (const type of ["frontier", "visit", "current", "path"]) {
         stepColors[type] = getCssVar(`--color-step-${type}`);
     }
     for (const kind of ["empty", "wall", "mud", "mud-dot", "start", "end"]) {
         stepColors[`path-${kind}`] = getCssVar(`--color-path-${kind}`);
     }
-    // Searching: the target line.
     stepColors["find-target"] = getCssVar("--color-find-target");
     return stepColors;
 }

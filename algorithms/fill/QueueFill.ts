@@ -1,8 +1,8 @@
 import type { AlgorithmInstructions } from "../types";
 import { DIRS4, FillAlgorithm } from "./FillAlgorithm";
 
-/* Flood fill with a queue: paint spreads in rings (a diamond, since it
-   moves in 4 directions). The queue holds the whole wavefront. */
+/* Flood fill with a queue: paint spreads in rings (a diamond with 4-way
+   moves) and the queue holds the whole wavefront. */
 export class QueueFill extends FillAlgorithm {
     protected run(): void {
         const queue = [this.start];
@@ -11,14 +11,7 @@ export class QueueFill extends FillAlgorithm {
             this.memory(queue.length - head);
             const cell = queue[head];
             this.paint(cell);
-            const [x, y] = this.xy(cell);
-            for (const [dx, dy] of DIRS4) {
-                if (!this.open(x + dx, y + dy)) continue;
-                const next = this.at(x + dx, y + dy);
-                if (this.marks[next] !== 0) continue;
-                this.push(next);
-                queue.push(next);
-            }
+            queue.push(...this.pushNeighbours(cell, DIRS4));
             this.emit("fill", cell, { instructionId: ["q1"] });
         }
     }

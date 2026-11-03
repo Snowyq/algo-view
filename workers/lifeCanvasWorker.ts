@@ -2,14 +2,13 @@ import type { LifeAlgorithm } from "../algorithms/life/LifeAlgorithm";
 import type { LifeInput } from "../utils/lifeInput";
 import { gridLayout } from "../utils/grid";
 import { createCanvasWorker, type DescribeApi } from "./runtime/canvasWorker";
+import { cellOrigin } from "./runtime/draw";
 
 /*
- * Cellular automata: live cells in cream on the dark floor, cells born
- * this generation in yellow, cells that just died as a faint red ghost,
- * Brian's Brain "dying" cells in pink and Langton's ant as a ringed cell.
+ * Cellular automata: live cells cream, newborns yellow, fresh deaths a faint
+ * red ghost, Brian's Brain dying cells pink, Langton's ant a ringed cell.
  */
 
-/* "Generation 12: 140 alive". */
 function describeLife({
     algorithm,
     step,
@@ -41,11 +40,12 @@ createCanvasWorker<LifeInput, LifeAlgorithm>({
         const shown = Math.ceil(rows * reveal);
         const fresh = state.type === "generation";
 
-        const floor = color("path-empty", "#2b251f");
-        const alive = color("path-end", "#f4ede0");
-        const born = color("frontier", "#f5cd4e");
-        const died = color("check-false", "#ff7a68");
-        const dying = color("select", "#ee8fd0");
+        const floor = color("path-empty");
+        const alive = color("path-end");
+        const born = color("frontier");
+        const died = color("check-false");
+        const dying = color("select");
+        const marker = color("current");
 
         ctx.fillStyle = floor;
         ctx.fillRect(
@@ -80,14 +80,13 @@ createCanvasWorker<LifeInput, LifeAlgorithm>({
         }
 
         if (state.marker >= 0) {
-            const px = layout.x + (state.marker % cols) * layout.cell;
-            const py = layout.y + Math.floor(state.marker / cols) * layout.cell;
+            const [px, py] = cellOrigin(layout, cols, state.marker);
             const t = Math.max(1, Math.floor(size / 4));
-            ctx.fillStyle = color("current", "#ee8fd0");
+            ctx.fillStyle = marker;
             ctx.fillRect(px - t * 2, py - t * 2, size + t * 4, size + t * 4);
             ctx.fillStyle = floor;
             ctx.fillRect(px - t, py - t, size + t * 2, size + t * 2);
-            ctx.fillStyle = color("current", "#ee8fd0");
+            ctx.fillStyle = marker;
             ctx.fillRect(px, py, size, size);
         }
     },

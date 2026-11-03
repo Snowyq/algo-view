@@ -1,11 +1,7 @@
 import { ANIMALS, type AnimalId } from "./animals";
-import { H, W, type Mode, type Pose } from "./rigs";
+import { CYCLE, H, W, type Mode, type Pose } from "./rigs";
 
-/*
- * Clips are rendered once per animal and state from the rig, then cached.
- * Timing lives here: anticipation and squash on the hop, a slow breath
- * with an occasional blink at rest.
- */
+/* Clips are rendered once per animal and state from the rig, then cached. */
 
 export type SpriteState =
     | "run"
@@ -26,7 +22,7 @@ export type SpriteClip = {
 
 export const SPRITE_W = W;
 export const SPRITE_H = H;
-/* Headroom for jumps; feet always land on the bottom row. */
+/* Headroom for jumps; feet land on the bottom row. */
 export const SPRITE_TOP = 5;
 export const CANVAS_W = SPRITE_W + 2;
 export const CANVAS_H = SPRITE_H + SPRITE_TOP;
@@ -39,7 +35,7 @@ const pose = (patch: Partial<Pose> & { mode: Mode }): Pose => ({
     ...patch,
 });
 
-/* Two-key breath: in for half the loop, out for the other half. */
+/* Breath in for the first half of the loop, out for the second. */
 const breathKey = (i: number, n: number): number => (i < n / 2 ? 0 : 1);
 
 function buildClip(id: AnimalId, state: SpriteState): SpriteClip {
@@ -51,12 +47,11 @@ function buildClip(id: AnimalId, state: SpriteState): SpriteClip {
 
     switch (state) {
         case "run": {
-            const n = animal.runFrames;
             return {
-                frames: Array.from({ length: n }, (_, i) =>
+                frames: Array.from({ length: CYCLE }, (_, i) =>
                     draw(pose({ mode: "run", frame: i }))
                 ),
-                fps: n * animal.runCps,
+                fps: CYCLE * animal.runCps,
                 loop: true,
             };
         }
@@ -96,7 +91,7 @@ function buildClip(id: AnimalId, state: SpriteState): SpriteClip {
             };
         }
         case "done": {
-            // Anticipate, leap, hang, land with a squash, settle.
+            // anticipate, leap, hang, land with a squash, settle
             const seq: Array<[Mode, number, number]> = [
                 ["stand", 0, 1],
                 ["tuck", -2, 0],

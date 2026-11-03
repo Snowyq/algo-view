@@ -9,11 +9,8 @@ import {
 import { SORT_ANIMATION_SPEEDS } from "../../../../config/sort";
 
 /*
- * The whole setup fits in a query string:
- *   ?c=<category>&a=<ids>&v=<speed>&<the category's own input params>
- * Each category writes and reads its own input params (see
- * algorithms/categoryData.ts), so this file never changes when a new
- * category is added. Sort is the default and omits `c`.
+ * Setup as a query string: ?c=<category>&a=<ids>&v=<speed>&<input params>.
+ * Input params come from each category's codec in categoryData; sort omits c.
  */
 
 type PlayLike = {

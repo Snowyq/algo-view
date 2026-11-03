@@ -14,8 +14,7 @@ export const GRID_GAP = 20;
 export const GRID_PAD = 24;
 export const GRID_GAP_SMALL = 12;
 
-/* Columns come from panelColumns (see PanelGrid); rows always share the
-   stage height, so the stage never scrolls. */
+/* Rows share the stage height, so the stage never scrolls. */
 const Grid = styled.div`
     display: grid;
     gap: ${GRID_GAP_SMALL}px;
@@ -60,10 +59,9 @@ export function revealPanels(elements: Element[], stagger = 0): void {
 }
 
 /*
- * Layout changes (a panel added, closed, or the column count) do not slide
- * panels across the stage: the ones that stay dither in at their new slot
- * and new ones build up from blocks. getSnapshotBeforeUpdate records which
- * panels were there before the DOM changes.
+ * On layout changes, panels that stay dither in at their new slot and new
+ * ones build up from blocks. A class for getSnapshotBeforeUpdate, which sees
+ * the panels from before the DOM change.
  */
 class FlipGrid extends Component<FlipGridProps> {
     gridRef = createRef<HTMLDivElement>();

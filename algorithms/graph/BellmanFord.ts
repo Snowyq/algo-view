@@ -8,18 +8,13 @@ import {
     NODE_FRONTIER,
 } from "./GraphAlgorithm";
 
-/* Relaxes every edge, round after round, until nothing improves. No
-   priority queue and fine with negative weights, but many more checks. */
+// Relaxes every edge, round after round, until nothing improves.
+// No priority queue and fine with negative weights, but many more checks.
 export class BellmanFord extends GraphAlgorithm {
     protected run(): void {
         const n = this.nodeCount;
         const dist = new Array<number>(n).fill(Infinity);
         const via = new Array<number>(n).fill(-1);
-        const state = new Uint8Array(this.edgeList.length);
-        const mark = (edge: number, value: number): void => {
-            state[edge] = value;
-            this.setEdge(edge, value);
-        };
         dist[0] = 0;
         this.setLabel(0, 0);
         this.setNode(0, NODE_FRONTIER);
@@ -36,18 +31,19 @@ export class BellmanFord extends GraphAlgorithm {
                     this.count("checks");
                     if (dist[from] + w < dist[to]) {
                         if (via[to] >= 0 && via[to] !== edge) {
-                            mark(via[to], EDGE_SEEN);
+                            this.setEdge(via[to], EDGE_SEEN);
                         }
                         dist[to] = dist[from] + w;
                         via[to] = edge;
                         changed = true;
                         this.count("updates");
-                        mark(edge, EDGE_TREE);
+                        this.setEdge(edge, EDGE_TREE);
                         this.setLabel(to, dist[to]);
                         this.setNode(to, NODE_FRONTIER);
                         this.emit("relax", to, edge, { instructionId: ["f2"] });
                     } else {
-                        if (state[edge] === EDGE_IDLE) mark(edge, EDGE_SEEN);
+                        if (this.edgeAt(edge) === EDGE_IDLE)
+                            this.setEdge(edge, EDGE_SEEN);
                         this.emit("check", from, edge, {
                             instructionId: ["f3"],
                         });

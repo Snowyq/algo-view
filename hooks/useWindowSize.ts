@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 type WindowSize = { width: number; height: number };
 
+/* Window size, refreshed whenever the body resizes. */
 export default function useWindowSize(): {
     size: WindowSize;
     update: () => void;
@@ -9,11 +10,7 @@ export default function useWindowSize(): {
     const [size, setSize] = useState<WindowSize>({ width: 0, height: 0 });
 
     function handleUpdate(): void {
-        const newSize = {
-            height: window.innerHeight,
-            width: window.innerWidth,
-        };
-        setSize(newSize);
+        setSize({ width: window.innerWidth, height: window.innerHeight });
     }
 
     useEffect(() => {

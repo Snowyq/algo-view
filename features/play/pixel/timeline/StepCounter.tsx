@@ -2,14 +2,12 @@ import { JSX, memo } from "react";
 import { useSelector } from "react-redux";
 import styled, { keyframes } from "styled-components";
 import type { RootState } from "../../../../store";
+import { formatNumber } from "../../format";
 import { getMaxStep, getStep } from "../../playSlice";
 import { TINY } from "../media";
 import { labelText } from "../primitives/pixel";
 
-/*
- * Where the playback is, right beside the bar it describes: "step" over
- * "58 / 4,253". Each digit that changes drops in over two frames.
- */
+/* Current step over the total; each changed digit drops in. */
 
 const flip = keyframes`
     from { clip-path: inset(0 0 100% 0); transform: translateY(-4px); }
@@ -42,9 +40,8 @@ const Line = styled.span`
     }
 `;
 
-/* The current step sits over an invisible copy of the widest number it can
-   reach, so its width never changes while playing and never pushes the
-   progress bar sideways. */
+/* Overlays an invisible copy of the widest possible number, so the width
+   stays fixed while playing and the bar never shifts. */
 const Slot = styled.span`
     display: inline-grid;
     justify-items: end;
@@ -79,8 +76,6 @@ const Digits = styled.span`
     }
 `;
 
-const format = new Intl.NumberFormat("en-US");
-
 function StepDigits({
     value,
     dim,
@@ -88,7 +83,7 @@ function StepDigits({
     value: number;
     dim?: boolean;
 }): JSX.Element {
-    const text = format.format(Math.max(0, value));
+    const text = formatNumber(Math.max(0, value));
     // Keyed by position from the right, so only changed digits re-animate.
     return (
         <Digits data-dim={dim || undefined}>
@@ -103,23 +98,22 @@ const StepCounter = memo(function StepCounter(): JSX.Element {
     const { value } = useSelector<RootState, { value: number }>(getStep);
     const maxStep = useSelector<RootState, number>(getMaxStep);
     const has = maxStep > 0;
+    const total = Math.max(0, maxStep);
     return (
         <Counter
             aria-live="off"
-            aria-label={`Step ${has ? value : 0} of ${Math.max(0, maxStep)}`}
+            aria-label={`Step ${has ? value : 0} of ${total}`}
         >
             <small>Step</small>
             <Line>
                 <Slot>
                     <Digits data-ghost aria-hidden="true">
-                        {format
-                            .format(Math.max(0, maxStep))
-                            .replace(/\d/g, "8")}
+                        {formatNumber(total).replace(/\d/g, "8")}
                     </Digits>
                     <StepDigits value={has ? value : 0} />
                 </Slot>
                 <i>/</i>
-                <StepDigits value={Math.max(0, maxStep)} dim />
+                <StepDigits value={total} dim />
             </Line>
         </Counter>
     );

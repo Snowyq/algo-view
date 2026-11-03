@@ -5,11 +5,21 @@ import {
     useMemo,
     useRef,
     useState,
-    type ChangeEvent,
+    type ComponentProps,
 } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import styled, { css, keyframes } from "styled-components";
 import InputLayout from "./InputLayout";
+import {
+    BarThumb,
+    BigValue,
+    Choices,
+    Field,
+    FieldHead,
+    FieldLabel,
+    Form,
+    ThumbChoice,
+} from "./form";
 import {
     SORT_DEFAULT_MAX_INPUT_LENGTH,
     SORT_INPUT_BLOCK_DELAY_MS,
@@ -25,13 +35,13 @@ import {
     type InputConfig,
     type InputPreset,
 } from "../../../../utils/randoms";
+import { clamp } from "../../../../utils/values";
 import {
     applyInput,
     getActiveAlgorithms,
     getInputConfig,
     getCanvasWorkerLoading,
     getStepWorkerReady,
-    type ActiveAlgorithm,
 } from "../../playSlice";
 import PixelButton from "../primitives/PixelButton";
 import PixelIcon from "../primitives/PixelIcon";
@@ -49,115 +59,25 @@ const PRESET_LABELS: Record<InputPreset, string> = {
     organPipe: "Organ pipe",
 };
 
-const Form = styled.div`
-    display: flex;
-    flex-direction: column;
-    gap: 2.8rem;
-`;
+const ROLL_MS = 380;
+const [RANGE_MIN, RANGE_MAX] = SORT_INPUT_VALUES_RANGES;
 
-const Field = styled.section`
-    display: flex;
-    flex-direction: column;
-    gap: 1.2rem;
-`;
-
-const FieldHead = styled.div`
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 1.2rem;
-`;
-
-const FieldLabel = styled.h3`
-    ${labelText};
-    color: var(--fg-3);
-`;
-
-const BigValue = styled.output`
-    font-family: var(--f-display);
-    font-size: 3.2rem;
-    line-height: 0.8;
-    color: var(--fg);
-    font-variant-numeric: tabular-nums;
-`;
-
-const Presets = styled.div`
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.8rem;
-`;
-
-const Preset = styled.button`
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.8rem;
-    padding: 0.8rem 0.8rem 0.8rem;
-    margin: var(--b);
-    border: 0;
-    background-color: var(--bg-2);
-    color: var(--fg-3);
-    font-size: 1.3rem;
-    /* Overrides the global button:has(svg) line-height: 0, which stacks
-       two-word labels on top of each other when they wrap. */
+const Preset = styled(ThumbChoice)`
+    /* the global button:has(svg) line-height: 0 stacks wrapped labels */
     line-height: 1.2;
-    text-align: left;
-    ${pixelFrame("var(--line)")};
 
     svg {
         color: var(--color-step-default);
     }
-
     @media (hover: hover) {
-        &:hover:not(:disabled) {
-            color: var(--fg);
-            ${pixelFrame("var(--fg-3)")};
-        }
         &:hover:not(:disabled) svg {
             color: var(--fg-3);
         }
     }
-
-    &[aria-pressed="true"] {
-        color: var(--fg);
-        background-color: var(--surface-2);
-        ${pixelFrame("var(--accent)")};
-    }
     &[aria-pressed="true"] svg {
         color: var(--accent);
     }
-    &:active:not(:disabled) {
-        transform: translateY(2px);
-    }
 `;
-
-/* A dozen bars of the shape this preset produces. */
-function PresetThumb({ preset }: { preset: InputPreset }): JSX.Element {
-    const values = useMemo(
-        () => generateInput({ preset, length: 12, min: 1, max: 8, seed: 7 }),
-        [preset]
-    );
-    return (
-        <svg
-            data-pixel
-            width={12 * 5}
-            height={8 * 3}
-            viewBox="0 0 60 24"
-            fill="currentColor"
-            aria-hidden="true"
-        >
-            {values.map((value, index) => (
-                <rect
-                    key={index}
-                    x={index * 5}
-                    y={24 - value * 3}
-                    width={4}
-                    height={value * 3}
-                />
-            ))}
-        </svg>
-    );
-}
 
 const quake = keyframes`
     0%, 100% { transform: translateX(0); }
@@ -258,6 +178,7 @@ const GenerateButton = styled(PixelButton)`
     }
 `;
 
+/* Number fields hold "" while being typed into. */
 type NumericState = number | "";
 
 function toNumber(raw: string): NumericState {
@@ -266,43 +187,89 @@ function toNumber(raw: string): NumericState {
     return Number.isFinite(value) ? value : "";
 }
 
-function clamp(value: number, min: number, max: number): number {
-    return Math.max(min, Math.min(max, value));
+function clampOr(
+    value: NumericState,
+    min: number,
+    max: number,
+    fallback: number
+): number {
+    return typeof value === "number" ? clamp(value, min, max) : fallback;
 }
 
-const numericInputProps = {
-    type: "text",
-    inputMode: "numeric",
-    pattern: "[0-9]*",
-    autoComplete: "off",
-    spellCheck: false,
-} as const;
+function PresetThumb({ preset }: { preset: InputPreset }): JSX.Element {
+    const levels = useMemo(
+        () => generateInput({ preset, length: 12, min: 1, max: 8, seed: 7 }),
+        [preset]
+    );
+    return <BarThumb levels={levels} />;
+}
+
+type NumberBoxProps = { label: string } & ComponentProps<typeof NumberInput>;
+
+function NumberBox({ label, ...input }: NumberBoxProps): JSX.Element {
+    return (
+        <NumberField>
+            <span>{label}</span>
+            <NumberInput
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                autoComplete="off"
+                spellCheck={false}
+                {...input}
+            />
+        </NumberField>
+    );
+}
+
+/* Busy workers block regeneration; unblock a beat later so a fast double
+   click can't queue renders. */
+function useGenerateBlocked(): boolean {
+    const panels = useSelector(
+        (state: RootState) => getActiveAlgorithms(state).length
+    );
+    const stepWorkerReady = useSelector<RootState, boolean>(getStepWorkerReady);
+    const loading = useSelector<RootState, boolean>(getCanvasWorkerLoading);
+    const blockedNow = !stepWorkerReady || (panels > 0 && loading);
+    const [blockedLate, setBlockedLate] = useState<boolean>(blockedNow);
+    useEffect(() => {
+        const id = setTimeout(
+            () => setBlockedLate(blockedNow),
+            blockedNow ? 0 : SORT_INPUT_BLOCK_DELAY_MS
+        );
+        return () => clearTimeout(id);
+    }, [blockedNow]);
+    return blockedNow || blockedLate;
+}
+
+/* Random die face plus a short spin on every roll. */
+function useDice(): { face: number; rolling: boolean; rollDice: () => void } {
+    const [face, setFace] = useState<number>(4);
+    const [rolling, setRolling] = useState<boolean>(false);
+    const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    useEffect(
+        () => () => {
+            if (timer.current) clearTimeout(timer.current);
+        },
+        []
+    );
+
+    const rollDice = (): void => {
+        setFace(Math.floor(Math.random() * 6));
+        setRolling(true);
+        if (timer.current) clearTimeout(timer.current);
+        timer.current = setTimeout(() => setRolling(false), ROLL_MS);
+    };
+    return { face, rolling, rollDice };
+}
 
 function InputPanel(): JSX.Element {
     const dispatch = useDispatch<AppDispatch>();
     const config = useSelector<RootState, InputConfig>(getInputConfig);
-    const active = useSelector<RootState, ActiveAlgorithm[]>(
-        getActiveAlgorithms
-    );
-    const stepWorkerReady = useSelector<RootState, boolean>(getStepWorkerReady);
-    const sortWorkerLoading = useSelector<RootState, boolean>(
-        getCanvasWorkerLoading
-    );
+    const blocked = useGenerateBlocked();
+    const { face, rolling, rollDice } = useDice();
     const lengthId = useId();
-
-    // Busy workers block regeneration; unblock a beat later so a fast
-    // double click can't queue renders.
-    const blockedRaw =
-        !stepWorkerReady || (active.length > 0 && sortWorkerLoading);
-    const [blockedDelayed, setBlockedDelayed] = useState<boolean>(blockedRaw);
-    const blocked = blockedRaw || blockedDelayed;
-    useEffect(() => {
-        const id = setTimeout(
-            () => setBlockedDelayed(blockedRaw),
-            blockedRaw ? 0 : SORT_INPUT_BLOCK_DELAY_MS
-        );
-        return () => clearTimeout(id);
-    }, [blockedRaw]);
 
     const [allowLarge, setAllowLarge] = useState<boolean>(
         config.length > SORT_DEFAULT_MAX_INPUT_LENGTH
@@ -310,8 +277,7 @@ function InputPanel(): JSX.Element {
     const [length, setLength] = useState<NumericState>(config.length);
     const [minValue, setMinValue] = useState<NumericState>(config.min);
     const [maxValue, setMaxValue] = useState<NumericState>(config.max);
-    // The recipe can change from outside (shared link, G shortcut):
-    // adopt it, dropping unsaved edits.
+    // An outside change (shared link, G shortcut) drops unsaved edits.
     const [syncedConfig, setSyncedConfig] = useState<InputConfig>(config);
     if (syncedConfig !== config) {
         setSyncedConfig(config);
@@ -320,52 +286,35 @@ function InputPanel(): JSX.Element {
         setMaxValue(config.max);
         if (config.length > SORT_DEFAULT_MAX_INPUT_LENGTH) setAllowLarge(true);
     }
-    const [rolling, setRolling] = useState<boolean>(false);
-    const [face, setFace] = useState<number>(4);
-    const rollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const maxLength = allowLarge
         ? SORT_MAX_INPUT_LENGTH
         : SORT_DEFAULT_MAX_INPUT_LENGTH;
-    const [rangeLo, rangeHi] = SORT_INPUT_VALUES_RANGES;
-    const lengthValue =
-        typeof length === "number"
-            ? clamp(length, SORT_MIN_INPUT_LENGTH, maxLength)
-            : config.length;
-    const lo =
-        typeof minValue === "number"
-            ? clamp(minValue, rangeLo, rangeHi)
-            : config.min;
-    const hi =
-        typeof maxValue === "number"
-            ? clamp(maxValue, rangeLo, rangeHi)
-            : config.max;
-
-    const buildConfig = (preset: InputPreset): InputConfig => ({
-        preset,
-        length: clamp(lengthValue, SORT_MIN_INPUT_LENGTH, maxLength),
-        min: Math.min(lo, hi),
-        max: Math.max(lo, hi),
-        seed: randomSeed(),
-    });
+    const lengthValue = clampOr(
+        length,
+        SORT_MIN_INPUT_LENGTH,
+        maxLength,
+        config.length
+    );
+    const lo = clampOr(minValue, RANGE_MIN, RANGE_MAX, config.min);
+    const hi = clampOr(maxValue, RANGE_MIN, RANGE_MAX, config.max);
+    const low = Math.min(lo, hi);
+    const high = Math.max(lo, hi);
 
     const generate = (preset: InputPreset = config.preset): void => {
         if (blocked) return;
-        dispatch(applyInput({ category: "sort", config: buildConfig(preset) }));
-        setFace(Math.floor(Math.random() * 6));
-        setRolling(true);
-        if (rollTimer.current) clearTimeout(rollTimer.current);
-        rollTimer.current = setTimeout(() => setRolling(false), 380);
+        const next: InputConfig = {
+            preset,
+            length: clamp(lengthValue, SORT_MIN_INPUT_LENGTH, maxLength),
+            min: low,
+            max: high,
+            seed: randomSeed(),
+        };
+        dispatch(applyInput({ category: "sort", config: next }));
+        rollDice();
     };
 
-    useEffect(
-        () => () => {
-            if (rollTimer.current) clearTimeout(rollTimer.current);
-        },
-        []
-    );
-
-    const handleAllowLarge = (next: boolean): void => {
+    const toggleLarge = (next: boolean): void => {
         setAllowLarge(next);
         const limit = next
             ? SORT_MAX_INPUT_LENGTH
@@ -405,7 +354,7 @@ function InputPanel(): JSX.Element {
                     <FieldHead>
                         <FieldLabel id={`${lengthId}-shape`}>Shape</FieldLabel>
                     </FieldHead>
-                    <Presets>
+                    <Choices>
                         {INPUT_PRESETS.map((preset) => (
                             <Preset
                                 key={preset}
@@ -418,7 +367,7 @@ function InputPanel(): JSX.Element {
                                 {PRESET_LABELS[preset]}
                             </Preset>
                         ))}
-                    </Presets>
+                    </Choices>
                 </Field>
 
                 <Field>
@@ -426,7 +375,9 @@ function InputPanel(): JSX.Element {
                         <FieldLabel as="label" htmlFor={lengthId}>
                             Values
                         </FieldLabel>
-                        <BigValue htmlFor={lengthId}>{lengthValue}</BigValue>
+                        <BigValue $tabular htmlFor={lengthId}>
+                            {lengthValue}
+                        </BigValue>
                     </FieldHead>
                     <PixelSlider
                         min={SORT_MIN_INPUT_LENGTH}
@@ -443,40 +394,22 @@ function InputPanel(): JSX.Element {
                         )}
                     />
                     <Inputs>
-                        <NumberField>
-                            <span>Exact</span>
-                            <NumberInput
-                                {...numericInputProps}
-                                id={lengthId}
-                                value={length}
-                                onChange={(
-                                    event: ChangeEvent<HTMLInputElement>
-                                ) => {
-                                    const next = toNumber(event.target.value);
-                                    setLength(
-                                        typeof next === "number"
-                                            ? Math.min(next, maxLength)
-                                            : next
-                                    );
-                                }}
-                                onBlur={() =>
-                                    setLength(
-                                        typeof length === "number"
-                                            ? clamp(
-                                                  length,
-                                                  SORT_MIN_INPUT_LENGTH,
-                                                  maxLength
-                                              )
-                                            : config.length
-                                    )
-                                }
-                            />
-                        </NumberField>
+                        <NumberBox
+                            label="Exact"
+                            id={lengthId}
+                            value={length}
+                            onChange={(event) => {
+                                const next = toNumber(event.target.value);
+                                setLength(
+                                    typeof next === "number"
+                                        ? Math.min(next, maxLength)
+                                        : next
+                                );
+                            }}
+                            onBlur={() => setLength(lengthValue)}
+                        />
                     </Inputs>
-                    <PixelToggle
-                        checked={allowLarge}
-                        onChange={handleAllowLarge}
-                    >
+                    <PixelToggle checked={allowLarge} onChange={toggleLarge}>
                         <span>
                             Up to {SORT_MAX_INPUT_LENGTH}{" "}
                             <Warning>
@@ -490,14 +423,14 @@ function InputPanel(): JSX.Element {
                 <Field>
                     <FieldHead>
                         <FieldLabel>Range</FieldLabel>
-                        <BigValue>
-                            {Math.min(lo, hi)}–{Math.max(lo, hi)}
+                        <BigValue $tabular>
+                            {low}–{high}
                         </BigValue>
                     </FieldHead>
                     <PixelSlider
-                        min={rangeLo}
-                        max={rangeHi}
-                        values={[Math.min(lo, hi), Math.max(lo, hi)]}
+                        min={RANGE_MIN}
+                        max={RANGE_MAX}
+                        values={[low, high]}
                         labels={["Smallest value", "Largest value"]}
                         onChange={([a, b]) => {
                             setMinValue(a);
@@ -508,34 +441,28 @@ function InputPanel(): JSX.Element {
                         )}
                     />
                     <Inputs>
-                        <NumberField>
-                            <span>Min</span>
-                            <NumberInput
-                                {...numericInputProps}
-                                value={minValue}
-                                onChange={(event) =>
-                                    setMinValue(toNumber(event.target.value))
-                                }
-                                onBlur={() => {
-                                    setMinValue(lo);
-                                    if (lo > hi) setMaxValue(lo);
-                                }}
-                            />
-                        </NumberField>
-                        <NumberField>
-                            <span>Max</span>
-                            <NumberInput
-                                {...numericInputProps}
-                                value={maxValue}
-                                onChange={(event) =>
-                                    setMaxValue(toNumber(event.target.value))
-                                }
-                                onBlur={() => {
-                                    setMaxValue(hi);
-                                    if (hi < lo) setMinValue(hi);
-                                }}
-                            />
-                        </NumberField>
+                        <NumberBox
+                            label="Min"
+                            value={minValue}
+                            onChange={(event) =>
+                                setMinValue(toNumber(event.target.value))
+                            }
+                            onBlur={() => {
+                                setMinValue(lo);
+                                if (lo > hi) setMaxValue(lo);
+                            }}
+                        />
+                        <NumberBox
+                            label="Max"
+                            value={maxValue}
+                            onChange={(event) =>
+                                setMaxValue(toNumber(event.target.value))
+                            }
+                            onBlur={() => {
+                                setMaxValue(hi);
+                                if (hi < lo) setMinValue(hi);
+                            }}
+                        />
                     </Inputs>
                 </Field>
             </Form>

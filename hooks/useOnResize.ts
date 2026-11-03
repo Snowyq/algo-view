@@ -3,6 +3,7 @@ import { useCallback, useLayoutEffect, useRef } from "react";
 
 type ResizeCallback<T extends HTMLElement> = (ref: RefObject<T | null>) => void;
 
+/* Calls `onResize` on mount and whenever the element resizes (defaults to body). */
 function useOnResize<T extends HTMLElement>(
     onResize: ResizeCallback<T>,
     ref?: RefObject<T | null>

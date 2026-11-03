@@ -1,32 +1,36 @@
 import {
-    receiveBreakpointSteps,
-    refreshBreakpoints,
-    registerBreakpointWorker,
-} from "./breakpoints";
-import {
     JSX,
     useEffect,
     useRef,
     useState,
-    type ReactNode,
+    type ComponentType,
     type RefObject,
 } from "react";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import styled from "styled-components";
+import {
+    CATEGORY_DATA,
+    type CategoryId,
+    type WorkerName,
+} from "../../algorithms/categoryData";
 import type {
     AlgorithmMetrics,
     AlgorithmRegistryItem,
 } from "../../algorithms/types";
-import useOnResize from "../../hooks/useOnResize";
-import useReducedMotion from "../../hooks/useReducedMotion";
 import useAlgorithmCanvas, {
     getStepColors,
 } from "../../hooks/useAlgorithmCanvas";
-import type { WorkerName } from "../../algorithms/categoryData";
-import type { AppDispatch } from "../../store";
+import useOnResize from "../../hooks/useOnResize";
+import useReducedMotion from "../../hooks/useReducedMotion";
+import type { AppDispatch, RootState } from "../../store";
+import {
+    receiveBreakpointSteps,
+    refreshBreakpoints,
+    registerBreakpointWorker,
+} from "./breakpoints";
 import PixelLoader from "./pixel/canvas/PixelLoader";
-import { PALETTE_EVENT } from "./pixel/fx/rainbow";
 import { pixelWipe } from "./pixel/fx/pixelWipe";
+import { PALETTE_EVENT } from "./pixel/fx/rainbow";
 import {
     decrementCanvasWorkerLoading,
     incrementCanvasWorkerLoading,
@@ -53,9 +57,8 @@ const Sizer = styled.div`
     min-height: 0;
     overflow: hidden;
 
-    /* Shown at the size the worker last drew (set on "resized"), never
-       stretched to the box: when the layout changes, the old picture is
-       clipped for a frame instead of zooming, until the redraw lands. */
+    /* Sized to the worker's last drawing (see "resized"), never stretched,
+       so a layout change clips the old picture instead of zooming it. */
     canvas {
         position: absolute;
         top: 0;
@@ -89,9 +92,7 @@ type WorkerCanvasProps = VisualizerProps & {
     input: unknown;
     /** Extra algorithm options (e.g. which sort steps to record). */
     options?: Record<string, unknown>;
-    loaderLabel?: string;
-    /** Interactive layer over the canvas (e.g. the grid editor). */
-    overlay?: ReactNode;
+    loaderLabel: string;
 };
 
 type RenderDonePayload = { stepsLength?: number; metrics?: AlgorithmMetrics };
@@ -103,19 +104,16 @@ type StepMetricsPayload = {
 };
 
 /*
- * Generic bridge between a panel and a canvas worker: sizes the canvas,
- * sends the input whenever it changes, reports the run's length and the
- * per-step counters, and shows the loader / dissolve while computing.
- * Every category with a worker that follows the shared protocol can use
- * it as is.
+ * Bridge between a panel and its canvas worker: sizes the canvas, sends the
+ * input on every change, reports run length and per-step counters, and
+ * shows the loader while the worker computes.
  */
 function WorkerCanvas({
     registry,
     workerName,
     input,
     options,
-    loaderLabel = "Working",
-    overlay,
+    loaderLabel,
     onMetricsUpdate,
     onStepMetricsUpdate,
     onStepInfoUpdate,
@@ -147,7 +145,6 @@ function WorkerCanvas({
         dispatch(setCanvasWorkerReady(Boolean(worker)));
     }, [dispatch, worker]);
 
-    // Lets the breakpoint store ask this algorithm's worker for steps.
     useEffect(() => {
         if (!worker) return;
         return registerBreakpointWorker(registry.id, worker);
@@ -208,7 +205,6 @@ function WorkerCanvas({
             }
             onMetricsUpdate?.(metrics ?? null);
             setIsLoading(false);
-            // New run, new step numbers: breakpoints are worked out again.
             refreshBreakpoints(registry.id);
             if (pendingLoadsRef.current > 0) {
                 pendingLoadsRef.current -= 1;
@@ -263,10 +259,35 @@ function WorkerCanvas({
                     </LoaderOverlay>
                 )}
                 <canvas ref={canvasRef} />
-                {overlay}
             </Sizer>
         </Container>
     );
 }
 
-export default WorkerCanvas;
+type OptionsSelector = (state: RootState) => Record<string, unknown>;
+
+/** A category's panel visualizer: its input from the store, drawn by its worker. */
+export function workerVisualizer(
+    category: CategoryId,
+    loaderLabel: string,
+    selectOptions?: OptionsSelector
+): ComponentType<VisualizerProps> {
+    const selectInput = (state: RootState): unknown =>
+        state.play.inputs[category].value;
+    const selectNoOptions = (): undefined => undefined;
+
+    function CategoryVisualizer(props: VisualizerProps): JSX.Element {
+        const input = useSelector(selectInput);
+        const options = useSelector(selectOptions ?? selectNoOptions);
+        return (
+            <WorkerCanvas
+                {...props}
+                workerName={CATEGORY_DATA[category].worker}
+                input={input}
+                options={options}
+                loaderLabel={loaderLabel}
+            />
+        );
+    }
+    return CategoryVisualizer;
+}

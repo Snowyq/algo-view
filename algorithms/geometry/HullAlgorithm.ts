@@ -1,17 +1,10 @@
 import type { Point, PointsInput } from "../../utils/pointsInput";
-import { Algorithm } from "../Algorithm";
-import type {
-    AlgorithmInstructions,
-    StepAlgorithm,
-    StepMetrics,
-} from "../types";
+import { RecordedAlgorithm, type StepOptions } from "../RecordedAlgorithm";
+import type { StepMetrics } from "../types";
 
 /*
- * Convex hull of a point set. Every algorithm boils down to orientation
- * tests: does c lie left of the line a → b? Steps record those tests,
- * plus the current hull candidate as a list of segments and which points
- * are already known to be inside. Arrays are shared between steps until
- * they change, so long runs stay cheap.
+ * Convex hull. Every algorithm boils down to orientation tests (is c left
+ * of a -> b?). Steps share their arrays until they change, so long runs stay cheap.
  */
 
 export type HullStepType =
@@ -32,7 +25,7 @@ export type HullStep = {
     a: number;
     b: number;
     c: number;
-    /** Test result: c is strictly left of a → b (counter-clockwise). */
+    /** Test result: c is strictly left of a -> b (counter-clockwise). */
     ok: boolean;
     /** Flattened segment pairs of the current candidate. */
     lines: Int16Array;
@@ -45,14 +38,11 @@ export type HullStep = {
 
 export type HullState = HullStep;
 
-type StepOptions = { instructionId?: string[] };
-
-export abstract class HullAlgorithm
-    extends Algorithm
-    implements StepAlgorithm<HullStep, HullState>
-{
+export abstract class HullAlgorithm extends RecordedAlgorithm<
+    HullStep,
+    HullState
+> {
     points: Point[];
-    steps: HullStep[] = [];
     private lines = new Int16Array(0);
     private status: Uint8Array;
     private closed = false;
@@ -63,8 +53,7 @@ export abstract class HullAlgorithm
     };
 
     constructor(input: PointsInput, options: Record<string, unknown> = {}) {
-        super();
-        this.options = options;
+        super(options);
         this.points = input.points;
         this.status = new Uint8Array(input.points.length);
         this.emit("initial", -1, -1, -1, false, {});
@@ -79,8 +68,6 @@ export abstract class HullAlgorithm
 
     /** Returns the hull vertices in order. */
     protected abstract run(): number[];
-
-    // ---------- Geometry ----------
 
     /** Cross product in math orientation (screen y flipped). */
     protected cross(a: number, b: number, c: number): number {
@@ -108,8 +95,6 @@ export abstract class HullAlgorithm
         this.emit("test", a, b, c, value > 0, options);
         return value;
     }
-
-    // ---------- State ----------
 
     protected setChain(chain: number[], closed = false): void {
         const pairs: number[] = [];
@@ -146,8 +131,6 @@ export abstract class HullAlgorithm
         ok: boolean,
         { instructionId }: StepOptions
     ): void {
-        const metrics: StepMetrics = {};
-        for (const k in this.metrics) metrics[k] = { ...this.metrics[k] };
         this.steps.push({
             type,
             a,
@@ -158,29 +141,37 @@ export abstract class HullAlgorithm
             status: this.status,
             closed: this.closed,
             instructionId,
-            metrics,
+            metrics: this.metricsSnapshot(),
         });
     }
 
-    // ---------- Replay API ----------
-
-    getStepsLength(): number {
-        return this.steps.length;
-    }
-
-    getStepByIndex(index: number): HullStep | undefined {
-        return this.steps[index];
-    }
-
-    getMetrics(): StepMetrics {
-        return this.steps[this.steps.length - 1]?.metrics ?? this.metrics;
+    /** Pops points that do not turn left, then pushes i. `done` is drawn before the chain. */
+    protected pushTurningLeft(
+        chain: number[],
+        i: number,
+        done: number[],
+        [testId, popId, pushId]: [string, string, string]
+    ): void {
+        while (chain.length >= 2) {
+            const turn = this.test(
+                chain[chain.length - 2],
+                chain[chain.length - 1],
+                i,
+                { instructionId: [testId] }
+            );
+            if (turn > 0) break;
+            const dropped = chain.pop()!;
+            if (!done.includes(dropped)) this.mark(dropped, POINT_INSIDE);
+            this.setChain([...done, ...chain]);
+            this.emit("pop", dropped, -1, i, false, { instructionId: [popId] });
+        }
+        chain.push(i);
+        this.mark(i, POINT_HULL);
+        this.setChain([...done, ...chain]);
+        this.emit("push", i, -1, -1, true, { instructionId: [pushId] });
     }
 
     getStateByStepsIndex(index: number): HullState {
-        return this.steps[Math.max(0, Math.min(index, this.steps.length - 1))];
-    }
-
-    static getInstructions(): AlgorithmInstructions {
-        return {};
+        return this.steps[this.clampStep(index)];
     }
 }

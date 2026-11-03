@@ -1,8 +1,8 @@
 import type { AlgorithmInstructions } from "../types";
 import { FindAlgorithm } from "./FindAlgorithm";
 
-/* Guesses the position from the value, like opening a dictionary near
-   "S". Brilliant on evenly spread data, poor on skewed data. */
+// Guesses the position from the value. Great on evenly spread data,
+// poor on skewed data.
 export class InterpolationSearch extends FindAlgorithm {
     search(): void {
         const a = this.values;

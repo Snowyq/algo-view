@@ -1,7 +1,5 @@
 "use client";
 
-import { arrive } from "../play/pixel/fx/pageTransition";
-import { ditherReveal, hideForReveal } from "./ditherReveal";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -9,8 +7,10 @@ import { JSX, useEffect, useRef } from "react";
 import styled from "styled-components";
 import PlayTheme from "../../styles/PlayTheme";
 import { setFx, useFx } from "../play/pixel/fx/fxStore";
+import { arrive } from "../play/pixel/fx/pageTransition";
 import AlgorithmRail from "./AlgorithmRail";
 import BuildLog from "./BuildLog";
+import { ditherReveal, hideForReveal } from "./ditherReveal";
 import FinalCta from "./FinalCta";
 import Hero from "./Hero";
 import LandingGlobal from "./LandingGlobal";
@@ -49,27 +49,18 @@ const SkipLink = styled.a`
     }
 `;
 
-/*
- * Landing page, same "Bitmap Instrument" world as /play: pixel type and
- * frames, step colors as the only accents, motion in discrete steps.
- * Story: wordmark → scroll scrubs a sort → the algorithms → the pace
- * animals → how it is built → open the playground.
- */
 function Landing(): JSX.Element {
-    // Arrived through the pixel page transition: clear its cover.
-    useEffect(() => arrive(), []);
     const rootRef = useRef<HTMLElement | null>(null);
     const ready = useFx((fx) => fx.introDone);
     useSmoothScroll();
 
-    useEffect(
-        () => () => {
-            setFx({ introDone: false });
-        },
-        []
-    );
+    useEffect(() => {
+        // Clears the cover left by the pixel page transition.
+        arrive();
+        return () => setFx({ introDone: false });
+    }, []);
 
-    // Section headings dither in word by word as they arrive, once.
+    // Section headings dither in word by word, once.
     useGSAP(
         () => {
             if (!ready) return;

@@ -4,9 +4,8 @@ import { StringAlgorithm } from "./StringAlgorithm";
 const BASE = 31;
 const MOD = 101;
 
-/* Compares a rolling hash of each window with the pattern's hash, and
-   only checks letters when the hashes agree. A small modulus here makes
-   the occasional false alarm visible. */
+// Compares rolling window hashes and only checks letters when they agree.
+// The small modulus keeps the occasional false alarm visible.
 export class RabinKarp extends StringAlgorithm {
     tableOn = "text" as const;
 

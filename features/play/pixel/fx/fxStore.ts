@@ -1,16 +1,14 @@
 import { useSyncExternalStore } from "react";
+import { createSignal } from "../../externalStore";
 
-/*
- * Purely visual, cross-component state (easter eggs, intro, scrubbing).
- * Kept out of Redux: nothing here changes what the algorithms do.
- */
+/* Visual-only shared state (easter eggs, intro, scrubbing), kept out of Redux. */
 
 export type FxState = {
     /** Konami palette is active. */
     rainbow: boolean;
-    /** Timestamp of the last parade request (0 = none). */
+    /** Time of the last parade request, 0 for none. */
     paradeAt: number;
-    /** The intro has finished (or was skipped); UI may choreograph in. */
+    /** Intro finished or skipped. */
     introDone: boolean;
     /** The timeline is being dragged. */
     scrubbing: boolean;
@@ -26,7 +24,7 @@ let state: FxState = {
     helpOpen: false,
 };
 
-const listeners = new Set<() => void>();
+const changes = createSignal();
 
 export function setFx(patch: Partial<FxState>): void {
     const next = { ...state, ...patch };
@@ -35,21 +33,16 @@ export function setFx(patch: Partial<FxState>): void {
     );
     if (!changed) return;
     state = next;
-    listeners.forEach((listener) => listener());
+    changes.emit();
 }
 
 export function getFx(): FxState {
     return state;
 }
 
-function subscribe(listener: () => void): () => void {
-    listeners.add(listener);
-    return () => listeners.delete(listener);
-}
-
 export function useFx<T>(select: (fx: FxState) => T): T {
     return useSyncExternalStore(
-        subscribe,
+        changes.subscribe,
         () => select(state),
         () => select(state)
     );

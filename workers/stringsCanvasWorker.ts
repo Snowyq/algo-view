@@ -1,37 +1,34 @@
 import type { StringAlgorithm } from "../algorithms/strings/StringAlgorithm";
 import type { TextInput } from "../utils/textInput";
 import { createCanvasWorker, type DescribeApi } from "./runtime/canvasWorker";
+import { DARK, highlight, LIT_SOFT, monoFont } from "./runtime/draw";
 
 /*
- * Pattern matching: the text as a row of letter tiles, the pattern
- * underneath at its current alignment, letters lighting green or red as
- * they are compared, found occurrences glowing in the text, and the
- * helper table (prefix / skip / hash / Z) filling in under its row.
- * Tiles stay readable: when the text is wider than the panel, a camera
- * keeps the pattern centred and a strip on top shows the whole text.
+ * Pattern matching: text tiles on top, the pattern below at its alignment,
+ * and the helper table (prefix, skip, hash, Z) under its row. Text wider than
+ * the panel scrolls with the pattern; a strip on top shows all of it.
  */
 
-const LIT = "rgba(255, 255, 255, 0.22)";
 const TABLE_TINT = "rgba(238, 143, 208, 0.18)";
-const DARK = "#1d110b";
 const PAD = 16;
 const MIN_CELL = 24;
 const MAX_CELL = 44;
 
-/* "text[12] 'r' vs pattern[2] 'r': match". */
+/* Spaces show as a middle dot. */
+const glyph = (ch: string | undefined): string =>
+    ch === " " ? "·" : (ch ?? "");
+
 function describeStrings({
     algorithm,
     input,
     step,
 }: DescribeApi<TextInput, StringAlgorithm>): string {
     const state = algorithm.getStateByStepsIndex(step);
-    const show = (ch: string | undefined): string =>
-        ch === " " ? "·" : (ch ?? "");
     switch (state.type) {
         case "initial":
             return `Find "${input.pattern}" in a ${input.text.length}-letter text.`;
         case "compare":
-            return `text[${state.i}] '${show(input.text[state.i])}' vs pattern[${state.j}] '${show(input.pattern[state.j])}': ${state.ok ? "match" : "mismatch"}.`;
+            return `text[${state.i}] '${glyph(input.text[state.i])}' vs pattern[${state.j}] '${glyph(input.pattern[state.j])}': ${state.ok ? "match" : "mismatch"}.`;
         case "shift":
             return `Slide the pattern to position ${state.shift}.`;
         case "match":
@@ -54,13 +51,13 @@ createCanvasWorker<TextInput, StringAlgorithm>({
         const n = text.length;
         const m = pattern.length;
 
-        const tile = color("path-empty", "#2b251f");
+        const tile = color("path-empty");
         const ink = color("label", "#d4cab9");
-        const ok = color("check-true", "#8fdc8a");
-        const bad = color("check-false", "#ff7a68");
-        const found = color("finish", "#5fd6c6");
-        const tableColor = color("select", "#ee8fd0");
-        const patternFill = color("default", "#7a6c5a");
+        const ok = color("check-true");
+        const bad = color("check-false");
+        const found = color("finish");
+        const tableColor = color("select");
+        const patternFill = color("default");
 
         const hasTable = state.tableOn !== "none";
         const rows = hasTable ? 3 : 2;
@@ -102,7 +99,7 @@ createCanvasWorker<TextInput, StringAlgorithm>({
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         const font = (px: number): void => {
-            ctx.font = `bold ${px}px ui-monospace, monospace`;
+            ctx.font = monoFont(px);
         };
         const letterPx = Math.max(10, Math.floor(cell * 0.6));
 
@@ -115,15 +112,12 @@ createCanvasWorker<TextInput, StringAlgorithm>({
         ): void => {
             ctx.fillStyle = fill;
             ctx.fillRect(x, yy, size, size);
-            if (fill !== tile) {
-                ctx.fillStyle = LIT;
-                ctx.fillRect(x, yy, size, 2);
-            }
+            if (fill !== tile) highlight(ctx, x, yy, size, 2, LIT_SOFT);
             ctx.fillStyle = fg;
             ctx.fillText(label, x + size / 2, yy + size / 2 + 1);
         };
 
-        // Overview strip: the whole text, matches, and the camera window.
+        // Overview strip: whole text, matches and the visible window.
         if (scrolling) {
             const unit = Math.max(2, Math.floor(usableW / n));
             const sx = Math.floor((width - unit * n) / 2);
@@ -143,10 +137,15 @@ createCanvasWorker<TextInput, StringAlgorithm>({
         for (let i = start; i < Math.min(start + visible, shown); i += 1) {
             let fill = inMatch[i] ? found : tile;
             if (comparing && state.i === i) fill = state.ok ? ok : bad;
-            const ch = text[i] === " " ? "·" : text[i];
-            drawTile(xOf(i), y, fill, ch, fill === tile ? ink : DARK);
+            drawTile(
+                xOf(i),
+                y,
+                fill,
+                glyph(text[i]),
+                fill === tile ? ink : DARK
+            );
         }
-        // More text off-screen: small pixel chevrons at the edges.
+        // Chevrons at the edges when text continues off-screen.
         if (scrolling) {
             ctx.fillStyle = ink;
             const mid = y + size / 2;
@@ -216,7 +215,7 @@ createCanvasWorker<TextInput, StringAlgorithm>({
                     y,
                     fill,
                     pattern[j],
-                    fill === patternFill ? color("fg", "#f4ede0") : DARK
+                    fill === patternFill ? color("fg") : DARK
                 );
             }
         }

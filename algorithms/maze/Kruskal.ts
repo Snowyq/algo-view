@@ -1,8 +1,8 @@
 import type { AlgorithmInstructions } from "../types";
 import { MazeAlgorithm } from "./MazeAlgorithm";
 
-/* Every room starts as its own island; walls are knocked down in random
-   order whenever they separate two different islands (union-find). */
+/* Knocks down walls in random order whenever they separate two different
+   sets of rooms (union-find). */
 export class Kruskal extends MazeAlgorithm {
     generate(): void {
         const rooms = this.rooms();

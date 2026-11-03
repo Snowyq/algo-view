@@ -1,11 +1,12 @@
 import type { AlgorithmInstructions } from "../types";
 import { FillAlgorithm } from "./FillAlgorithm";
 
-/* Paints whole horizontal runs at once, then seeds only one cell per run
-   in the rows above and below. Far fewer pushes and a tiny stack: the
-   way paint programs actually do it. */
+/* Paints whole horizontal runs, then seeds one cell per run in the rows
+   above and below. Few pushes, tiny stack: what paint programs do. */
 export class ScanlineFill extends FillAlgorithm {
     protected run(): void {
+        const unpainted = (x: number, y: number): boolean =>
+            this.open(x, y) && this.marks[this.at(x, y)] <= 0;
         const stack = [this.start];
         this.push(this.start);
         while (stack.length) {
@@ -15,16 +16,8 @@ export class ScanlineFill extends FillAlgorithm {
             const [x0, y] = this.xy(seed);
             let left = x0;
             let right = left;
-            while (
-                this.open(left - 1, y) &&
-                this.marks[this.at(left - 1, y)] <= 0
-            )
-                left -= 1;
-            while (
-                this.open(right + 1, y) &&
-                this.marks[this.at(right + 1, y)] <= 0
-            )
-                right += 1;
+            while (unpainted(left - 1, y)) left -= 1;
+            while (unpainted(right + 1, y)) right += 1;
             for (let x = left; x <= right; x += 1) this.paint(this.at(x, y));
             for (const ny of [y - 1, y + 1]) {
                 let inRun = false;

@@ -1,6 +1,6 @@
 "use client";
 
-import { JSX, useCallback, useEffect, useRef } from "react";
+import { JSX, useCallback, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import styled from "styled-components";
 import {
@@ -10,17 +10,7 @@ import {
 import useReducedMotion from "../../../hooks/useReducedMotion";
 import type { AppDispatch, RootState } from "../../../store";
 import PlayTheme from "../../../styles/PlayTheme";
-import {
-    applyInput,
-    changeCategory,
-    setInputValue,
-    changeSpeed,
-    closeAllAlgorithms,
-    getSidebarOpen,
-    openAlgorithm,
-    setOverviewOpen,
-    setSidebarOpen,
-} from "../playSlice";
+import { getSidebarOpen, setSidebarOpen } from "../playSlice";
 import PanelGrid from "./canvas/PanelGrid";
 import { getFx, setFx, useFx } from "./fx/fxStore";
 import { setRainbow } from "./fx/rainbow";
@@ -31,7 +21,7 @@ import CategoryOverview from "./overview/CategoryOverview";
 import Inspector from "./inspector/Inspector";
 import PixelIntro from "./intro/PixelIntro";
 import Library from "./library/Library";
-import { parseShareUrl } from "./share/shareState";
+import useSharedSetup from "./share/useSharedSetup";
 import Timeline from "./timeline/Timeline";
 import Toolbar from "./toolbar/Toolbar";
 import useShortcuts from "./useShortcuts";
@@ -45,6 +35,9 @@ const Scope = styled.div`
     color: var(--fg-2);
 `;
 
+const inspectorColumn = ({ $inspector }: { $inspector: boolean }): string =>
+    $inspector ? "var(--inspector-w)" : "0px";
+
 const Shell = styled.div<{ $inspector: boolean }>`
     position: fixed;
     inset: 0;
@@ -56,21 +49,16 @@ const Shell = styled.div<{ $inspector: boolean }>`
     grid-template-columns:
         var(--library-w)
         minmax(0, 1fr)
-        ${({ $inspector }) => ($inspector ? "var(--inspector-w)" : "0px")};
+        ${inspectorColumn};
     grid-template-rows: auto minmax(0, 1fr) auto;
     overflow: hidden;
     background-color: var(--bg);
-    font-family: var(--f-body);
-    font-size: 1.5rem;
-    line-height: 1.45;
-    color: var(--fg-2);
 
     & > [data-toolbar] {
         grid-area: toolbar;
     }
 
-    /* Entrance, once the intro has gone: the chrome dithers in, then the
-       algorithm rows one after another. */
+    /* after the intro: chrome dithers in, then the algorithm rows one by one */
     &[data-enter="true"] > [data-toolbar],
     &[data-enter="true"] > [data-dock] {
         animation: px-dither-in 260ms both;
@@ -94,13 +82,12 @@ const Shell = styled.div<{ $inspector: boolean }>`
         grid-area: dock;
     }
 
-    /* No sidebar here (its lists live in the toolbar), so the panels and
-       Details share the width side by side. */
+    /* no sidebar here; its lists live in the toolbar */
     @media (max-width: ${LIBRARY_COLLAPSE}) {
         grid-template-columns:
             0px
             minmax(0, 1fr)
-            ${({ $inspector }) => ($inspector ? "var(--inspector-w)" : "0px")};
+            ${inspectorColumn};
     }
 
     @media (max-width: ${PLAY_LAYOUT_BREAKPOINT}) {
@@ -113,61 +100,24 @@ const Shell = styled.div<{ $inspector: boolean }>`
     }
 `;
 
-/* Load a shared setup from the URL once, before the first render settles. */
-function useSharedSetup(): void {
-    const dispatch = useDispatch<AppDispatch>();
-    useEffect(() => {
-        const setup = parseShareUrl(window.location.search);
-        // A bare /play starts at the category overview.
-        if (!setup) {
-            dispatch(setOverviewOpen(true));
-            return;
-        }
-        // Category first: switching it clears the open algorithms.
-        dispatch(changeCategory(setup.category));
-        if (setup.input) {
-            const { category, config, value } = setup.input;
-            dispatch(
-                applyInput({ category, config } as Parameters<
-                    typeof applyInput
-                >[0])
-            );
-            // A hand-edited input (e.g. a drawn map) replaces the recipe's.
-            if (value !== undefined) {
-                dispatch(
-                    setInputValue({ category, value } as Parameters<
-                        typeof setInputValue
-                    >[0])
-                );
-            }
-        }
-        if (setup.speed) dispatch(changeSpeed(setup.speed));
-        if (setup.algorithms) {
-            dispatch(closeAllAlgorithms());
-            setup.algorithms.forEach((id) => dispatch(openAlgorithm(id)));
-        }
-    }, [dispatch]);
-}
-
 function PlayShell(): JSX.Element {
     const dispatch = useDispatch<AppDispatch>();
     const inspectorOpen = useSelector<RootState, boolean>(getSidebarOpen);
     const introDone = useFx((fx) => fx.introDone);
     const reduced = useReducedMotion();
-    const shellRef = useRef<HTMLDivElement | null>(null);
 
     useSharedSetup();
-    // Arrived through the pixel page transition: clear its cover.
+    // clear the page transition cover, if we arrived through one
     useEffect(() => arrive(), []);
     useShortcuts();
 
-    // Small screens start with the Inspector closed (it is a bottom sheet).
+    // small screens start with the inspector (a bottom sheet) closed
     useEffect(() => {
         const breakpoint = Number.parseInt(PLAY_LAYOUT_BREAKPOINT, 10);
         if (window.innerWidth < breakpoint) dispatch(setSidebarOpen(false));
     }, [dispatch]);
 
-    // Leaving /play: drop route-only state so a return starts clean.
+    // leaving /play: reset route-only state so a return starts clean
     useEffect(
         () => () => {
             setRainbow(false);
@@ -187,7 +137,6 @@ function PlayShell(): JSX.Element {
         <Scope>
             <PlayTheme />
             <Shell
-                ref={shellRef}
                 $inspector={inspectorOpen}
                 data-enter={introDone && !reduced}
             >

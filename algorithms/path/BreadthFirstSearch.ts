@@ -1,12 +1,12 @@
 import type { AlgorithmInstructions } from "../types";
 import { PathAlgorithm } from "./PathAlgorithm";
 
-/* Ring by ring from the start: the first time it reaches the end is the
-   fewest-steps route (it ignores mud). */
+/* Ring by ring, so the first hit on the end is the fewest-steps route
+   (ignores mud). */
 export class BreadthFirstSearch extends PathAlgorithm {
     search(): void {
         const { start, end } = this.grid;
-        const cameFrom = new Int32Array(this.size).fill(-1);
+        const cameFrom = this.emptyCameFrom();
         const seen = new Uint8Array(this.size);
         const queue: number[] = [start];
         let head = 0;

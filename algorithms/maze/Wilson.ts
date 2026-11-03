@@ -1,8 +1,8 @@
 import type { AlgorithmInstructions } from "../types";
 import { MARK_NONE, MARK_WALK, MazeAlgorithm } from "./MazeAlgorithm";
 
-/* Random walks from a fresh room until they hit the maze, erasing any
-   loop they make on the way. Slow to start, perfectly unbiased. */
+/* Loop-erased random walks from new rooms until they hit the maze.
+   Unbiased, slow to start. */
 export class Wilson extends MazeAlgorithm {
     generate(): void {
         const rooms = this.rooms();

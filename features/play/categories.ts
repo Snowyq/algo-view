@@ -1,43 +1,31 @@
-import type { UnknownAction } from "@reduxjs/toolkit";
+import { createSelector, type UnknownAction } from "@reduxjs/toolkit";
 import type { ComponentType } from "react";
 import type { AlgorithmMetrics } from "../../algorithms/types";
 import type { RootState } from "../../store";
 import { randomSeed } from "../../utils/randoms";
-import FillVisualizerCanvas from "./FillVisualizerCanvas";
-import LifeVisualizerCanvas from "./LifeVisualizerCanvas";
-import LifeInputPanel from "./pixel/inspector/LifeInputPanel";
-import FillInputPanel from "./pixel/inspector/FillInputPanel";
-import FindVisualizerCanvas from "./FindVisualizerCanvas";
-import GeometryVisualizerCanvas from "./GeometryVisualizerCanvas";
-import GeometryInputPanel from "./pixel/inspector/GeometryInputPanel";
-import GraphVisualizerCanvas from "./GraphVisualizerCanvas";
-import GraphInputPanel from "./pixel/inspector/GraphInputPanel";
-import PathVisualizerCanvas from "./PathVisualizerCanvas";
-import DpVisualizerCanvas from "./DpVisualizerCanvas";
-import DpInputPanel from "./pixel/inspector/DpInputPanel";
-import FindInputPanel from "./pixel/inspector/FindInputPanel";
-import MazeInputPanel from "./pixel/inspector/MazeInputPanel";
-import MazeVisualizerCanvas from "./MazeVisualizerCanvas";
-import { solveMazeActions } from "./mazeBridge";
-import InputPanel from "./pixel/inspector/InputPanel";
-import PathInputPanel from "./pixel/inspector/PathInputPanel";
-import type { IconName } from "./pixel/primitives/icons";
-import { applyInput } from "./playSlice";
-import SortVisualizerCanvas from "./SortVisualizerCanvas";
-import TreeVisualizerCanvas from "./TreeVisualizerCanvas";
-import TreeInputPanel from "./pixel/inspector/TreeInputPanel";
-import StringsVisualizerCanvas from "./StringsVisualizerCanvas";
-import StringsInputPanel from "./pixel/inspector/StringsInputPanel";
-import { LEGEND_ORDER } from "./stepLegend";
 import { CATEGORY_PREVIEW as PREVIEW } from "./categoryPreview";
-import type { VisualizerProps } from "./WorkerCanvas";
+import { formatNumber } from "./format";
+import { solveMazeActions } from "./mazeBridge";
+import DpInputPanel from "./pixel/inspector/DpInputPanel";
+import FillInputPanel from "./pixel/inspector/FillInputPanel";
+import FindInputPanel from "./pixel/inspector/FindInputPanel";
+import GeometryInputPanel from "./pixel/inspector/GeometryInputPanel";
+import GraphInputPanel from "./pixel/inspector/GraphInputPanel";
+import InputPanel from "./pixel/inspector/InputPanel";
+import LifeInputPanel from "./pixel/inspector/LifeInputPanel";
+import MazeInputPanel from "./pixel/inspector/MazeInputPanel";
+import PathInputPanel from "./pixel/inspector/PathInputPanel";
+import StringsInputPanel from "./pixel/inspector/StringsInputPanel";
+import TreeInputPanel from "./pixel/inspector/TreeInputPanel";
+import type { IconName } from "./pixel/primitives/icons";
+import { applyInput, getDefaultStepTypes } from "./playSlice";
+import { LEGEND_ORDER } from "./stepLegend";
+import { workerVisualizer, type VisualizerProps } from "./WorkerCanvas";
 
 /*
- * Everything the UI needs to know about a category, in one place.
- * Adding a category = an algorithm family + a worker + one entry here;
- * the library, panels, inspector, toolbar, legend, empty state and the
- * G shortcut all read from this list. Inputs, workers and share links
- * live on the data side: algorithms/categoryData.ts.
+ * UI side of every category; the library, panels, inspector, toolbar,
+ * legend and empty state all read from this list. The data side (inputs,
+ * workers, share links) lives in algorithms/categoryData.ts.
  */
 
 type PlayState = RootState["play"];
@@ -48,9 +36,7 @@ export type CategoryDef = {
     icon: IconName;
     Visualizer: ComponentType<VisualizerProps>;
     InputPanel: ComponentType;
-    /** Smallest panel (CSS px, header included) that still reads well.
-        The grid adds columns while panels stay this wide, and scrolls
-        instead of squashing them below this height. */
+    /** Smallest panel (CSS px, header included) that still reads well. */
     panel: { minWidth: number; minHeight: number };
     /** Tiny pixel preview (see categoryPreview.ts). */
     motif: string[];
@@ -60,7 +46,6 @@ export type CategoryDef = {
     /** Badge text when a run ends well / badly. */
     doneLabel: string;
     failLabel: (totals: AlgorithmMetrics | null) => string;
-    loaderLabel: string;
     /** Toolbar chip: short bold label + detail. */
     chip: (play: PlayState) => { label: string; detail: string };
     /** Facts about the current input for the Info tab. */
@@ -73,7 +58,16 @@ export type CategoryDef = {
     };
 };
 
-const format = new Intl.NumberFormat("en-US");
+// Sorts only record the step types they are told to.
+const selectSortOptions = createSelector(
+    [getDefaultStepTypes],
+    (stepTypes) => ({
+        stepTypes,
+    })
+);
+
+const gridSize = ({ cols, rows }: { cols: number; rows: number }): string =>
+    `${cols}×${rows}`;
 
 const PRESET_NAMES: Record<string, string> = {
     random: "random",
@@ -89,7 +83,7 @@ export const CATEGORIES: CategoryDef[] = [
         id: "sort",
         label: "Sort",
         icon: "metrics",
-        Visualizer: SortVisualizerCanvas,
+        Visualizer: workerVisualizer("sort", "Sorting", selectSortOptions),
         InputPanel,
         panel: { minWidth: 260, minHeight: 220 },
         motif: PREVIEW.sort.motif,
@@ -102,20 +96,19 @@ export const CATEGORIES: CategoryDef[] = [
         },
         doneLabel: "Sorted",
         failLabel: () => "Gave up",
-        loaderLabel: "Sorting",
         chip: ({ inputs: { sort } }) => ({
             label: PRESET_NAMES[sort.config.preset] ?? sort.config.preset,
             detail: `n=${sort.config.length} ${sort.config.min}–${sort.config.max}`,
         }),
         runFacts: ({ inputs: { sort } }) => [
-            { name: "Input size", value: format.format(sort.value.length) },
+            { name: "Input size", value: formatNumber(sort.value.length) },
         ],
     },
     {
         id: "path",
         label: "Path",
         icon: "share",
-        Visualizer: PathVisualizerCanvas,
+        Visualizer: workerVisualizer("path", "Searching"),
         InputPanel: PathInputPanel,
         panel: { minWidth: 300, minHeight: 260 },
         motif: PREVIEW.path.motif,
@@ -137,20 +130,19 @@ export const CATEGORIES: CategoryDef[] = [
         },
         doneLabel: "Found",
         failLabel: (totals) => (totals?.noPath?.count ? "No path" : "Gave up"),
-        loaderLabel: "Searching",
         chip: ({ inputs: { path } }) => ({
             label: path.edited ? "edited map" : path.config.preset,
-            detail: `${path.value.cols}×${path.value.rows}`,
+            detail: gridSize(path.value),
         }),
         runFacts: ({ inputs: { path } }) => [
-            { name: "Grid", value: `${path.value.cols}×${path.value.rows}` },
+            { name: "Grid", value: gridSize(path.value) },
         ],
     },
     {
         id: "maze",
         label: "Maze",
         icon: "panelLeft",
-        Visualizer: MazeVisualizerCanvas,
+        Visualizer: workerVisualizer("maze", "Carving"),
         InputPanel: MazeInputPanel,
         panel: { minWidth: 280, minHeight: 260 },
         motif: PREVIEW.maze.motif,
@@ -163,13 +155,12 @@ export const CATEGORIES: CategoryDef[] = [
         },
         doneLabel: "Carved",
         failLabel: () => "Gave up",
-        loaderLabel: "Carving",
         chip: ({ inputs: { maze } }) => ({
             label: "maze",
-            detail: `${maze.value.cols}×${maze.value.rows}`,
+            detail: gridSize(maze.value),
         }),
         runFacts: ({ inputs: { maze } }) => [
-            { name: "Grid", value: `${maze.value.cols}×${maze.value.rows}` },
+            { name: "Grid", value: gridSize(maze.value) },
             { name: "Seed", value: maze.config.seed.toString(36) },
         ],
         panelAction: {
@@ -182,7 +173,7 @@ export const CATEGORIES: CategoryDef[] = [
         id: "dp",
         label: "DP",
         icon: "legend",
-        Visualizer: DpVisualizerCanvas,
+        Visualizer: workerVisualizer("dp", "Filling"),
         InputPanel: DpInputPanel,
         panel: { minWidth: 340, minHeight: 300 },
         motif: PREVIEW.dp.motif,
@@ -195,7 +186,6 @@ export const CATEGORIES: CategoryDef[] = [
         },
         doneLabel: "Solved",
         failLabel: () => "No answer",
-        loaderLabel: "Filling",
         chip: ({ inputs: { dp } }) => ({
             label: dp.config.preset,
             detail: `${dp.value.a} · ${dp.value.b}`,
@@ -209,7 +199,7 @@ export const CATEGORIES: CategoryDef[] = [
         id: "life",
         label: "Life",
         icon: "glider",
-        Visualizer: LifeVisualizerCanvas,
+        Visualizer: workerVisualizer("life", "Seeding"),
         InputPanel: LifeInputPanel,
         panel: { minWidth: 260, minHeight: 240 },
         motif: PREVIEW.life.motif,
@@ -222,13 +212,12 @@ export const CATEGORIES: CategoryDef[] = [
         },
         doneLabel: "Evolved",
         failLabel: () => "Died out",
-        loaderLabel: "Seeding",
         chip: ({ inputs: { life } }) => ({
             label: life.config.preset,
-            detail: `${life.value.cols}×${life.value.rows}`,
+            detail: gridSize(life.value),
         }),
         runFacts: ({ inputs: { life } }) => [
-            { name: "Grid", value: `${life.value.cols}×${life.value.rows}` },
+            { name: "Grid", value: gridSize(life.value) },
             { name: "Start", value: life.config.preset },
         ],
     },
@@ -236,7 +225,7 @@ export const CATEGORIES: CategoryDef[] = [
         id: "fill",
         label: "Fill",
         icon: "bucket",
-        Visualizer: FillVisualizerCanvas,
+        Visualizer: workerVisualizer("fill", "Pouring"),
         InputPanel: FillInputPanel,
         panel: { minWidth: 260, minHeight: 240 },
         motif: PREVIEW.fill.motif,
@@ -249,13 +238,12 @@ export const CATEGORIES: CategoryDef[] = [
         },
         doneLabel: "Filled",
         failLabel: () => "Stuck",
-        loaderLabel: "Pouring",
         chip: ({ inputs: { fill } }) => ({
             label: fill.config.preset,
-            detail: `${fill.value.cols}×${fill.value.rows}`,
+            detail: gridSize(fill.value),
         }),
         runFacts: ({ inputs: { fill } }) => [
-            { name: "Bitmap", value: `${fill.value.cols}×${fill.value.rows}` },
+            { name: "Bitmap", value: gridSize(fill.value) },
             { name: "Layout", value: fill.config.preset },
         ],
     },
@@ -263,7 +251,7 @@ export const CATEGORIES: CategoryDef[] = [
         id: "geometry",
         label: "Hull",
         icon: "hull",
-        Visualizer: GeometryVisualizerCanvas,
+        Visualizer: workerVisualizer("geometry", "Wrapping"),
         InputPanel: GeometryInputPanel,
         panel: { minWidth: 280, minHeight: 260 },
         motif: PREVIEW.geometry.motif,
@@ -282,7 +270,6 @@ export const CATEGORIES: CategoryDef[] = [
         },
         doneLabel: "Wrapped",
         failLabel: () => "Stuck",
-        loaderLabel: "Wrapping",
         chip: ({ inputs: { geometry } }) => ({
             label: `${geometry.value.points.length} points`,
             detail: geometry.config.preset,
@@ -296,7 +283,7 @@ export const CATEGORIES: CategoryDef[] = [
         id: "tree",
         label: "Trees",
         icon: "tree",
-        Visualizer: TreeVisualizerCanvas,
+        Visualizer: workerVisualizer("tree", "Planting"),
         InputPanel: TreeInputPanel,
         panel: { minWidth: 340, minHeight: 300 },
         motif: PREVIEW.tree.motif,
@@ -315,7 +302,6 @@ export const CATEGORIES: CategoryDef[] = [
         },
         doneLabel: "Built",
         failLabel: () => "Stuck",
-        loaderLabel: "Planting",
         chip: ({ inputs: { tree } }) => ({
             label: `${tree.value.keys.length} keys`,
             detail: tree.config.preset,
@@ -329,7 +315,7 @@ export const CATEGORIES: CategoryDef[] = [
         id: "graph",
         label: "Graph",
         icon: "graph",
-        Visualizer: GraphVisualizerCanvas,
+        Visualizer: workerVisualizer("graph", "Wiring"),
         InputPanel: GraphInputPanel,
         panel: { minWidth: 340, minHeight: 280 },
         motif: PREVIEW.graph.motif,
@@ -349,7 +335,6 @@ export const CATEGORIES: CategoryDef[] = [
         },
         doneLabel: "Done",
         failLabel: () => "Stuck",
-        loaderLabel: "Wiring",
         chip: ({ inputs: { graph } }) => ({
             label: `${graph.value.nodes.length} nodes`,
             detail: `${graph.value.edges.length} edges ${graph.config.preset}`,
@@ -363,7 +348,7 @@ export const CATEGORIES: CategoryDef[] = [
         id: "strings",
         label: "Strings",
         icon: "code",
-        Visualizer: StringsVisualizerCanvas,
+        Visualizer: workerVisualizer("strings", "Matching"),
         InputPanel: StringsInputPanel,
         panel: { minWidth: 380, minHeight: 240 },
         motif: PREVIEW.strings.motif,
@@ -376,7 +361,6 @@ export const CATEGORIES: CategoryDef[] = [
         },
         doneLabel: "Matched",
         failLabel: () => "No match",
-        loaderLabel: "Matching",
         chip: ({ inputs: { strings } }) => ({
             label: `"${strings.value.pattern}"`,
             detail: `n=${strings.value.text.length} ${strings.config.preset}`,
@@ -390,7 +374,7 @@ export const CATEGORIES: CategoryDef[] = [
         id: "find",
         label: "Find",
         icon: "info",
-        Visualizer: FindVisualizerCanvas,
+        Visualizer: workerVisualizer("find", "Searching"),
         InputPanel: FindInputPanel,
         panel: { minWidth: 260, minHeight: 220 },
         motif: PREVIEW.find.motif,
@@ -404,13 +388,12 @@ export const CATEGORIES: CategoryDef[] = [
         doneLabel: "Found",
         failLabel: (totals) =>
             totals?.noPath?.count ? "Not found" : "Gave up",
-        loaderLabel: "Searching",
         chip: ({ inputs: { find } }) => ({
             label: `find ${find.value.target}`,
             detail: `n=${find.value.values.length} ${find.config.preset}`,
         }),
         runFacts: ({ inputs: { find } }) => [
-            { name: "Array", value: format.format(find.value.values.length) },
+            { name: "Array", value: formatNumber(find.value.values.length) },
             { name: "Target", value: String(find.value.target) },
         ],
     },
@@ -420,7 +403,7 @@ export function categoryOf(id: string): CategoryDef {
     return CATEGORIES.find((category) => category.id === id) ?? CATEGORIES[0];
 }
 
-/* G shortcut / "new input": same recipe, fresh seed, any category. */
+/** Same recipe with a fresh seed (G shortcut, "new input"). */
 export function regenerateInput(play: PlayState): UnknownAction {
     const category = play.active.category;
     const { config } = play.inputs[category];

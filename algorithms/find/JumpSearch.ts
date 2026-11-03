@@ -1,8 +1,7 @@
 import type { AlgorithmInstructions } from "../types";
 import { FindAlgorithm } from "./FindAlgorithm";
 
-/* Hops ahead √n at a time until it overshoots, then walks back through
-   that one block. */
+// Hops ahead sqrt(n) at a time until it overshoots, then scans that block.
 export class JumpSearch extends FindAlgorithm {
     search(): void {
         const n = this.values.length;

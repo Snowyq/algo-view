@@ -1,8 +1,4 @@
-/*
- * Re-run the CSS pixel dither (px-dither-in, see styles/dither.ts) on an
- * element that is already on screen, e.g. a panel that moved to a new
- * slot. Restarting a CSS animation needs it removed for one style flush.
- */
+/* Replays px-dither-in on a mounted element (needs one cleared style flush). */
 export function ditherIn(el: HTMLElement, duration = 220): void {
     el.style.animation = "none";
     void el.offsetWidth;

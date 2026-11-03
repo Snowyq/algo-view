@@ -2,8 +2,7 @@ import type { DpInput } from "../../utils/dpInput";
 import type { AlgorithmInstructions } from "../types";
 import { DpAlgorithm, type DpTable } from "./DpAlgorithm";
 
-/* Longest run of letters both words share in order (gaps allowed).
-   Matching letters extend the diagonal; otherwise keep the best so far. */
+// Longest sequence of letters both words share in order (gaps allowed).
 export class LongestCommonSubsequence extends DpAlgorithm {
     protected setup({ a, b }: DpInput): DpTable {
         return {

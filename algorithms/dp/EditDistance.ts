@@ -2,8 +2,7 @@ import type { DpInput } from "../../utils/dpInput";
 import type { AlgorithmInstructions } from "../types";
 import { DpAlgorithm, type DpTable } from "./DpAlgorithm";
 
-/* Levenshtein: fewest single-letter inserts, deletes and swaps to turn
-   one word into the other. Each cell = best edit of two prefixes. */
+// Levenshtein: fewest inserts, deletes and swaps to turn a into b.
 export class EditDistance extends DpAlgorithm {
     protected setup({ a, b }: DpInput): DpTable {
         return {

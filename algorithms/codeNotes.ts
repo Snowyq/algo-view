@@ -1,9 +1,4 @@
-/*
- * Plain-language comments for the code view, keyed by algorithm id and
- * then by the id of the code line they explain (see getInstructions).
- * The code view shows each note as a comment above its line, lit while
- * that line runs, and can hide them all with its Comments toggle.
- */
+/* Notes for the code view: algorithm id -> instruction id -> note. */
 
 export const CODE_NOTES: Record<string, Record<string, string>> = {
     bubbleSort: {
@@ -33,7 +28,7 @@ export const CODE_NOTES: Record<string, Record<string, string>> = {
         g2: "…and the right half.",
         g3: "i walks the left copy, j the right copy, k writes back into arr.",
         g4: "While both copies still have values…",
-        g5: "…write the smaller front value back. Ties take the left one, which keeps the sort stable.",
+        g5: "…write the smaller front value back. Ties take the right one, so this version is not stable; <= would fix that.",
         g6: "Left copy has leftovers: they are the largest, append them.",
         g7: "Same for leftovers on the right.",
     },

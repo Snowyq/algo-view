@@ -1,9 +1,8 @@
 import type { AlgorithmInstructions } from "../types";
 import { NIL, type TagKind, TreeAlgorithm } from "./TreeAlgorithm";
 
-/* A BST on keys and a heap on random priorities at the same time. The
-   new leaf rotates up while its priority beats its parent's, so the
-   shape is that of a random BST whatever the insert order. */
+// BST on keys, heap on fixed pseudo-random priorities: the new leaf rotates
+// up while its priority beats its parent's.
 export class Treap extends TreeAlgorithm {
     get tagKind(): TagKind {
         return "priority";

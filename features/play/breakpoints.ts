@@ -1,11 +1,9 @@
 import { useSyncExternalStore } from "react";
+import { createSignal } from "./externalStore";
 
 /*
- * Breakpoints: code lines of one algorithm where playback should pause.
- * The lines are picked in the code view; that algorithm's canvas worker
- * turns them into the step numbers that run those lines, and the playback
- * clock stops exactly on each of them. Kept outside Redux: it is UI state
- * shared by three distant places (code view, canvas, clock).
+ * Code lines of one algorithm where playback pauses. The canvas worker turns
+ * them into step numbers and the playback clock stops on each of them.
  */
 
 type BreakpointState = {
@@ -17,12 +15,12 @@ type BreakpointState = {
 
 const EMPTY: BreakpointState = { algorithmId: null, lines: [], steps: [] };
 let state: BreakpointState = EMPTY;
-const listeners = new Set<() => void>();
+const changed = createSignal();
 const workers = new Map<string, Worker>();
 
 function set(next: BreakpointState): void {
     state = next;
-    listeners.forEach((listener) => listener());
+    changed.emit();
 }
 
 function request(): void {
@@ -32,8 +30,7 @@ function request(): void {
         ?.postMessage({ type: "line-steps", payload: { ids: state.lines } });
 }
 
-/** Click on a line number: add or remove that line. One algorithm at a
-    time, so picking a line of another algorithm starts over. */
+/** Adds or removes a line; a line of another algorithm starts over. */
 export function toggleBreakpoint(algorithmId: string, line: string): void {
     const same = state.algorithmId === algorithmId;
     const lines = same ? state.lines : [];
@@ -63,8 +60,7 @@ export function receiveBreakpointSteps(
     set({ ...state, steps });
 }
 
-/** Canvas workers register so the store can ask them; a new run (new
-    input) asks again, because the steps move. */
+/** Lets the store ask this algorithm's worker for its line steps. */
 export function registerBreakpointWorker(
     id: string,
     worker: Worker
@@ -75,6 +71,7 @@ export function registerBreakpointWorker(
     };
 }
 
+/** A new run moves the steps, so ask again. */
 export function refreshBreakpoints(id: string): void {
     if (state.algorithmId === id) request();
 }
@@ -83,10 +80,7 @@ export function getBreakpoints(): BreakpointState {
     return state;
 }
 
-export function subscribeBreakpoints(listener: () => void): () => void {
-    listeners.add(listener);
-    return () => listeners.delete(listener);
-}
+export const subscribeBreakpoints = changed.subscribe;
 
 export function useBreakpoints(): BreakpointState {
     return useSyncExternalStore(

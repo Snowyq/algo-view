@@ -1,18 +1,15 @@
 import type { LifeInput } from "../../utils/lifeInput";
-import { Algorithm } from "../Algorithm";
-import type {
-    AlgorithmInstructions,
-    StepAlgorithm,
-    StepMetrics,
-} from "../types";
+import { GridAlgorithm } from "../GridAlgorithm";
+import type { StepOptions } from "../RecordedAlgorithm";
+import type { AlgorithmInstructions, StepMetrics } from "../types";
 
 /*
- * Cellular automata on a wrapping grid. One step = one generation; every
- * generation is stored whole (grids are small), and a run ends early once
- * the pattern settles into a still life or a period-2 blinker.
+ * Cellular automata on a wrapping grid. One step = one generation, each
+ * stored whole (grids are small). A run stops early once the pattern
+ * settles into a still life or a period-2 oscillator.
  */
 
-export const MAX_GENERATIONS = 150;
+const MAX_GENERATIONS = 150;
 
 export type LifeStepType = "initial" | "generation" | "finish";
 
@@ -28,16 +25,8 @@ export type LifeStep = {
 
 export type LifeState = LifeStep & { previous: Uint8Array };
 
-type StepOptions = { instructionId?: string[] };
-
-export abstract class LifeAlgorithm
-    extends Algorithm
-    implements StepAlgorithm<LifeStep, LifeState>
-{
-    cols: number;
-    rows: number;
-    steps: LifeStep[] = [];
-    /** Free slots for subclasses (fields declared here exist before run). */
+export abstract class LifeAlgorithm extends GridAlgorithm<LifeStep, LifeState> {
+    /* Declared here: setup() runs before subclass fields exist. */
     protected marker = -1;
     protected heading = 0;
     metrics: StepMetrics = {
@@ -47,36 +36,24 @@ export abstract class LifeAlgorithm
     };
 
     constructor(input: LifeInput, options: Record<string, unknown> = {}) {
-        super();
-        this.options = options;
-        this.cols = input.cols;
-        this.rows = input.rows;
+        super(input.cols, input.rows, options);
         this.setup();
         let cells: Uint8Array = Uint8Array.from(input.cells);
-        this.count(cells);
+        this.countAlive(cells);
         this.emit("initial", 0, cells, {});
         for (let g = 1; g <= MAX_GENERATIONS; g += 1) {
             const next = this.next(cells);
-            for (let i = 0; i < next.length; i += 1) {
-                const was = cells[i] === 1;
-                const is = next[i] === 1;
-                if (is && !was) this.metrics.births.count += 1;
-                if (was && !is) this.metrics.deaths.count += 1;
-            }
-            this.count(next);
+            this.countChanges(cells, next);
+            this.countAlive(next);
             this.emit("generation", g, next, { instructionId: ["g"] });
-            const twoBack = this.steps[this.steps.length - 3]?.cells;
-            const settled =
-                this.settles &&
-                (same(next, cells) ||
-                    (twoBack !== undefined && same(next, twoBack)));
+            const settled = this.settles && this.repeats(next, cells);
             cells = next;
             if (settled) break;
         }
         this.emit("finish", this.steps.length - 1, cells, {});
     }
 
-    /* Prototype getters: valid while the base constructor runs. */
+    /* Prototype getter: valid while the base constructor runs. */
     get settles(): boolean {
         return true;
     }
@@ -99,7 +76,25 @@ export abstract class LifeAlgorithm
         return n;
     }
 
-    private count(cells: Uint8Array): void {
+    /** `next` (already emitted) equals the previous or the one before. */
+    private repeats(next: Uint8Array, previous: Uint8Array): boolean {
+        const twoBack = this.steps[this.steps.length - 3]?.cells;
+        return (
+            same(next, previous) ||
+            (twoBack !== undefined && same(next, twoBack))
+        );
+    }
+
+    private countChanges(before: Uint8Array, after: Uint8Array): void {
+        for (let i = 0; i < after.length; i += 1) {
+            const was = before[i] === 1;
+            const is = after[i] === 1;
+            if (is && !was) this.metrics.births.count += 1;
+            if (was && !is) this.metrics.deaths.count += 1;
+        }
+    }
+
+    private countAlive(cells: Uint8Array): void {
         let alive = 0;
         for (let i = 0; i < cells.length; i += 1)
             if (cells[i] === 1) alive += 1;
@@ -112,40 +107,22 @@ export abstract class LifeAlgorithm
         cells: Uint8Array,
         { instructionId }: StepOptions
     ): void {
-        const metrics: StepMetrics = {};
-        for (const k in this.metrics) metrics[k] = { ...this.metrics[k] };
         this.steps.push({
             type,
             generation,
             cells,
             marker: this.marker,
             instructionId,
-            metrics,
+            metrics: this.metricsSnapshot(),
         });
     }
 
-    // ---------- Replay API ----------
-
-    getStepsLength(): number {
-        return this.steps.length;
-    }
-
-    getStepByIndex(index: number): LifeStep | undefined {
-        return this.steps[index];
-    }
-
-    getMetrics(): StepMetrics {
-        return this.steps[this.steps.length - 1]?.metrics ?? this.metrics;
-    }
-
     getStateByStepsIndex(index: number): LifeState {
-        const k = Math.max(0, Math.min(index, this.steps.length - 1));
-        const step = this.steps[k];
-        return { ...step, previous: this.steps[Math.max(0, k - 1)].cells };
-    }
-
-    static getInstructions(): AlgorithmInstructions {
-        return {};
+        const k = this.clampStep(index);
+        return {
+            ...this.steps[k],
+            previous: this.steps[Math.max(0, k - 1)].cells,
+        };
     }
 }
 
@@ -156,16 +133,16 @@ function same(a: Uint8Array, b: Uint8Array): boolean {
 
 /** Life-like rule "Bxx/Syy": born with xx neighbours, survives with yy. */
 export abstract class LifeLikeRule extends LifeAlgorithm {
-    abstract get born(): number[];
-    abstract get survive(): number[];
+    /* Static so they are set before the base constructor runs. */
+    static born: number[] = [];
+    static survive: number[] = [];
 
     protected next(cells: Uint8Array): Uint8Array {
-        const born = this.born;
-        const survive = this.survive;
+        const { born, survive } = this.constructor as typeof LifeLikeRule;
         const out = new Uint8Array(cells.length);
         for (let y = 0; y < this.rows; y += 1) {
             for (let x = 0; x < this.cols; x += 1) {
-                const i = y * this.cols + x;
+                const i = this.at(x, y);
                 const n = this.neighbours(cells, x, y);
                 out[i] = (cells[i] ? survive : born).includes(n) ? 1 : 0;
             }
@@ -173,10 +150,8 @@ export abstract class LifeLikeRule extends LifeAlgorithm {
         return out;
     }
 
-    static ruleInstructions(
-        born: number[],
-        survive: number[]
-    ): AlgorithmInstructions {
+    static getInstructions(): AlgorithmInstructions {
+        const { born, survive } = this;
         return {
             g: { line: "for every cell: n = live neighbours;", indent: 0 },
             b: { line: `dead and n ∈ {${born.join(",")}} → born;`, indent: 1 },

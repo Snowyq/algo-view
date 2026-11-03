@@ -2,8 +2,7 @@ import type { DpInput } from "../../utils/dpInput";
 import type { AlgorithmInstructions } from "../types";
 import { DpAlgorithm, type DpTable } from "./DpAlgorithm";
 
-/* Longest strictly rising run you can pick from the sequence, in order.
-   lis[i] = 1 + the best lis[j] before it with a smaller value. */
+// lis[i] = 1 + the best lis[j] before i with a smaller value.
 export class LongestIncreasingSubsequence extends DpAlgorithm {
     protected setup({ sequence }: DpInput): DpTable {
         return {

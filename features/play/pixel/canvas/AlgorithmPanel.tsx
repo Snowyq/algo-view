@@ -36,23 +36,20 @@ import {
 import PixelButton from "../primitives/PixelButton";
 import PixelIcon from "../primitives/PixelIcon";
 import PixelTooltip from "../primitives/PixelTooltip";
-import { DICE } from "../primitives/icons";
+import { DICE, type IconName } from "../primitives/icons";
 import { labelText, pixelFrame } from "../primitives/pixel";
 import PixelMetrics from "./PixelMetrics";
 
-/* Clicks on the panel's own controls keep their job; anywhere else follows
-   the algorithm in the Details sidebar (its code and description). */
+/* Clicks on these keep their job; anywhere else opens focus mode. */
 const INTERACTIVE =
     "button, a, input, select, textarea, [role='slider'], [data-no-observe]";
 
-/* Below every category's minimum panel height, so compact mode only
-   kicks in when a panel truly has no room (e.g. a very short window). */
+/* Below every category's minimum, so only truly cramped panels go compact. */
 const COMPACT_MAX_HEIGHT = 200;
 const isCompactPanel = (_w: number, height: number): boolean =>
     height < COMPACT_MAX_HEIGHT;
 
-/* Counters need room to be readable: below this, the picture wins and
-   the numbers wait in focus mode (click the panel). */
+/* Smaller panels hide the counters; focus mode still shows them. */
 const STATS_MIN_HEIGHT = 320;
 const STATS_MIN_WIDTH = 300;
 const isTooSmallForStats = (width: number, height: number): boolean =>
@@ -91,7 +88,7 @@ const Frame = styled.article<{ $observed: boolean }>`
         }
     }
 
-    /* Observed by the Inspector: marching-ants pixel border. */
+    /* Observed by the Inspector: marching-ants border. */
     &::before {
         content: "";
         position: absolute;
@@ -227,8 +224,8 @@ const Actions = styled.div`
     }
 `;
 
-/* What is happening right now, in words. Polite to screen readers only
-   while paused: during playback it would talk non-stop. */
+/* The current step in words. Announced only while paused, or it would
+   talk non-stop during playback. */
 const CaptionLine = styled.p`
     flex: 0 0 auto;
     min-height: 2.2rem;
@@ -320,6 +317,71 @@ function AlgorithmEgg({ id }: { id: string }): JSX.Element | null {
     return null;
 }
 
+type PanelButtonProps = {
+    label: string;
+    tooltip: string;
+    icon: IconName;
+    align?: "end";
+    onClick: () => void;
+};
+
+function PanelButton({
+    label,
+    tooltip,
+    icon,
+    align,
+    onClick,
+}: PanelButtonProps): JSX.Element {
+    return (
+        <PixelTooltip label={tooltip} side="bottom" align={align}>
+            <PixelButton
+                type="button"
+                $variant="ghost"
+                $size="sm"
+                $square
+                aria-label={label}
+                onClick={onClick}
+            >
+                <PixelIcon name={icon} scale={2} />
+            </PixelButton>
+        </PixelTooltip>
+    );
+}
+
+/* True for a moment when `done` turns on: the finish sweep. */
+function useFinishFlash(done: boolean): boolean {
+    const [flash, setFlash] = useState<boolean>(false);
+    const prevDone = useRef<boolean>(done);
+    useEffect(() => {
+        if (done && !prevDone.current) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            setFlash(true);
+            const timer = setTimeout(() => setFlash(false), 600);
+            prevDone.current = done;
+            return () => clearTimeout(timer);
+        }
+        prevDone.current = done;
+    }, [done]);
+    return flash;
+}
+
+/* True for a moment after the input changes (not on mount). */
+function useInputGlitch(input: unknown): boolean {
+    const [glitch, setGlitch] = useState<boolean>(false);
+    const firstInput = useRef<boolean>(true);
+    useEffect(() => {
+        if (firstInput.current) {
+            firstInput.current = false;
+            return;
+        }
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setGlitch(true);
+        const timer = setTimeout(() => setGlitch(false), 140);
+        return () => clearTimeout(timer);
+    }, [input]);
+    return glitch;
+}
+
 type AlgorithmPanelProps = {
     registry: AlgorithmRegistryItem;
 };
@@ -349,7 +411,6 @@ function AlgorithmPanel({ registry }: AlgorithmPanelProps): JSX.Element {
     const frameRef = useRef<HTMLElement | null>(null);
     const compact = useSizeFlag(frameRef, isCompactPanel);
     const statsHidden = useSizeFlag(frameRef, isTooSmallForStats);
-    // Step position feeds every code view of this algorithm.
     const handleStepInfo = useCallback(
         (info: StepInfo | null) => {
             publishStepInfo(id, info);
@@ -358,8 +419,6 @@ function AlgorithmPanel({ registry }: AlgorithmPanelProps): JSX.Element {
         [id]
     );
 
-    // A closed panel takes its breakpoints with it.
-    useEffect(() => () => clearBreakpoints(id), [id]);
     const handleStepMetrics = useCallback(
         (metrics: AlgorithmMetrics | null) => {
             publishStepMetrics(id, metrics);
@@ -371,48 +430,30 @@ function AlgorithmPanel({ registry }: AlgorithmPanelProps): JSX.Element {
         [id]
     );
 
-    // Lit-band sweep the moment the algorithm finishes.
-    const [flash, setFlash] = useState<boolean>(false);
-    const prevDone = useRef<boolean>(done);
-    useEffect(() => {
-        if (done && !prevDone.current) {
-            // eslint-disable-next-line react-hooks/set-state-in-effect
-            setFlash(true);
-            const timer = setTimeout(() => setFlash(false), 600);
-            prevDone.current = done;
-            return () => clearTimeout(timer);
-        }
-        prevDone.current = done;
-    }, [done]);
+    // A closed panel takes its breakpoints with it.
+    useEffect(() => () => clearBreakpoints(id), [id]);
 
-    // Two-frame pixel shift when the input is regenerated.
-    const [glitch, setGlitch] = useState<boolean>(false);
-    const firstInput = useRef<boolean>(true);
-    useEffect(() => {
-        if (firstInput.current) {
-            firstInput.current = false;
-            return;
-        }
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setGlitch(true);
-        const timer = setTimeout(() => setGlitch(false), 140);
-        return () => clearTimeout(timer);
-    }, [input]);
+    const flash = useFinishFlash(done);
+    const glitch = useInputGlitch(input);
 
-    // In focus mode the window owns the controls (back, tabs): the panel
-    // itself is just the picture.
+    // In focus mode the window owns the controls; the panel is just the picture.
     const focused =
         useSelector<RootState, string | null>(getWindowAlgorithmId) === id;
 
-    // Focus mode: this panel alone, with its code, about and stats.
-    const follow = (): void => {
+    const openWindow = (): void => {
         dispatch(openAlgorithmWindow(id));
     };
 
     const handleFrameClick = (event: MouseEvent<HTMLElement>): void => {
         if (focused) return;
         if ((event.target as HTMLElement).closest(INTERACTIVE)) return;
-        follow();
+        openWindow();
+    };
+
+    const runPanelAction = (): void => {
+        def.panelAction
+            ?.run(id, store.getState().play)
+            .forEach((action) => dispatch(action));
     };
 
     return (
@@ -444,53 +485,26 @@ function AlgorithmPanel({ registry }: AlgorithmPanelProps): JSX.Element {
                 </TitleBlock>
                 <Actions hidden={focused}>
                     {def.panelAction && (
-                        <PixelTooltip
-                            label={def.panelAction.label}
-                            side="bottom"
-                        >
-                            <PixelButton
-                                type="button"
-                                $variant="ghost"
-                                $size="sm"
-                                $square
-                                aria-label={`${def.panelAction.label}: ${meta.name}`}
-                                onClick={() =>
-                                    def.panelAction
-                                        ?.run(id, store.getState().play)
-                                        .forEach((action) => dispatch(action))
-                                }
-                            >
-                                <PixelIcon
-                                    name={def.panelAction.icon}
-                                    scale={2}
-                                />
-                            </PixelButton>
-                        </PixelTooltip>
+                        <PanelButton
+                            label={`${def.panelAction.label}: ${meta.name}`}
+                            tooltip={def.panelAction.label}
+                            icon={def.panelAction.icon}
+                            onClick={runPanelAction}
+                        />
                     )}
-                    <PixelTooltip label="Code · About" side="bottom">
-                        <PixelButton
-                            type="button"
-                            $variant="ghost"
-                            $size="sm"
-                            $square
-                            aria-label={`Code and description of ${meta.name}`}
-                            onClick={() => dispatch(openAlgorithmWindow(id))}
-                        >
-                            <PixelIcon name="info" scale={2} />
-                        </PixelButton>
-                    </PixelTooltip>
-                    <PixelTooltip label="Close" side="bottom" align="end">
-                        <PixelButton
-                            type="button"
-                            $variant="ghost"
-                            $size="sm"
-                            $square
-                            aria-label={`Close ${meta.name}`}
-                            onClick={() => dispatch(closeAlgorithm(id))}
-                        >
-                            <PixelIcon name="close" scale={2} />
-                        </PixelButton>
-                    </PixelTooltip>
+                    <PanelButton
+                        label={`Code and description of ${meta.name}`}
+                        tooltip="Code · About"
+                        icon="info"
+                        onClick={openWindow}
+                    />
+                    <PanelButton
+                        label={`Close ${meta.name}`}
+                        tooltip="Close"
+                        icon="close"
+                        align="end"
+                        onClick={() => dispatch(closeAlgorithm(id))}
+                    />
                 </Actions>
             </Header>
             {hasInput && !statsHidden && (

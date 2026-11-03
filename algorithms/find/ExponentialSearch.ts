@@ -1,9 +1,8 @@
 import type { AlgorithmInstructions } from "../types";
 import { FindAlgorithm } from "./FindAlgorithm";
 
-/* Doubles the reach (1, 2, 4, 8…) until it passes the target, then
-   binary searches the last stretch. Great when the target is near the
-   front of a long array. */
+// Doubles the reach until it passes the target, then binary searches
+// the last stretch. Good when the target is near the front.
 export class ExponentialSearch extends FindAlgorithm {
     search(): void {
         const n = this.values.length;

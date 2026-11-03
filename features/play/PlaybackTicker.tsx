@@ -1,11 +1,10 @@
 import { JSX, useEffect, useRef } from "react";
 import { useDispatch, useSelector, useStore } from "react-redux";
 import useRateLimit from "../../hooks/useRateLimit";
-import { getBreakpoints, subscribeBreakpoints } from "./breakpoints";
 import useWorker from "../../hooks/useWorker";
-import { AppDispatch, RootState } from "../../store";
+import type { AppDispatch, RootState } from "../../store";
 import { SharedBufferAPI } from "../../utils/sharedBufferAPI";
-import type { ActiveAlgorithm } from "./playSlice";
+import { getBreakpoints, subscribeBreakpoints } from "./breakpoints";
 import {
     changeStep,
     getActiveAlgorithms,
@@ -15,8 +14,20 @@ import {
     getStep,
     setStepWorkerReady,
     stopAnimation,
+    type ActiveAlgorithm,
 } from "./playSlice";
 
+/* The step clock shared by every panel, so they move in lockstep. */
+function ensureStepBuffer(): void {
+    if (SharedBufferAPI.find("step")) return;
+    SharedBufferAPI.init("step", 4);
+    SharedBufferAPI.write("step", 0);
+}
+
+const stepOf = (payload: unknown): number | undefined =>
+    (payload as { step?: number } | undefined)?.step;
+
+/* Drives playback through the step worker; renders nothing. */
 function PlaybackTicker(): JSX.Element | null {
     const dispatch = useDispatch<AppDispatch>();
     const store = useStore<RootState>();
@@ -44,16 +55,14 @@ function PlaybackTicker(): JSX.Element | null {
         };
     }, [worker, dispatch]);
 
-    // limiting dispatch function
     const updateStep = (value: number): void => {
-        const state = store.getState();
-        if (state.play.animation.status !== "playing") return;
+        if (store.getState().play.animation.status !== "playing") return;
         dispatch(changeStep({ value, trigger: "tick" }));
     };
 
     const limitedChangeStep = useRateLimit(updateStep, 50);
 
-    // Breakpoints: the clock gets the steps to stop on, and reports a stop.
+    // The clock gets the breakpoint steps and reports when it stops on one.
     useEffect(() => {
         if (!worker) return;
         const send = (): void =>
@@ -67,40 +76,35 @@ function PlaybackTicker(): JSX.Element | null {
 
     useEffect((): void => {
         onMessageType("break", (payload) => {
-            const at = (payload as { step?: number } | undefined)?.step;
+            const at = stepOf(payload);
             if (typeof at !== "number") return;
             dispatch(changeStep({ value: at, trigger: "break" }));
             dispatch(stopAnimation());
         });
     }, [onMessageType, dispatch]);
 
-    // limited stepIndex update in UI
+    // Worker ticks reach the store at most every 50ms.
     useEffect((): void => {
         onMessageType("ticked", (payload) => {
-            const state = store.getState();
-            if (state.play.animation.status !== "playing") return;
-            const nextStep = (payload as { step?: number } | undefined)?.step;
+            if (store.getState().play.animation.status !== "playing") return;
+            const nextStep = stepOf(payload);
             if (typeof nextStep !== "number") return;
             limitedChangeStep(nextStep);
         });
     }, [onMessageType, limitedChangeStep, store]);
 
-    // sync changed stepIndex by action in ui with stepWorker
+    // A step set from the UI (not a tick) moves the worker's clock too.
     useEffect((): void => {
         if (trigger !== "tick") {
             worker?.postMessage({ type: "change", payload: { step } });
         }
     }, [step, worker, activeAlgorithms, trigger]);
 
-    // Animation state manager effect
+    // Start or stop the worker clock when the status changes.
     useEffect((): void => {
         if (prevAnimationRef.current === animationStatus) return;
         prevAnimationRef.current = animationStatus;
-
-        if (!SharedBufferAPI.find("step")) {
-            SharedBufferAPI.init("step", 4);
-            SharedBufferAPI.write("step", 0);
-        }
+        ensureStepBuffer();
 
         switch (animationStatus) {
             case "playing":
@@ -121,8 +125,6 @@ function PlaybackTicker(): JSX.Element | null {
     }, [animationStatus, dispatch, animationIntervalValue, worker, maxStep]);
 
     // Speed or length changed while playing: retune the running clock.
-    // (Adding a longer algorithm mid-run used to leave the worker stopped
-    // at the old end while the UI still said "playing".)
     useEffect((): void => {
         if (store.getState().play.animation.status !== "playing") return;
         worker?.postMessage({
@@ -131,10 +133,10 @@ function PlaybackTicker(): JSX.Element | null {
         });
     }, [animationIntervalValue, maxStep, worker, store]);
 
-    // Auto stop after animation is finished
+    // Stop at the end.
     useEffect((): void => {
-        if (animationStatus === "playing") {
-            if (step >= maxStep) dispatch(stopAnimation());
+        if (animationStatus === "playing" && step >= maxStep) {
+            dispatch(stopAnimation());
         }
     }, [step, maxStep, dispatch, animationStatus]);
 

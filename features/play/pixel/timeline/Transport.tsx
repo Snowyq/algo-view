@@ -23,7 +23,7 @@ const Row = styled.div`
     gap: 0.4rem;
 `;
 
-/* Two frames of after-image trailing the arrow, like a fast sprite. */
+/* Two frames of after-image trailing the arrow. */
 const smearFwd = keyframes`
     0% { filter: drop-shadow(-4px 0 0 rgba(232, 130, 92, 0.7)) drop-shadow(-8px 0 0 rgba(232, 130, 92, 0.35)); }
     100% { filter: none; }
@@ -58,7 +58,7 @@ const PlayButton = styled(PixelButton)`
     }
 `;
 
-/* play → half → pause, one frame each: the icon rebuilds pixel by pixel. */
+/* Play and pause swap through a half-way frame. */
 function MorphIcon({ playing }: { playing: boolean }): JSX.Element {
     const [shown, setShown] = useState<IconName>(playing ? "pause" : "play");
     const first = useRef<boolean>(true);
