@@ -1,8 +1,4 @@
-/*
- * Landing reveals: elements stay hidden until their moment, then dither in
- * one after another (the CSS px-dither-in, see styles/dither.ts) instead
- * of sliding up out of a mask. GSAP / ScrollTrigger only decide *when*.
- */
+/* Staggered px-dither-in reveals (keyframes in styles/dither.ts). */
 
 type Options = {
     /** Seconds between elements. */

@@ -9,6 +9,7 @@ import { CATEGORY_PREVIEW, MOTIF_COLORS } from "../play/categoryPreview";
 import PixelIcon from "../play/pixel/primitives/PixelIcon";
 import { labelText, pixelFrame } from "../play/pixel/primitives/pixel";
 import { ditherReveal, hideForReveal } from "./ditherReveal";
+import { Eyebrow, Section, Title } from "./sectionStyles";
 import SplitWords from "./SplitWords";
 
 gsap.registerPlugin(ScrollTrigger, useGSAP);
@@ -37,12 +38,6 @@ const FAMILIES = (
 });
 const TOTAL = FAMILIES.reduce((sum, family) => sum + family.count, 0);
 
-const Section = styled.section`
-    position: relative;
-    padding: 12.8rem clamp(1.6rem, 3vw, 3.2rem) 9.6rem;
-    border-top: var(--b) solid var(--line);
-`;
-
 const Head = styled.div`
     display: flex;
     justify-content: space-between;
@@ -52,30 +47,17 @@ const Head = styled.div`
 
     p {
         ${labelText};
-        color: var(--fg-3);
         max-width: 32ch;
         line-height: 1.6;
+    }
+    > p {
+        color: var(--fg-3);
     }
 
     @media (max-width: 760px) {
         flex-direction: column;
         align-items: flex-start;
     }
-`;
-
-const Eyebrow = styled.p`
-    ${labelText};
-    color: var(--accent) !important;
-    margin-bottom: 1.6rem;
-`;
-
-const Title = styled.h2`
-    font-family: var(--f-display);
-    font-weight: 400;
-    font-size: clamp(4rem, 2rem + 4vw, 8.8rem);
-    line-height: 0.82;
-    text-transform: uppercase;
-    color: var(--fg);
 `;
 
 const Grid = styled.ul`
@@ -85,7 +67,6 @@ const Grid = styled.ul`
     list-style: none;
 `;
 
-/* One family: its motif, name, size and members. */
 const Tile = styled(Link)`
     position: relative;
     overflow: hidden;
@@ -134,7 +115,7 @@ const Tile = styled(Link)`
         color: var(--fg-3);
     }
 
-    /* The promise of the click, spelled out: the tile fills from below. */
+    /* Hover / focus overlay naming what the click opens. */
     [data-go] {
         position: absolute;
         inset: 0;
@@ -176,7 +157,6 @@ const Tile = styled(Link)`
         }
     }
 
-    /* The promise of the click dithers in over the tile. */
     &:focus-visible [data-go] {
         visibility: visible;
         animation: px-dither-in 200ms both;
@@ -200,7 +180,7 @@ const Tile = styled(Link)`
     }
 `;
 
-/* The family's motif, the same picture the playground's empty state uses. */
+/* Same motif the playground's empty state shows. */
 function Motif({ rows }: { rows: string[] }): JSX.Element {
     return (
         <svg
@@ -271,7 +251,7 @@ function FamilyTiles(): JSX.Element {
 function AlgorithmRail(): JSX.Element {
     const rootRef = useRef<HTMLElement | null>(null);
 
-    // Tiles dither in as the grid arrives, once.
+    // Tiles dither in once as the grid arrives.
     useGSAP(
         () => {
             const mm = gsap.matchMedia();

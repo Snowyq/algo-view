@@ -5,8 +5,9 @@ import PixelButton from "../play/pixel/primitives/PixelButton";
 import PixelIcon from "../play/pixel/primitives/PixelIcon";
 import { labelText } from "../play/pixel/primitives/pixel";
 import PixelLogo from "../play/pixel/toolbar/PixelLogo";
+import { GUTTER } from "./sectionStyles";
 
-/** Height of the fixed header; sections below start after it. */
+/** Height of the fixed header. */
 export const HEADER_H = "6.4rem";
 
 const Bar = styled.header`
@@ -19,7 +20,7 @@ const Bar = styled.header`
     align-items: center;
     gap: 2.4rem;
     height: ${HEADER_H};
-    padding: 0 clamp(1.6rem, 3vw, 3.2rem);
+    padding: 0 ${GUTTER};
     transition: background-color 160ms steps(3);
 
     &[data-solid="true"] {

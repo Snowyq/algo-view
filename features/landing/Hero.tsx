@@ -7,12 +7,15 @@ import { useFx } from "../play/pixel/fx/fxStore";
 import PixelButton from "../play/pixel/primitives/PixelButton";
 import PixelIcon from "../play/pixel/primitives/PixelIcon";
 import { labelText } from "../play/pixel/primitives/pixel";
-import InteractiveWordmark from "./InteractiveWordmark";
-import SortStrip from "./SortStrip";
-import { HEADER_H } from "./SiteHeader";
-import { ditherReveal } from "./ditherReveal";
-import SplitWords from "./SplitWords";
 import registryApi from "../../algorithms/algorithmsRegistryApi";
+import { ditherReveal } from "./ditherReveal";
+import InteractiveWordmark from "./InteractiveWordmark";
+import { GUTTER } from "./sectionStyles";
+import { HEADER_H } from "./SiteHeader";
+import SortStrip from "./SortStrip";
+import SplitWords from "./SplitWords";
+
+gsap.registerPlugin(useGSAP);
 
 const FAMILIES = registryApi.registry.data.length;
 const TOTAL = registryApi.registry.data.reduce(
@@ -20,11 +23,7 @@ const TOTAL = registryApi.registry.data.reduce(
     0
 );
 
-gsap.registerPlugin(useGSAP);
-
-/* Exactly one screen: it starts below the fixed header (not under it, not
-   a header's height further down) and the strip of bars sits on the
-   bottom edge, so the call to action is always above the fold. */
+/* One screen below the fixed header, so the CTA stays above the fold. */
 const Section = styled.section`
     position: relative;
     display: grid;
@@ -32,8 +31,7 @@ const Section = styled.section`
     gap: clamp(1.6rem, 3.5vh, 4.8rem);
     height: 100svh;
     min-height: 56rem;
-    padding: calc(${HEADER_H} + clamp(1.2rem, 3vh, 3.2rem))
-        clamp(1.6rem, 3vw, 3.2rem) 0;
+    padding: calc(${HEADER_H} + clamp(1.2rem, 3vh, 3.2rem)) ${GUTTER} 0;
     overflow: hidden;
     background-image: radial-gradient(var(--line) 1px, transparent 1px);
     background-size: 16px 16px;
@@ -114,14 +112,14 @@ const Cue = styled.p`
 `;
 
 const Ground = styled.div`
-    margin: 0 calc(clamp(1.6rem, 3vw, 3.2rem) * -1);
+    margin: 0 calc(${GUTTER} * -1);
 `;
 
 function Hero(): JSX.Element {
     const rootRef = useRef<HTMLElement | null>(null);
     const ready = useFx((fx) => fx.introDone);
 
-    // The headline dithers in word by word, then the supporting copy.
+    // Headline dithers in word by word, then the supporting copy.
     useGSAP(
         () => {
             if (!ready) return;

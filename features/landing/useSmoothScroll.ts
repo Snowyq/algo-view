@@ -2,24 +2,18 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Lenis from "lenis";
 import { useEffect, useRef, type RefObject } from "react";
+import { prefersReducedMotion } from "../play/pixel/fx/dom";
 
 gsap.registerPlugin(ScrollTrigger);
 
-/*
- * The page's single smooth-scroll engine. One RAF driver (gsap.ticker)
- * advances Lenis; ScrollTrigger reads the smoothed position from the same
- * tick. Skipped entirely under reduced motion and on touch (native touch
- * momentum already feels right).
- */
+/* Lenis driven by gsap.ticker, so ScrollTrigger reads the same tick.
+   Off on touch and under reduced motion. */
 function useSmoothScroll(): RefObject<Lenis | null> {
     const lenisRef = useRef<Lenis | null>(null);
 
     useEffect(() => {
-        const reduced = window.matchMedia(
-            "(prefers-reduced-motion: reduce)"
-        ).matches;
         const coarse = window.matchMedia("(pointer: coarse)").matches;
-        if (reduced || coarse) return;
+        if (prefersReducedMotion() || coarse) return;
 
         const lenis = new Lenis({
             duration: 1.15,
@@ -33,7 +27,7 @@ function useSmoothScroll(): RefObject<Lenis | null> {
         gsap.ticker.add(tick);
         gsap.ticker.lagSmoothing(0);
 
-        // In-page anchors glide with the same easing; the hash still updates.
+        // Smooth in-page anchors, still updating the hash.
         const onClick = (event: MouseEvent): void => {
             const link = (
                 event.target as HTMLElement
@@ -49,7 +43,7 @@ function useSmoothScroll(): RefObject<Lenis | null> {
         };
         document.addEventListener("click", onClick);
 
-        // Fonts swap widths: re-measure every trigger once they are in.
+        // Font swap changes layout, so re-measure triggers.
         document.fonts?.ready.then(() => ScrollTrigger.refresh());
 
         return () => {

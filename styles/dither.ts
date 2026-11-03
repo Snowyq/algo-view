@@ -1,14 +1,8 @@
 import { css } from "styled-components";
 
 /*
- * Pixel dither: elements appear (and leave) through an ordered 4×4 Bayer
- * dither in 4px cells, the grid everything else snaps to, instead of
- * sliding or zooming. Four frames (none, ¼, ½, ¾, all) are SVG tiles used
- * as masks; mask-image switches discretely between keyframes, so the
- * timing function does not matter.
- *
- *   animation: px-dither-in 200ms both;
- *   animation: px-dither-out 160ms both;
+ * Appear / disappear through a 4x4 Bayer dither in 4px cells, as mask
+ * frames. Usage: `animation: px-dither-in 200ms both;` (or px-dither-out).
  */
 
 const BAYER = [
@@ -19,7 +13,7 @@ const BAYER = [
 ];
 const CELL = 4;
 
-/** A 16×16 tile where the cells below `threshold` (0–16) are opaque. */
+/** 16x16 tile with cells below `threshold` (0-16) opaque. */
 function tile(threshold: number): string {
     let rects = "";
     BAYER.forEach((row, y) =>

@@ -1,6 +1,7 @@
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { prefersReducedMotion } from "../play/pixel/fx/dom";
 import Link from "../play/pixel/fx/TransitionLink";
 import { JSX, useRef, useState } from "react";
 import styled from "styled-components";
@@ -10,6 +11,7 @@ import { labelText } from "../play/pixel/primitives/pixel";
 import { CANVAS_W } from "../play/pixel/sprites/frames";
 import PixelSprite from "../play/pixel/sprites/PixelSprite";
 import PixelLogo from "../play/pixel/toolbar/PixelLogo";
+import { GUTTER, visuallyHidden } from "./sectionStyles";
 
 gsap.registerPlugin(ScrollTrigger, useGSAP);
 
@@ -27,7 +29,7 @@ const Rows = styled.div`
     user-select: none;
 `;
 
-/* Huge outline-free type; rows drift against each other on scroll. */
+/* Huge type rows that drift against each other on scroll. */
 const Row = styled.p`
     font-family: var(--f-display);
     font-size: clamp(8rem, 4rem + 10vw, 22rem);
@@ -63,12 +65,7 @@ const Center = styled.div`
 `;
 
 const VisuallyHidden = styled.h2`
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
+    ${visuallyHidden};
 `;
 
 const CtaWrap = styled.div`
@@ -86,7 +83,7 @@ const Footer = styled.footer`
     display: grid;
     gap: 2.4rem;
     margin-top: 12.8rem;
-    padding: 3.2rem clamp(1.6rem, 3vw, 3.2rem) 4rem;
+    padding: 3.2rem ${GUTTER} 4rem;
     border-top: var(--b) solid var(--line);
     color: var(--fg-3);
 
@@ -158,8 +155,7 @@ function FinalCta(): JSX.Element {
     const dash = (): void => {
         const el = dashRef.current;
         if (!el || dashing) return;
-        if (window.matchMedia("(prefers-reduced-motion: reduce)").matches)
-            return;
+        if (prefersReducedMotion()) return;
         const width = el.parentElement?.offsetWidth ?? 300;
         setDashing(true);
         gsap.fromTo(

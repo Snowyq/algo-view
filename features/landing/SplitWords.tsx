@@ -1,5 +1,6 @@
 import { Fragment, JSX, type ElementType } from "react";
 import styled from "styled-components";
+import { visuallyHidden } from "./sectionStyles";
 
 const Mask = styled.span`
     display: inline-block;
@@ -9,14 +10,8 @@ const Mask = styled.span`
     margin-bottom: -0.08em;
 `;
 
-/* The real text for assistive tech; the split copy is decorative. */
 const Hidden = styled.span`
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
+    ${visuallyHidden};
 `;
 
 const Word = styled.span`
@@ -33,11 +28,7 @@ type SplitWordsProps = {
     id?: string;
 };
 
-/*
- * Server-rendered word masks. A visually hidden copy carries the text for
- * assistive tech; the split words are decorative. Without JS the words
- * simply sit in place, fully visible.
- */
+/* Word spans for reveals; screen readers get the hidden full text. */
 function SplitWords({
     text,
     as: Tag = "span",
