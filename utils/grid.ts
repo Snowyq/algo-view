@@ -46,7 +46,7 @@ export function isGridPreset(value: unknown): value is GridPreset {
 const odd = (n: number): number => (n % 2 === 0 ? n + 1 : n);
 
 export function gridSize(cols: number): { cols: number; rows: number } {
-    const c = odd(clamp(cols, GRID_MIN_COLS, GRID_MAX_COLS));
+    const c = odd(Math.round(clamp(cols, GRID_MIN_COLS, GRID_MAX_COLS)));
     return { cols: c, rows: odd(Math.max(9, Math.round(c * 0.56))) };
 }
 
