@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findClosest, insertSorted } from "./arrays";
+import { findFloor, insertSorted } from "./arrays";
 
 describe("insertSorted", () => {
     it("keeps the array sorted", () => {
@@ -9,21 +9,24 @@ describe("insertSorted", () => {
     });
 });
 
-describe("findClosest", () => {
+describe("findFloor", () => {
     const arr = [0, 10, 20, 30];
 
     it("returns null for an empty array", () => {
-        expect(findClosest([], 3)).toBeNull();
+        expect(findFloor([], 3)).toBeNull();
+    });
+
+    it("returns null when every value is above the target", () => {
+        expect(findFloor(arr, -5)).toBeNull();
     });
 
     it.each([
         [10, 10],
         [12, 10],
-        [18, 20],
-        [15, 10],
-        [-5, 0],
+        [18, 10],
+        [20, 20],
         [99, 30],
-    ])("closest to %d is %d", (target, expected) => {
-        expect(findClosest(arr, target)).toBe(expected);
+    ])("floor of %d is %d", (target, expected) => {
+        expect(findFloor(arr, target)).toBe(expected);
     });
 });

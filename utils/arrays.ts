@@ -14,23 +14,19 @@ export function insertSorted(arr: number[], num: number): number[] {
     return arr;
 }
 
-export function findClosest(arr: number[], target: number): number | null {
-    if (arr.length === 0) return null;
-
+/** Largest value in a sorted array that is <= target, or null. */
+export function findFloor(arr: number[], target: number): number | null {
     let left = 0;
     let right = arr.length - 1;
-
-    while (left < right) {
-        const mid = Math.floor((left + right) / 2);
-
-        if (arr[mid] === target) return arr[mid];
-        if (arr[mid] < target) left = mid + 1;
-        else right = mid;
+    let floor: number | null = null;
+    while (left <= right) {
+        const mid = (left + right) >> 1;
+        if (arr[mid] <= target) {
+            floor = arr[mid];
+            left = mid + 1;
+        } else {
+            right = mid - 1;
+        }
     }
-
-    // left is now the first index with arr[left] >= target.
-    const l = left - 1 >= 0 ? arr[left - 1] : Number.NEGATIVE_INFINITY;
-    const r = arr[left] ?? Number.POSITIVE_INFINITY;
-
-    return Math.abs(target - l) <= Math.abs(target - r) ? l : r;
+    return floor;
 }

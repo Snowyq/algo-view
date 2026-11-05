@@ -245,8 +245,7 @@ describe("input generators produce valid data", () => {
         }
     );
 
-    // a fractional length (fn=10.5 in a link) indexes values[n - 1]
-    it.skip("find keeps a numeric target for a fractional length", () => {
+    it("find keeps a numeric target for a fractional length", () => {
         const input = generateFindInput({
             preset: "even",
             length: 10.5,

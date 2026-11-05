@@ -157,7 +157,7 @@ function presetShare<P extends string, K extends string, TValue>(
             const preset = params.get(presetParam);
             const size = Number(params.get(sizeParam));
             const seed = seedOf(params);
-            if (!isPreset(preset) || !Number.isFinite(size) || seed === null) {
+            if (!isPreset(preset) || !Number.isInteger(size) || seed === null) {
                 return null;
             }
             const config = { preset, [sizeField]: size, seed };
@@ -199,9 +199,9 @@ const sort: CategoryData<InputConfig, number[]> = {
             const seed = seedOf(params);
             if (
                 !isInputPreset(preset) ||
-                !Number.isFinite(length) ||
-                !Number.isFinite(min) ||
-                !Number.isFinite(max) ||
+                !Number.isInteger(length) ||
+                !Number.isInteger(min) ||
+                !Number.isInteger(max) ||
                 seed === null
             ) {
                 return null;
@@ -257,7 +257,7 @@ const path: CategoryData<GridConfig, GridInput> = {
             const seed = seedOf(params);
             if (
                 !isGridPreset(preset) ||
-                !Number.isFinite(cols) ||
+                !Number.isInteger(cols) ||
                 seed === null
             ) {
                 return null;
@@ -294,7 +294,7 @@ const find: CategoryData<FindConfig, FindInput> = {
             if (
                 !isFindPreset(preset) ||
                 !isFindTarget(target) ||
-                !Number.isFinite(length) ||
+                !Number.isInteger(length) ||
                 seed === null
             ) {
                 return null;
@@ -319,7 +319,7 @@ const maze: CategoryData<MazeConfig, MazeInput> = {
         read: (params) => {
             const cols = Number(params.get("w"));
             const seed = seedOf(params);
-            if (!Number.isFinite(cols) || seed === null) return null;
+            if (!Number.isInteger(cols) || seed === null) return null;
             return { config: { cols, seed } };
         },
     },

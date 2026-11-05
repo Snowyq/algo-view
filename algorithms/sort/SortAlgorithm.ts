@@ -244,19 +244,15 @@ export abstract class SortAlgorithm
         }
     }
 
-    /** Array after the given operation, replayed from the closest cache. */
+    /** Array after an operation, replayed from the nearest earlier cache. */
     getStateByOperationId(operationId?: number): number[] {
         if (typeof operationId !== "number" || isNaN(operationId)) {
             return this.getArray();
         }
-        const closest = this.cacheManager.getClosest("state", operationId);
-        const state = closest ? closest.item.slice() : this.getArray();
-        const from = closest ? closest.key : 0;
-        // A later cached state is walked back by re-applying operations.
-        for (let id = from; id > operationId; id--) {
-            this.makeOperation(this.operations[id], state);
-        }
-        for (let id = from + 1; id <= operationId; id++) {
+        // copy and assign can't be undone, so only replay forward
+        const cached = this.cacheManager.getAtOrBefore("state", operationId);
+        const state = cached ? cached.item.slice() : this.getArray();
+        for (let id = (cached?.key ?? -1) + 1; id <= operationId; id++) {
             this.makeOperation(this.operations[id], state);
         }
         return state;

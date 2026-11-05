@@ -108,13 +108,13 @@ describe("share links", () => {
         });
     });
 
-    // the codec accepts w=21.5 and generateGrid then throws
-    it.skip("a path link with a fractional width still generates a grid", () => {
-        const decoded = codecOf("path").read(
-            new URLSearchParams("m=maze&w=21.5&s=1")
-        );
-        expect(() =>
-            generateFor("path", decoded!.config as never)
-        ).not.toThrow();
+    it("rejects a path link with a fractional width", () => {
+        const params = new URLSearchParams("m=maze&w=21.5&s=1");
+        expect(codecOf("path").read(params)).toBeNull();
+    });
+
+    it("generates a grid even for a fractional width", () => {
+        const config = { preset: "maze", cols: 21.5, seed: 1 };
+        expect(() => generateFor("path", config as never)).not.toThrow();
     });
 });

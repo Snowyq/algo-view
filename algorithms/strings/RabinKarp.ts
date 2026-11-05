@@ -14,6 +14,7 @@ export class RabinKarp extends StringAlgorithm {
         const p = this.pattern;
         const n = t.length;
         const m = p.length;
+        if (m > n) return;
         const code = (c: string): number => c.charCodeAt(0) % MOD;
         let high = 1;
         for (let k = 0; k < m - 1; k += 1) high = (high * BASE) % MOD;

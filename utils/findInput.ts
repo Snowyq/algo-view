@@ -102,7 +102,7 @@ export function generateFindInput({
     seed,
 }: FindConfig): FindInput {
     const rng = createRng(seed);
-    const n = clamp(length, FIND_MIN_LENGTH, FIND_MAX_LENGTH);
+    const n = Math.round(clamp(length, FIND_MIN_LENGTH, FIND_MAX_LENGTH));
     const values = sortedValues(rng, preset, n);
     return { values, target: targetValue(rng, target, values, n) };
 }

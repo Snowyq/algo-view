@@ -76,8 +76,7 @@ describe("string matching algorithms", () => {
             }
         );
 
-        // the first window hash reads past the end of the text
-        it.skip("Rabin-Karp finds nothing", () => {
+        it("Rabin-Karp finds nothing", () => {
             expect(matchesOf("rabinKarp", input)).toEqual([]);
         });
     });

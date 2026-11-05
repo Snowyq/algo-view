@@ -1,4 +1,4 @@
-import { findClosest, insertSorted } from "../utils/arrays";
+import { findFloor, insertSorted } from "../utils/arrays";
 
 const MAX_CACHE_SIZE = 100000;
 
@@ -61,15 +61,14 @@ export class CacheManager<
         groupCache.values[key] = item;
     }
 
-    getClosestKey(group: string, key: number): number | null | undefined {
-        const index = this.getGroup(group)?.index;
-        if (!index) return undefined;
-        return findClosest(index, key);
-    }
-
-    getClosest(group: string, key: number): CacheClosest<TState> | undefined {
+    /** The cached entry with the largest key that is <= key. */
+    getAtOrBefore(
+        group: string,
+        key: number
+    ): CacheClosest<TState> | undefined {
         if (!this.hasGroup(group)) return undefined;
-        const closestKey = this.getClosestKey(group, key);
+        const index = this.getGroup(group)?.index;
+        const closestKey = index ? findFloor(index, key) : null;
         if (typeof closestKey !== "number") return undefined;
         const closestValue = this.get(group, closestKey);
         if (!closestValue) return undefined;

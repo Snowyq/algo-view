@@ -104,8 +104,7 @@ describe("sorting algorithms", () => {
 });
 
 describe("state cache on long runs", () => {
-    // copy/assign can't be undone, but the replay walks back from a later cache
-    it.skip("replays a step of a 500k-operation insertion sort correctly", () => {
+    it("replays a step of a 500k-operation insertion sort correctly", () => {
         const input = Array.from({ length: 1000 }, (_, i) => 1000 - i);
         const algo = run("insertionSort", input);
         expect(algo.getOperations().length).toBeGreaterThan(200000);
