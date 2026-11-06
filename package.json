@@ -3,6 +3,10 @@
     "version": "0.0.1",
     "type": "module",
     "private": true,
+    "packageManager": "pnpm@10.10.0",
+    "engines": {
+        "node": ">=22"
+    },
     "scripts": {
         "dev": "next dev",
         "dev-local": "next dev --turbo -H 127.0.0.1 -p 3000",
@@ -10,6 +14,7 @@
         "start": "next start",
         "lint": "eslint",
         "format": "prettier --write \"**/*.{ts,tsx}\"",
+        "format:check": "prettier --check \"**/*.{ts,tsx}\"",
         "typecheck": "tsc --noEmit",
         "test": "vitest run",
         "test:watch": "vitest",
