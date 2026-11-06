@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef } from "react";
 
+/* Calls `callback` at most once per `interval` ms, with the latest args. */
 function useRateLimit<Args extends unknown[]>(
     callback: (...args: Args) => void,
     interval: number = 10
 ): (...args: Args) => void {
     const latestArgsRef = useRef<Args | null>(null);
     const callbackRef = useRef(callback);
-    const isRunningRef = useRef<boolean>(false);
 
     useEffect(() => {
         callbackRef.current = callback;
@@ -17,8 +17,6 @@ function useRateLimit<Args extends unknown[]>(
     }, []);
 
     useEffect(() => {
-        isRunningRef.current = true;
-
         const executeCallback = setInterval(() => {
             if (latestArgsRef.current) {
                 callbackRef.current(...latestArgsRef.current);
@@ -26,10 +24,7 @@ function useRateLimit<Args extends unknown[]>(
             }
         }, interval);
 
-        return () => {
-            clearInterval(executeCallback);
-            isRunningRef.current = false;
-        };
+        return () => clearInterval(executeCallback);
     }, [interval]);
 
     return trigger;

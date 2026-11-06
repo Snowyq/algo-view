@@ -17,7 +17,6 @@ export class CombSort extends SortAlgorithm {
 
             for (let i = 0; i + gap < arr.length; i++) {
                 this.countConditionChecks();
-                this.countArrayAccess(2);
                 if (
                     this.check(i, ">", i + gap, arr, { instructionId: ["k5"] })
                 ) {

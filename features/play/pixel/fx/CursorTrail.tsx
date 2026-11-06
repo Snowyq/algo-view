@@ -1,6 +1,7 @@
 import { JSX, useEffect, useRef } from "react";
 import styled from "styled-components";
 import useReducedMotion from "../../../../hooks/useReducedMotion";
+import { cssVar } from "./dom";
 
 const Canvas = styled.canvas`
     position: absolute;
@@ -16,11 +17,7 @@ const LIFE = 520;
 
 type Dot = { x: number; y: number; born: number };
 
-/*
- * Moving over the bare stage lights the grid cells under the cursor; they
- * blink out in four steps. Drawn behind the panels, so it only shows in
- * the gaps. Off under reduced motion.
- */
+/* Lights grid cells under the cursor, behind the panels, so only gaps show it. */
 function CursorTrail(): JSX.Element | null {
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const reduced = useReducedMotion();
@@ -32,9 +29,7 @@ function CursorTrail(): JSX.Element | null {
         if (!canvas || !host || !ctx || reduced) return;
         if (!window.matchMedia("(hover: hover)").matches) return;
 
-        const color =
-            getComputedStyle(host).getPropertyValue("--accent").trim() ||
-            "#e8825c";
+        const color = cssVar(host, "--accent", "#e8825c");
         let dots: Dot[] = [];
         let frame = 0;
         let lastKey = "";

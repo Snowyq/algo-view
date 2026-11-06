@@ -4,8 +4,9 @@ import {
     MUD_COST,
     type GridInput,
 } from "../../utils/grid";
-import { Algorithm } from "../Algorithm";
-import type { AlgorithmInstructions } from "../types";
+import type { StepMetrics } from "../types";
+import { Snapshots, type StepOptions } from "../RecordedAlgorithm";
+import { GridAlgorithm } from "../GridAlgorithm";
 
 export type PathStepType = "initial" | "frontier" | "visit" | "path" | "finish";
 
@@ -15,9 +16,6 @@ export const OVERLAY_FRONTIER = 1;
 export const OVERLAY_VISITED = 2;
 export const OVERLAY_PATH = 3;
 
-type PathMetric = { count: number; name: string };
-type PathMetrics = Record<string, PathMetric>;
-
 export type PathStep = {
     type: PathStepType;
     /** Cells this step changes, and the overlay they get. */
@@ -26,7 +24,7 @@ export type PathStep = {
     /** The cell being expanded right now (-1 = none). */
     current: number;
     instructionId?: string[];
-    metrics: PathMetrics;
+    metrics: StepMetrics;
 };
 
 export type PathState = {
@@ -34,24 +32,26 @@ export type PathState = {
     current: number;
 };
 
-type StepOptions = { instructionId?: string[] };
-
 const SNAPSHOT_EVERY = 32;
 
 /*
  * Base for every path-finding algorithm. Subclasses implement search()
- * and report what they do through visit / frontier / tracePath; this
- * class turns that into replayable steps. Like SortAlgorithm, the steps
- * are computed once in the worker; drawing step k rebuilds the overlay
- * from the nearest snapshot.
+ * and report through visit / frontier / tracePath.
  */
-export abstract class PathAlgorithm extends Algorithm {
+export abstract class PathAlgorithm extends GridAlgorithm<PathStep, PathState> {
     grid: GridInput;
-    steps: PathStep[] = [];
     protected overlay: Uint8Array;
     protected current = -1;
-    private snapshots = new Map<number, Uint8Array>();
-    metrics: PathMetrics = {
+    private snapshots = new Snapshots<Uint8Array>(
+        SNAPSHOT_EVERY,
+        () => new Uint8Array(this.size),
+        (overlay) => overlay.slice(),
+        (overlay, index) => {
+            const step = this.steps[index];
+            step.cells.forEach((cell) => (overlay[cell] = step.overlay));
+        }
+    );
+    metrics: StepMetrics = {
         visited: { count: 0, name: "Visited" },
         open: { count: 0, name: "Open" },
         path: { count: 0, name: "Path" },
@@ -59,31 +59,19 @@ export abstract class PathAlgorithm extends Algorithm {
     };
 
     constructor(grid: GridInput, options: Record<string, unknown> = {}) {
-        super();
-        this.options = options;
+        super(grid.cols, grid.rows, options);
         this.grid = grid;
-        this.overlay = new Uint8Array(grid.cols * grid.rows);
-        this.createSteps();
+        this.overlay = new Uint8Array(this.size);
+        this.pushStep("initial", [], OVERLAY_NONE, {});
+        this.search();
+        this.current = -1;
+        this.pushStep("finish", [], OVERLAY_NONE, {});
+        this.snapshots.build(this.steps.length);
     }
 
     abstract search(): void;
 
     // ---------- Recording ----------
-
-    private createSteps(): void {
-        this.pushStep("initial", [], OVERLAY_NONE, {});
-        this.search();
-        this.current = -1;
-        this.pushStep("finish", [], OVERLAY_NONE, {});
-        // Snapshots for fast seeking: overlay after step k, every N steps.
-        const working = new Uint8Array(this.overlay.length);
-        this.steps.forEach((step, index) => {
-            step.cells.forEach((cell) => (working[cell] = step.overlay));
-            if (index % SNAPSHOT_EVERY === 0) {
-                this.snapshots.set(index, working.slice());
-            }
-        });
-    }
 
     private pushStep(
         type: PathStepType,
@@ -91,17 +79,13 @@ export abstract class PathAlgorithm extends Algorithm {
         overlay: number,
         { instructionId }: StepOptions
     ): void {
-        const metrics: PathMetrics = {};
-        for (const key in this.metrics) {
-            metrics[key] = { ...this.metrics[key] };
-        }
         this.steps.push({
             type,
             cells,
             overlay,
             current: this.current,
             instructionId,
-            metrics,
+            metrics: this.metricsSnapshot(),
         });
     }
 
@@ -111,21 +95,24 @@ export abstract class PathAlgorithm extends Algorithm {
         this.metrics[key] = metric;
     }
 
-    protected setCount(key: string, value: number): void {
-        if (this.metrics[key]) this.metrics[key].count = value;
-    }
-
     /** The search expands this cell. */
     protected visit(cell: number, options: StepOptions = {}): void {
-        if (this.overlay[cell] !== OVERLAY_VISITED) this.count("visited", "Visited");
+        if (this.overlay[cell] !== OVERLAY_VISITED)
+            this.count("visited", "Visited");
         this.overlay[cell] = OVERLAY_VISITED;
         this.current = cell;
         this.pushStep("visit", [cell], OVERLAY_VISITED, options);
     }
 
     /** New cells join the open set (queue, stack or heap). */
-    protected frontier(cells: number[], openSize: number, options: StepOptions = {}): void {
-        const fresh = cells.filter((cell) => this.overlay[cell] === OVERLAY_NONE);
+    protected frontier(
+        cells: number[],
+        openSize: number,
+        options: StepOptions = {}
+    ): void {
+        const fresh = cells.filter(
+            (cell) => this.overlay[cell] === OVERLAY_NONE
+        );
         fresh.forEach((cell) => (this.overlay[cell] = OVERLAY_FRONTIER));
         this.setCount("open", openSize);
         if (fresh.length > 0) {
@@ -170,8 +157,9 @@ export abstract class PathAlgorithm extends Algorithm {
 
     // ---------- Grid helpers ----------
 
-    get size(): number {
-        return this.grid.cols * this.grid.rows;
+    /** -1 for every cell: nothing reached yet. */
+    protected emptyCameFrom(): Int32Array {
+        return new Int32Array(this.size).fill(-1);
     }
 
     isWall(cell: number): boolean {
@@ -184,52 +172,27 @@ export abstract class PathAlgorithm extends Algorithm {
 
     /** Open neighbours in a fixed order: up, right, down, left. */
     neighbors(cell: number): number[] {
-        const { cols, rows } = this.grid;
-        const x = cell % cols;
-        const y = (cell - x) / cols;
+        const [x, y] = this.xy(cell);
         const out: number[] = [];
-        if (y > 0) out.push(cell - cols);
-        if (x < cols - 1) out.push(cell + 1);
-        if (y < rows - 1) out.push(cell + cols);
+        if (y > 0) out.push(cell - this.cols);
+        if (x < this.cols - 1) out.push(cell + 1);
+        if (y < this.rows - 1) out.push(cell + this.cols);
         if (x > 0) out.push(cell - 1);
         return out.filter((n) => !this.isWall(n));
     }
 
     /** Manhattan distance to the end. */
     heuristic(cell: number): number {
-        const { cols, end } = this.grid;
-        return (
-            Math.abs((cell % cols) - (end % cols)) +
-            Math.abs(Math.floor(cell / cols) - Math.floor(end / cols))
-        );
-    }
-
-    // ---------- Replay API (used by the canvas worker) ----------
-
-    getStepsLength(): number {
-        return this.steps.length;
-    }
-
-    getStepByIndex(index: number): PathStep | undefined {
-        return this.steps[index];
-    }
-
-    getMetrics(): PathMetrics {
-        return this.steps[this.steps.length - 1]?.metrics ?? this.metrics;
+        const [x, y] = this.xy(cell);
+        const [endX, endY] = this.xy(this.grid.end);
+        return Math.abs(x - endX) + Math.abs(y - endY);
     }
 
     getStateByStepsIndex(index: number): PathState {
-        const last = Math.max(0, Math.min(index, this.steps.length - 1));
-        const base = last - (last % SNAPSHOT_EVERY);
-        const overlay = (this.snapshots.get(base) ?? new Uint8Array(this.size)).slice();
-        for (let i = base + 1; i <= last; i += 1) {
-            const step = this.steps[i];
-            step.cells.forEach((cell) => (overlay[cell] = step.overlay));
-        }
-        return { overlay, current: this.steps[last]?.current ?? -1 };
-    }
-
-    static getInstructions(): AlgorithmInstructions {
-        return {};
+        const last = this.clampStep(index);
+        return {
+            overlay: this.snapshots.at(last),
+            current: this.steps[last]?.current ?? -1,
+        };
     }
 }

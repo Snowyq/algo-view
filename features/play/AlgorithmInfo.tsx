@@ -3,21 +3,13 @@ import { useSelector } from "react-redux";
 import styled from "styled-components";
 import type { AlgorithmRegistryItem } from "../../algorithms/types";
 import type { RootState } from "../../store";
+import { categoryOf } from "./categories";
+import { formatNumber } from "./format";
 import { labelText, pixelFrame } from "./pixel/primitives/pixel";
+import { getActiveAlgorithms, type ActiveAlgorithm } from "./playSlice";
 import { algorithmTraits } from "./traits";
-import type { ActiveAlgorithm } from "./playSlice";
-import {
-    getActiveAlgorithms,
-    getActiveCategory,
-    getGrid,
-    getInput,
-} from "./playSlice";
-import type { GridInput } from "../../utils/grid";
 
-/*
- * Spec card for one algorithm, as implemented here. Rendered in the
- * Inspector's Info tab and in a panel's side column when it fits.
- */
+/* Spec card for one algorithm: traits, complexity and facts about this run. */
 
 const Wrap = styled.div`
     display: flex;
@@ -89,7 +81,7 @@ const SectionTitle = styled.h4`
     margin-bottom: 0.4rem;
 `;
 
-/* name ········· value, the dots fill whatever space is left. */
+/* Name and value joined by a dotted leader. */
 const Fact = styled.div`
     display: flex;
     align-items: baseline;
@@ -116,8 +108,6 @@ const Fact = styled.div`
         color: var(--fg);
     }
 `;
-
-const numberFormat = new Intl.NumberFormat("en-US");
 
 function FactRow({
     name,
@@ -148,10 +138,16 @@ function AlgorithmInfo({
     const active = useSelector<RootState, ActiveAlgorithm[]>(
         getActiveAlgorithms
     );
-    const input = useSelector<RootState, number[]>(getInput);
-    const grid = useSelector<RootState, GridInput>(getGrid);
-    const isPath =
-        useSelector<RootState, string>(getActiveCategory) === "path";
+    // A string key keeps this from re-rendering on every playback step.
+    const factsKey = useSelector((state: RootState) =>
+        JSON.stringify(
+            categoryOf(state.play.active.category).runFacts(state.play)
+        )
+    );
+    const runFacts = JSON.parse(factsKey) as Array<{
+        name: string;
+        value: string;
+    }>;
     const { meta } = registry;
     const running = active.find((algo) => algo.id === registry.id);
     const group = meta.group === "fun" ? "Just for fun" : "Classic";
@@ -186,22 +182,18 @@ function AlgorithmInfo({
             <Section>
                 <SectionTitle>This run</SectionTitle>
                 <dl>
-                    {isPath ? (
+                    {runFacts.map((fact) => (
                         <FactRow
-                            name="Grid"
-                            value={`${grid.cols}×${grid.rows}`}
+                            key={fact.name}
+                            name={fact.name}
+                            value={fact.value}
                         />
-                    ) : (
-                        <FactRow
-                            name="Input size"
-                            value={numberFormat.format(input.length)}
-                        />
-                    )}
+                    ))}
                     <FactRow
                         name="Steps"
                         value={
                             running?.stepsLength
-                                ? numberFormat.format(running.stepsLength)
+                                ? formatNumber(running.stepsLength)
                                 : "–"
                         }
                     />

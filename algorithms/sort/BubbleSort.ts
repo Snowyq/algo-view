@@ -12,7 +12,6 @@ export class BubbleSort extends SortAlgorithm {
                     instructionId: j === 0 ? ["i0", "i1"] : ["i1"],
                 });
 
-                this.countArrayAccess(2);
                 this.countConditionChecks();
                 if (this.check(j, ">", j + 1, arr, { instructionId: ["i2"] })) {
                     this.countArrayAccess(2);
@@ -22,18 +21,8 @@ export class BubbleSort extends SortAlgorithm {
         }
     }
 
-    static rawSort(arr: number[]): void {
-        for (let i = 1; i < arr.length; i++) {
-            for (let j = 0; j < arr.length - i; j++) {
-                if (arr[j] > arr[j + 1]) {
-                    [arr[j], arr[j + 1]] = [arr[j + 1], arr[j]];
-                }
-            }
-        }
-    }
-
     static getInstructions(): AlgorithmInstructions {
-        const instructions = {
+        return {
             i0: {
                 line: `for (let i = 1; i < arr.length; i++) {`,
                 indent: 0,
@@ -51,6 +40,5 @@ export class BubbleSort extends SortAlgorithm {
             ie1: { line: `}`, indent: 1 },
             ie0: { line: `}`, indent: 0 },
         };
-        return instructions;
     }
 }

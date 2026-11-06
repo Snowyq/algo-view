@@ -16,7 +16,6 @@ export class GnomeSort extends SortAlgorithm {
                 pos++;
                 continue;
             }
-            this.countArrayAccess(2);
             if (
                 this.check(pos, ">=", pos - 1, arr, { instructionId: ["g2"] })
             ) {

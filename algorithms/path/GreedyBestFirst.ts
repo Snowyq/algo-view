@@ -2,12 +2,11 @@ import { MinHeap } from "../../utils/minHeap";
 import type { AlgorithmInstructions } from "../types";
 import { PathAlgorithm } from "./PathAlgorithm";
 
-/* Only looks at how close a cell is to the goal. Fast and confident,
-   easily fooled by a wall in the way. */
+/* Expands whatever is closest to the end. Fast, easily fooled by walls. */
 export class GreedyBestFirst extends PathAlgorithm {
     search(): void {
         const { start, end } = this.grid;
-        const cameFrom = new Int32Array(this.size).fill(-1);
+        const cameFrom = this.emptyCameFrom();
         const seen = new Uint8Array(this.size);
         const heap = new MinHeap();
         let order = 0;
@@ -42,7 +41,10 @@ export class GreedyBestFirst extends PathAlgorithm {
             g3: { line: "if (cell === end) return trace(cell);", indent: 1 },
             g4: { line: "for (const next of neighbors(cell)) {", indent: 1 },
             g5: { line: "if (seen.has(next)) continue;", indent: 2 },
-            g6: { line: "from[next] = cell; heap.push(next, h(next));", indent: 2 },
+            g6: {
+                line: "from[next] = cell; heap.push(next, h(next));",
+                indent: 2,
+            },
             ge4: { line: "}", indent: 1 },
             ge1: { line: "}", indent: 0 },
         };

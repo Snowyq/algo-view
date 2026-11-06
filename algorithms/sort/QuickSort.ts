@@ -13,7 +13,6 @@ export class QuickSort extends SortAlgorithm {
             this.countConditionChecks();
             for (let j = lo; j < hi; j++) {
                 this.countConditionChecks();
-                this.countArrayAccess(2);
                 if (this.check(j, "<", hi, arr, { instructionId: ["p4"] })) {
                     if (i !== j)
                         this.swap(i, j, arr, { instructionId: ["p5"] });

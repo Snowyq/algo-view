@@ -13,7 +13,7 @@ const SEQUENCE = [
     "a",
 ];
 
-/* ↑↑↓↓←→←→BA anywhere on the page. */
+/* Up up down down left right left right B A, anywhere on the page. */
 function useKonami(onUnlock: () => void): void {
     const progress = useRef<number>(0);
     const callback = useRef(onUnlock);

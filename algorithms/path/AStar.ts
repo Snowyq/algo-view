@@ -2,12 +2,11 @@ import { MinHeap } from "../../utils/minHeap";
 import type { AlgorithmInstructions } from "../types";
 import { PathAlgorithm } from "./PathAlgorithm";
 
-/* Dijkstra with a sense of direction: cost so far plus the Manhattan
-   distance still to go. Same cheapest route, far fewer cells explored. */
+/* Dijkstra plus a Manhattan estimate of the distance still to go. */
 export class AStar extends PathAlgorithm {
     search(): void {
         const { start, end } = this.grid;
-        const cameFrom = new Int32Array(this.size).fill(-1);
+        const cameFrom = this.emptyCameFrom();
         const g = new Float64Array(this.size).fill(Infinity);
         const done = new Uint8Array(this.size);
         const heap = new MinHeap();
@@ -41,14 +40,20 @@ export class AStar extends PathAlgorithm {
 
     static getInstructions(): AlgorithmInstructions {
         return {
-            a0: { line: "g[start] = 0; heap.push(start, h(start));", indent: 0 },
+            a0: {
+                line: "g[start] = 0; heap.push(start, h(start));",
+                indent: 0,
+            },
             a1: { line: "while (heap.size > 0) {", indent: 0 },
             a2: { line: "const cell = heap.popLowestF();", indent: 1 },
             a3: { line: "if (cell === end) return trace(cell);", indent: 1 },
             a4: { line: "for (const next of neighbors(cell)) {", indent: 1 },
             a5: { line: "const cost = g[cell] + weight(next);", indent: 2 },
             a6: { line: "if (cost < g[next]) {", indent: 2 },
-            a7: { line: "g[next] = cost; heap.push(next, cost + h(next));", indent: 3 },
+            a7: {
+                line: "g[next] = cost; heap.push(next, cost + h(next));",
+                indent: 3,
+            },
             ae6: { line: "}", indent: 2 },
             ae4: { line: "}", indent: 1 },
             ae1: { line: "}", indent: 0 },

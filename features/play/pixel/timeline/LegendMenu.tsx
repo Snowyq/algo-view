@@ -1,14 +1,12 @@
-import { JSX, useCallback, useEffect, useId, useRef, useState } from "react";
+import { JSX, useCallback, useId, useRef, useState } from "react";
 import styled from "styled-components";
 import useClickOutside from "../../../../hooks/useClickOutside";
-import { useSelector } from "react-redux";
-import type { RootState } from "../../../../store";
-import { getActiveCategory } from "../../playSlice";
-import { legendOrderFor, STEP_LEGEND } from "../../stepLegend";
+import { useEscapeKey } from "../../../../hooks/useEscapeKey";
 import PixelButton from "../primitives/PixelButton";
 import PixelIcon from "../primitives/PixelIcon";
 import PixelTooltip from "../primitives/PixelTooltip";
 import { labelText, pixelFrame } from "../primitives/pixel";
+import { Swatch, useLegendItems } from "./legendItems";
 
 const Wrap = styled.div`
     position: relative;
@@ -23,7 +21,7 @@ const Panel = styled.div`
     padding: 1.2rem 1.4rem 1.4rem;
     background-color: var(--surface);
     ${pixelFrame("var(--line-2)")};
-    animation: px-menu-in 140ms steps(4) both;
+    animation: px-dither-in 140ms steps(4) both;
 `;
 
 const Title = styled.p`
@@ -46,38 +44,23 @@ const Item = styled.li`
     color: var(--fg-2);
 `;
 
-/* A bar of the same color the canvas draws, two pixel rows of lit edge. */
-const Swatch = styled.span<{ $colorVar: string }>`
-    flex: 0 0 auto;
+const BigSwatch = styled(Swatch)`
     width: 1.2rem;
     height: 1.6rem;
-    background-color: ${({ $colorVar }) => `var(${$colorVar})`};
-    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.28);
 `;
-
 
 function LegendMenu(): JSX.Element {
     const [open, setOpen] = useState<boolean>(false);
-    const category = useSelector<RootState, string>(getActiveCategory);
-    const items = legendOrderFor(category).map((type) => ({
-        type,
-        ...STEP_LEGEND[type],
-    }));
+    const items = useLegendItems();
     const panelId = useId();
     const buttonRef = useRef<HTMLButtonElement | null>(null);
     const close = useCallback(() => setOpen(false), []);
     const { ref } = useClickOutside<HTMLDivElement>(close);
 
-    useEffect(() => {
-        if (!open) return;
-        const onKey = (event: KeyboardEvent): void => {
-            if (event.key !== "Escape") return;
-            setOpen(false);
-            buttonRef.current?.focus();
-        };
-        document.addEventListener("keydown", onKey);
-        return () => document.removeEventListener("keydown", onKey);
-    }, [open]);
+    useEscapeKey(open, () => {
+        setOpen(false);
+        buttonRef.current?.focus();
+    });
 
     return (
         <Wrap ref={ref}>
@@ -101,7 +84,7 @@ function LegendMenu(): JSX.Element {
                     <List>
                         {items.map((item) => (
                             <Item key={item.type}>
-                                <Swatch $colorVar={item.colorVar} />
+                                <BigSwatch $colorVar={item.colorVar} />
                                 {item.label}
                             </Item>
                         ))}

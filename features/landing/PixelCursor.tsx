@@ -1,4 +1,5 @@
 import gsap from "gsap";
+import { prefersReducedMotion } from "../play/pixel/fx/dom";
 import { JSX, useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 
@@ -35,11 +36,7 @@ const Box = styled.div`
     }
 `;
 
-/*
- * A pixel block that trails the pointer on a 4px grid and opens into a
- * notched frame over anything clickable. Additive: the native cursor
- * stays, it is off on touch and under reduced motion.
- */
+/* Pixel block trailing the pointer on a 4px grid; frames anything clickable. */
 function PixelCursor(): JSX.Element | null {
     const ref = useRef<HTMLDivElement | null>(null);
     const [enabled, setEnabled] = useState<boolean>(false);
@@ -47,7 +44,7 @@ function PixelCursor(): JSX.Element | null {
     useEffect(() => {
         const ok =
             window.matchMedia("(hover: hover) and (pointer: fine)").matches &&
-            !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+            !prefersReducedMotion();
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setEnabled(ok);
     }, []);

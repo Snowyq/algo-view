@@ -47,7 +47,7 @@ const Text = styled.p`
     }
 `;
 
-function PixelLoader({ label = "Sorting" }: { label?: string }): JSX.Element {
+function PixelLoader({ label }: { label: string }): JSX.Element {
     const speed = useSelector<RootState, number>(getCurrentSpeed);
     return (
         <Wrap role="status" aria-label={`${label}…`}>

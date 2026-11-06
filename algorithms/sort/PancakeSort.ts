@@ -3,7 +3,7 @@ import { SortAlgorithm } from "./SortAlgorithm";
 
 export class PancakeSort extends SortAlgorithm {
     sort(arr: number[]): void {
-        // Reverse the stack arr[0..k] with a spatula.
+        // Reverse arr[0..k].
         const flip = (k: number, line: string): void => {
             this.count("flips", "Flips");
             let i = 0;
@@ -25,7 +25,6 @@ export class PancakeSort extends SortAlgorithm {
             });
             for (let i = 1; i < size; i++) {
                 this.countConditionChecks();
-                this.countArrayAccess(2);
                 if (
                     this.check(i, ">", maxIdx, arr, { instructionId: ["p3"] })
                 ) {

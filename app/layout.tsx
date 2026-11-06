@@ -1,5 +1,4 @@
 import {
-    Big_Shoulders,
     Geist_Mono,
     Hanken_Grotesk,
     Jersey_10,
@@ -13,18 +12,12 @@ import AppClient from "./AppClient";
 
 const body = Hanken_Grotesk({ subsets: ["latin"], variable: "--font-sans" });
 
-const display = Big_Shoulders({
-    subsets: ["latin"],
-    axes: ["opsz"],
-    variable: "--font-display",
-});
-
 const fontMono = Geist_Mono({
     subsets: ["latin"],
     variable: "--font-mono",
 });
 
-/* Pixel faces shared by the landing page and the playground. */
+/* Pixel faces used by PlayTheme. */
 const jersey = Jersey_10({
     subsets: ["latin"],
     weight: "400",
@@ -56,7 +49,7 @@ export default function RootLayout({
         <html
             lang="en"
             suppressHydrationWarning
-            className={`antialiased ${fontMono.variable} ${display.variable} ${body.variable} ${jersey.variable} ${silk.variable} ${pixelify.variable}`}
+            className={`antialiased ${fontMono.variable} ${body.variable} ${jersey.variable} ${silk.variable} ${pixelify.variable}`}
         >
             <head>
                 <script

@@ -6,7 +6,7 @@ import {
     useState,
     type MouseEvent,
 } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch, useSelector, useStore } from "react-redux";
 import styled, { css, keyframes } from "styled-components";
 import type {
     AlgorithmMetrics,
@@ -14,44 +14,46 @@ import type {
 } from "../../../../algorithms/types";
 import useSizeFlag from "../../../../hooks/useSizeFlag";
 import type { AppDispatch, RootState } from "../../../../store";
-import AlgorithmInfo from "../../AlgorithmInfo";
-import CodePanel from "../../CodePanel";
 import {
     closeAlgorithm,
-    getAllCodeVisible,
-    getAllMetricsVisible,
     getHighlightedPanelId,
     getActiveCategory,
     getInput,
-    observeAlgorithm,
-    showCodeInSidebar,
-    showInfoInSidebar,
+    getWindowAlgorithmId,
+    openAlgorithmWindow,
 } from "../../playSlice";
-import PathVisualizerCanvas from "../../PathVisualizerCanvas";
-import SortVisualizerCanvas from "../../SortVisualizerCanvas";
-import { algorithmTraits } from "../../traits";
+import { clearBreakpoints } from "../../breakpoints";
+import { categoryOf } from "../../categories";
 import type { StepInfo } from "../../stepLegend";
 import {
     publishGaveUp,
     publishStepInfo,
+    publishCaption,
     publishStepMetrics,
+    useCaption,
     useCodeSnapshot,
 } from "../../stepInfoStore";
-import useSideCodeFits from "../../useSideCodeFits";
 import PixelButton from "../primitives/PixelButton";
 import PixelIcon from "../primitives/PixelIcon";
 import PixelTooltip from "../primitives/PixelTooltip";
-import { DICE } from "../primitives/icons";
+import { DICE, type IconName } from "../primitives/icons";
 import { labelText, pixelFrame } from "../primitives/pixel";
 import PixelMetrics from "./PixelMetrics";
 
-/* Clicks on the panel's own controls keep their job; anywhere else observes. */
+/* Clicks on these keep their job; anywhere else opens focus mode. */
 const INTERACTIVE =
     "button, a, input, select, textarea, [role='slider'], [data-no-observe]";
 
-const COMPACT_MAX_HEIGHT = 220;
+/* Below every category's minimum, so only truly cramped panels go compact. */
+const COMPACT_MAX_HEIGHT = 200;
 const isCompactPanel = (_w: number, height: number): boolean =>
     height < COMPACT_MAX_HEIGHT;
+
+/* Smaller panels hide the counters; focus mode still shows them. */
+const STATS_MIN_HEIGHT = 320;
+const STATS_MIN_WIDTH = 300;
+const isTooSmallForStats = (width: number, height: number): boolean =>
+    height < STATS_MIN_HEIGHT || width < STATS_MIN_WIDTH;
 
 const ants = keyframes`
     to {
@@ -62,12 +64,6 @@ const ants = keyframes`
 const sweep = keyframes`
     from { transform: translateY(-100%); }
     to { transform: translateY(100%); }
-`;
-
-const shift = keyframes`
-    0% { transform: translateX(4px); }
-    50% { transform: translateX(-4px); }
-    100% { transform: translateX(0); }
 `;
 
 const Frame = styled.article<{ $observed: boolean }>`
@@ -82,13 +78,17 @@ const Frame = styled.article<{ $observed: boolean }>`
     cursor: pointer;
     ${pixelFrame("var(--line)")};
 
+    &[data-focused="true"] {
+        cursor: default;
+    }
+
     @media (hover: hover) {
         &:hover {
             ${pixelFrame("var(--line-2)")};
         }
     }
 
-    /* Observed by the Inspector: marching-ants pixel border. */
+    /* Observed by the Inspector: marching-ants border. */
     &::before {
         content: "";
         position: absolute;
@@ -143,7 +143,7 @@ const Frame = styled.article<{ $observed: boolean }>`
     }
 
     &[data-glitch="true"] [data-chart] {
-        animation: ${shift} 120ms steps(2) both;
+        animation: px-dither-in 180ms both;
     }
 
     &[data-compact="true"] {
@@ -201,7 +201,7 @@ const DoneBadge = styled.span`
     color: var(--bg);
     ${labelText};
     font-size: 1rem;
-    animation: px-drop-in 160ms steps(4) both;
+    animation: px-dither-in 160ms steps(4) both;
 
     &[data-gave-up] {
         background-color: var(--danger);
@@ -213,37 +213,55 @@ const Egg = styled.span`
     color: var(--fg-3);
 `;
 
-const Meta = styled.dl`
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.4rem 1.2rem;
-    ${labelText};
-    font-size: 1rem;
-    color: var(--fg-4);
-
-    div {
-        display: flex;
-        gap: 0.5rem;
-    }
-    dd {
-        font-family: var(--f-mono);
-        font-size: 1.15rem;
-        text-transform: none;
-        letter-spacing: 0;
-        color: var(--fg-2);
-    }
-
-    [data-compact="true"] & {
-        display: none;
-    }
-`;
-
 const Actions = styled.div`
     display: flex;
     align-items: center;
     gap: 0.2rem;
     flex: 0 0 auto;
+
+    &[hidden] {
+        display: none;
+    }
 `;
+
+/* The current step in words. Announced only while paused, or it would
+   talk non-stop during playback. */
+const CaptionLine = styled.p`
+    flex: 0 0 auto;
+    min-height: 2.2rem;
+    margin-top: 0.8rem;
+    padding-top: 0.6rem;
+    border-top: 2px dashed var(--line);
+    font-family: var(--f-mono);
+    font-size: 1.25rem;
+    line-height: 1.4;
+    color: var(--fg-2);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    [data-compact="true"] & {
+        margin-top: 0.4rem;
+        padding-top: 0.3rem;
+        font-size: 1.1rem;
+    }
+`;
+
+function StepCaption({ id }: { id: string }): JSX.Element {
+    const caption = useCaption(id);
+    const playing = useSelector<RootState, boolean>(
+        (state) => state.play.animation.status === "playing"
+    );
+    return (
+        <CaptionLine
+            aria-live={playing ? "off" : "polite"}
+            title={caption}
+            data-no-observe
+        >
+            {caption || "\u00a0"}
+        </CaptionLine>
+    );
+}
 
 const MetricsBar = styled.div`
     margin-top: 1.2rem;
@@ -254,38 +272,13 @@ const MetricsBar = styled.div`
     }
 `;
 
-const Main = styled.div<{ $withSide: boolean }>`
-    display: grid;
-    grid-template-columns: ${({ $withSide }) =>
-        $withSide ? "minmax(0, 1fr) minmax(28rem, 0.85fr)" : "minmax(0, 1fr)"};
-    grid-template-rows: minmax(0, 1fr);
-    gap: 1.2rem;
-    flex: 1;
-    min-height: 0;
-    width: 100%;
-`;
-
 const ChartCell = styled.div`
+    flex: 1;
     display: flex;
     flex-direction: column;
     min-width: 0;
     min-height: 0;
 `;
-
-const InfoCard = styled.section`
-    min-width: 0;
-    min-height: 0;
-    height: 100%;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    padding: 1.6rem;
-    margin: var(--b);
-    background-color: var(--bg-2);
-    cursor: auto;
-    ${pixelFrame("var(--line)")};
-`;
-
-type SideView = "code" | "info" | null;
 
 /* Rolling die for the random sorts, sparkle for the miracle. */
 function AlgorithmEgg({ id }: { id: string }): JSX.Element | null {
@@ -324,76 +317,39 @@ function AlgorithmEgg({ id }: { id: string }): JSX.Element | null {
     return null;
 }
 
-type AlgorithmPanelProps = {
-    registry: AlgorithmRegistryItem;
+type PanelButtonProps = {
+    label: string;
+    tooltip: string;
+    icon: IconName;
+    align?: "end";
+    onClick: () => void;
 };
 
-function AlgorithmPanel({ registry }: AlgorithmPanelProps): JSX.Element {
-    const dispatch = useDispatch<AppDispatch>();
-    const { id, meta } = registry;
-    const instructions = registry.algorithm.instructions;
-    const canShowCode = Boolean(instructions);
-
-    const [totals, setTotals] = useState<AlgorithmMetrics | null>(null);
-    const allMetricsVisible = useSelector<RootState, boolean>(
-        getAllMetricsVisible
+function PanelButton({
+    label,
+    tooltip,
+    icon,
+    align,
+    onClick,
+}: PanelButtonProps): JSX.Element {
+    return (
+        <PixelTooltip label={tooltip} side="bottom" align={align}>
+            <PixelButton
+                type="button"
+                $variant="ghost"
+                $size="sm"
+                $square
+                aria-label={label}
+                onClick={onClick}
+            >
+                <PixelIcon name={icon} scale={2} />
+            </PixelButton>
+        </PixelTooltip>
     );
-    const allCodeVisible = useSelector<RootState, boolean>(getAllCodeVisible);
-    const observed =
-        useSelector<RootState, string | null>(getHighlightedPanelId) === id;
-    const input = useSelector<RootState, number[]>(getInput);
-    const category = useSelector<RootState, string>(getActiveCategory);
-    const isPath = category === "path";
-    const hasInput = isPath || input.length > 0;
-    const Visualizer = isPath ? PathVisualizerCanvas : SortVisualizerCanvas;
-    const { gaveUp } = useCodeSnapshot(id);
+}
 
-    // Finished = the global step reached this algorithm's last step.
-    const done = useSelector<RootState, boolean>((state) => {
-        const algo = state.play.active.algorithms.find((a) => a.id === id);
-        if (!algo || algo.stepsLength <= 1) return false;
-        return state.play.animation.step.value >= algo.stepsLength - 1;
-    });
-
-    // One side column, showing code or info. The global code toggle
-    // drives it too: on → code, off → closes it if it was showing code.
-    const [sideView, setSideView] = useState<SideView>(
-        allCodeVisible ? "code" : null
-    );
-    const [prevAllCode, setPrevAllCode] = useState<boolean>(allCodeVisible);
-    if (allCodeVisible !== prevAllCode) {
-        setPrevAllCode(allCodeVisible);
-        if (allCodeVisible) setSideView("code");
-        else if (sideView === "code") setSideView(null);
-    }
-
-    const frameRef = useRef<HTMLElement | null>(null);
-    const mainRef = useRef<HTMLDivElement | null>(null);
-    const sideFits = useSideCodeFits(mainRef);
-    const compact = useSizeFlag(frameRef, isCompactPanel);
-    const inlineView: SideView = sideFits
-        ? sideView === "code" && !canShowCode
-            ? null
-            : sideView
-        : null;
-
-    // Step position feeds every code view of this algorithm.
-    const handleStepInfo = useCallback(
-        (info: StepInfo | null) => publishStepInfo(id, info),
-        [id]
-    );
-    const handleStepMetrics = useCallback(
-        (metrics: AlgorithmMetrics | null) => {
-            publishStepMetrics(id, metrics);
-            publishGaveUp(
-                id,
-                Boolean(metrics?.gaveUp?.count || metrics?.noPath?.count)
-            );
-        },
-        [id]
-    );
-
-    // Lit-band sweep the moment the algorithm finishes.
+/* True for a moment when `done` turns on: the finish sweep. */
+function useFinishFlash(done: boolean): boolean {
     const [flash, setFlash] = useState<boolean>(false);
     const prevDone = useRef<boolean>(done);
     useEffect(() => {
@@ -406,8 +362,11 @@ function AlgorithmPanel({ registry }: AlgorithmPanelProps): JSX.Element {
         }
         prevDone.current = done;
     }, [done]);
+    return flash;
+}
 
-    // Two-frame pixel shift when the input is regenerated.
+/* True for a moment after the input changes (not on mount). */
+function useInputGlitch(input: unknown): boolean {
     const [glitch, setGlitch] = useState<boolean>(false);
     const firstInput = useRef<boolean>(true);
     useEffect(() => {
@@ -420,27 +379,81 @@ function AlgorithmPanel({ registry }: AlgorithmPanelProps): JSX.Element {
         const timer = setTimeout(() => setGlitch(false), 140);
         return () => clearTimeout(timer);
     }, [input]);
+    return glitch;
+}
 
-    const viewLabel = (view: "code" | "info"): string =>
-        !sideFits
-            ? `Show ${view} in Inspector`
-            : inlineView === view
-              ? `Hide ${view}`
-              : `Show ${view}`;
+type AlgorithmPanelProps = {
+    registry: AlgorithmRegistryItem;
+};
 
-    const handleView = (view: "code" | "info"): void => {
-        if (sideFits) {
-            setSideView((current) => (current === view ? null : view));
-            return;
-        }
-        dispatch(
-            view === "code" ? showCodeInSidebar(id) : showInfoInSidebar(id)
-        );
+function AlgorithmPanel({ registry }: AlgorithmPanelProps): JSX.Element {
+    const dispatch = useDispatch<AppDispatch>();
+    const store = useStore<RootState>();
+    const { id, meta } = registry;
+
+    const [totals, setTotals] = useState<AlgorithmMetrics | null>(null);
+    const observed =
+        useSelector<RootState, string | null>(getHighlightedPanelId) === id;
+    const input = useSelector<RootState, number[]>(getInput);
+    const category = useSelector<RootState, string>(getActiveCategory);
+    const def = categoryOf(category);
+    const hasInput = category !== "sort" || input.length > 0;
+    const Visualizer = def.Visualizer;
+    const { gaveUp } = useCodeSnapshot(id);
+
+    // Finished = the global step reached this algorithm's last step.
+    const done = useSelector<RootState, boolean>((state) => {
+        const algo = state.play.active.algorithms.find((a) => a.id === id);
+        if (!algo || algo.stepsLength <= 1) return false;
+        return state.play.animation.step.value >= algo.stepsLength - 1;
+    });
+
+    const frameRef = useRef<HTMLElement | null>(null);
+    const compact = useSizeFlag(frameRef, isCompactPanel);
+    const statsHidden = useSizeFlag(frameRef, isTooSmallForStats);
+    const handleStepInfo = useCallback(
+        (info: StepInfo | null) => {
+            publishStepInfo(id, info);
+            publishCaption(id, info?.caption ?? "");
+        },
+        [id]
+    );
+
+    const handleStepMetrics = useCallback(
+        (metrics: AlgorithmMetrics | null) => {
+            publishStepMetrics(id, metrics);
+            publishGaveUp(
+                id,
+                Boolean(metrics?.gaveUp?.count || metrics?.noPath?.count)
+            );
+        },
+        [id]
+    );
+
+    // A closed panel takes its breakpoints with it.
+    useEffect(() => () => clearBreakpoints(id), [id]);
+
+    const flash = useFinishFlash(done);
+    const glitch = useInputGlitch(input);
+
+    // In focus mode the window owns the controls; the panel is just the picture.
+    const focused =
+        useSelector<RootState, string | null>(getWindowAlgorithmId) === id;
+
+    const openWindow = (): void => {
+        dispatch(openAlgorithmWindow(id));
     };
 
     const handleFrameClick = (event: MouseEvent<HTMLElement>): void => {
+        if (focused) return;
         if ((event.target as HTMLElement).closest(INTERACTIVE)) return;
-        dispatch(observeAlgorithm(id));
+        openWindow();
+    };
+
+    const runPanelAction = (): void => {
+        def.panelAction
+            ?.run(id, store.getState().play)
+            .forEach((action) => dispatch(action));
     };
 
     return (
@@ -448,6 +461,7 @@ function AlgorithmPanel({ registry }: AlgorithmPanelProps): JSX.Element {
             ref={frameRef}
             $observed={observed}
             data-compact={compact}
+            data-focused={focused}
             data-flash={flash}
             data-glitch={glitch}
             onClick={handleFrameClick}
@@ -456,13 +470,7 @@ function AlgorithmPanel({ registry }: AlgorithmPanelProps): JSX.Element {
             <Header>
                 <TitleBlock>
                     <TitleLine>
-                        <TitleButton
-                            type="button"
-                            onClick={() => dispatch(observeAlgorithm(id))}
-                            aria-label={`Follow ${meta.name} in the Inspector`}
-                        >
-                            {meta.name}
-                        </TitleButton>
+                        <TitleButton as="h3">{meta.name}</TitleButton>
                         <AlgorithmEgg id={id} />
                         {done && (
                             <DoneBadge data-gave-up={gaveUp || undefined}>
@@ -470,115 +478,49 @@ function AlgorithmPanel({ registry }: AlgorithmPanelProps): JSX.Element {
                                     name={gaveUp ? "close" : "check"}
                                     scale={1}
                                 />
-                                {gaveUp
-                                    ? totals?.noPath?.count
-                                        ? "No path"
-                                        : "Gave up"
-                                    : isPath
-                                      ? "Found"
-                                      : "Sorted"}
+                                {gaveUp ? def.failLabel(totals) : def.doneLabel}
                             </DoneBadge>
                         )}
                     </TitleLine>
-                    <Meta aria-label={`${meta.name} properties`}>
-                        <div>
-                            <dt>avg</dt>
-                            <dd>{meta.timeComplexity}</dd>
-                        </div>
-                        <div>
-                            <dt>worst</dt>
-                            <dd>{meta.worstCase}</dd>
-                        </div>
-                        <div>
-                            <dt>space</dt>
-                            <dd>{meta.auxiliarySpace}</dd>
-                        </div>
-                        {algorithmTraits(meta).map((trait) => (
-                            <div key={trait.short}>
-                                <dt>{trait.short}</dt>
-                            </div>
-                        ))}
-                    </Meta>
                 </TitleBlock>
-                <Actions>
-                    {canShowCode && (
-                        <PixelTooltip label={viewLabel("code")} side="bottom">
-                            <PixelButton
-                                type="button"
-                                $variant="ghost"
-                                $size="sm"
-                                $square
-                                aria-pressed={
-                                    sideFits ? inlineView === "code" : undefined
-                                }
-                                aria-label={`${viewLabel("code")}: ${meta.name}`}
-                                onClick={() => handleView("code")}
-                            >
-                                <PixelIcon name="code" scale={2} />
-                            </PixelButton>
-                        </PixelTooltip>
+                <Actions hidden={focused}>
+                    {def.panelAction && (
+                        <PanelButton
+                            label={`${def.panelAction.label}: ${meta.name}`}
+                            tooltip={def.panelAction.label}
+                            icon={def.panelAction.icon}
+                            onClick={runPanelAction}
+                        />
                     )}
-                    <PixelTooltip label={viewLabel("info")} side="bottom">
-                        <PixelButton
-                            type="button"
-                            $variant="ghost"
-                            $size="sm"
-                            $square
-                            aria-pressed={
-                                sideFits ? inlineView === "info" : undefined
-                            }
-                            aria-label={`${viewLabel("info")}: ${meta.name}`}
-                            onClick={() => handleView("info")}
-                        >
-                            <PixelIcon name="info" scale={2} />
-                        </PixelButton>
-                    </PixelTooltip>
-                    <PixelTooltip label="Close" side="bottom" align="end">
-                        <PixelButton
-                            type="button"
-                            $variant="ghost"
-                            $size="sm"
-                            $square
-                            aria-label={`Close ${meta.name}`}
-                            onClick={() => dispatch(closeAlgorithm(id))}
-                        >
-                            <PixelIcon name="close" scale={2} />
-                        </PixelButton>
-                    </PixelTooltip>
+                    <PanelButton
+                        label={`Code and description of ${meta.name}`}
+                        tooltip="Code · About"
+                        icon="info"
+                        onClick={openWindow}
+                    />
+                    <PanelButton
+                        label={`Close ${meta.name}`}
+                        tooltip="Close"
+                        icon="close"
+                        align="end"
+                        onClick={() => dispatch(closeAlgorithm(id))}
+                    />
                 </Actions>
             </Header>
-            {allMetricsVisible && hasInput && (
-                <MetricsBar>
+            {hasInput && !statsHidden && (
+                <MetricsBar data-metrics-bar>
                     <PixelMetrics id={id} totals={totals} />
                 </MetricsBar>
             )}
-            <Main
-                ref={mainRef}
-                $withSide={inlineView !== null}
-                data-side-view={inlineView ?? undefined}
-            >
-                <ChartCell data-chart>
-                    <Visualizer
-                        registry={registry}
-                        onMetricsUpdate={setTotals}
-                        onStepMetricsUpdate={handleStepMetrics}
-                        onStepInfoUpdate={handleStepInfo}
-                    />
-                </ChartCell>
-                {inlineView === "code" && instructions && (
-                    <CodePanel
-                        algorithmId={id}
-                        name={meta.name}
-                        instructions={instructions}
-                        description={meta.description}
-                    />
-                )}
-                {inlineView === "info" && (
-                    <InfoCard data-no-observe aria-label={`${meta.name} info`}>
-                        <AlgorithmInfo registry={registry} showTitle={false} />
-                    </InfoCard>
-                )}
-            </Main>
+            <ChartCell data-chart>
+                <Visualizer
+                    registry={registry}
+                    onMetricsUpdate={setTotals}
+                    onStepMetricsUpdate={handleStepMetrics}
+                    onStepInfoUpdate={handleStepInfo}
+                />
+            </ChartCell>
+            <StepCaption id={id} />
         </Frame>
     );
 }

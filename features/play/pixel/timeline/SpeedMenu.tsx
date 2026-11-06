@@ -12,6 +12,7 @@ import { useDispatch, useSelector, useStore } from "react-redux";
 import styled from "styled-components";
 import useClickOutside from "../../../../hooks/useClickOutside";
 import type { AppDispatch, RootState } from "../../../../store";
+import { useEscapeKey } from "../../../../hooks/useEscapeKey";
 import {
     changeSpeed,
     freezeAnimation,
@@ -25,6 +26,7 @@ import PixelIcon from "../primitives/PixelIcon";
 import { labelText, pixelFrame, pixelRaised } from "../primitives/pixel";
 import { ANIMALS } from "../sprites/animals";
 import PixelSprite from "../sprites/PixelSprite";
+import { TINY, SHORT } from "../media";
 import { animalForSpeed, formatSpeed, paceOf } from "../sprites/speedAnimals";
 
 const Wrap = styled.div`
@@ -49,6 +51,19 @@ const Trigger = styled.button`
     &:active {
         transform: translateY(var(--b));
     }
+
+    /* The runner above already shows the animal; keep only the time. */
+    @media ${TINY} {
+        padding: 0 0.8rem;
+
+        & > canvas,
+        small {
+            display: none !important;
+        }
+    }
+    @media ${SHORT} {
+        height: 4rem;
+    }
 `;
 
 const TriggerText = styled.span`
@@ -70,7 +85,7 @@ const TriggerText = styled.span`
     }
 `;
 
-/* Opens upward from the dock in four frames, like a menu in a bitmap OS. */
+/* Opens upward from the dock. */
 const Panel = styled.div`
     position: absolute;
     right: 0;
@@ -81,7 +96,16 @@ const Panel = styled.div`
     background-color: var(--surface);
     ${pixelFrame("var(--line-2)")};
     transform-origin: bottom right;
-    animation: px-menu-in 140ms steps(4) both;
+    animation: px-dither-in 140ms steps(4) both;
+    /* Never taller than the room above the dock. */
+    max-height: calc(100svh - var(--toolbar-h) - 12rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+
+    /* Landscape phones: one wide strip with every speed. */
+    @media ${SHORT} {
+        width: min(72rem, calc(100vw - 3.2rem));
+    }
 `;
 
 const PanelHead = styled.p`
@@ -96,6 +120,11 @@ const Grid = styled.div`
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 0.8rem;
+
+    @media ${SHORT} {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 0.4rem;
+    }
 `;
 
 const Option = styled.div`
@@ -211,17 +240,10 @@ function SpeedMenu(): JSX.Element {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open]);
 
-    // Escape closes the menu wherever focus is.
-    useEffect(() => {
-        if (!open) return;
-        const onKey = (event: globalThis.KeyboardEvent): void => {
-            if (event.key !== "Escape") return;
-            event.preventDefault();
-            close(true);
-        };
-        document.addEventListener("keydown", onKey);
-        return () => document.removeEventListener("keydown", onKey);
-    }, [open, close]);
+    useEscapeKey(open, (event) => {
+        event.preventDefault();
+        close(true);
+    });
 
     const choose = (ms: number): void => {
         dispatch(changeSpeed(ms));
@@ -232,7 +254,11 @@ function SpeedMenu(): JSX.Element {
         const current = optionRefs.current.findIndex(
             (el) => el === document.activeElement
         );
-        const cols = 3;
+        // Whatever the grid shows right now (3 columns, 5 in landscape).
+        const grid = optionRefs.current[0]?.parentElement;
+        const cols = grid
+            ? getComputedStyle(grid).gridTemplateColumns.split(" ").length
+            : 3;
         const moves: Record<string, number> = {
             ArrowRight: 1,
             ArrowLeft: -1,

@@ -8,13 +8,22 @@ import {
     pixelFrame,
 } from "../play/pixel/primitives/pixel";
 import PixelSprite from "../play/pixel/sprites/PixelSprite";
-import { CANVAS_H, CANVAS_W } from "../play/pixel/sprites/frames";
+import { CANVAS_W } from "../play/pixel/sprites/frames";
 import {
     drawBlockBars,
+    fitCanvas,
+    playStepLoop,
     readBarColors,
     recordInsertionSort,
     shuffledValues,
 } from "./pixelBars";
+import {
+    Eyebrow,
+    GUTTER,
+    SpriteLane,
+    SpriteRunner,
+    Title,
+} from "./sectionStyles";
 import SplitWords from "./SplitWords";
 
 gsap.registerPlugin(useGSAP);
@@ -33,28 +42,13 @@ const Pin = styled.div`
     display: grid;
     align-content: center;
     gap: 3.2rem;
-    padding: 12.8rem clamp(1.6rem, 3vw, 3.2rem) 9.6rem;
+    padding: 12.8rem ${GUTTER} 9.6rem;
 
     @media (min-width: 1024px) {
         grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
         align-items: center;
         gap: 6.4rem;
     }
-`;
-
-const Eyebrow = styled.p`
-    ${labelText};
-    color: var(--accent);
-    margin-bottom: 1.6rem;
-`;
-
-const Title = styled.h2`
-    font-family: var(--f-display);
-    font-weight: 400;
-    font-size: clamp(4rem, 2rem + 4vw, 8.8rem);
-    line-height: 0.82;
-    text-transform: uppercase;
-    color: var(--fg);
 `;
 
 const Legend = styled.ol`
@@ -150,18 +144,6 @@ const PanelHead = styled.figcaption`
     }
 `;
 
-const Lane = styled.div`
-    position: relative;
-    height: ${CANVAS_H * SCALE}px;
-`;
-
-const Runner = styled.div`
-    position: absolute;
-    left: 0;
-    bottom: -2px;
-    will-change: transform;
-`;
-
 const Track = styled.div`
     position: relative;
     height: 1.6rem;
@@ -213,12 +195,15 @@ const LEGEND = [
     },
 ];
 
-/*
- * A live insertion sort on loop, colored exactly like the playground:
- * the legend lights up the step being drawn, the fox runs along the
- * progress bar and hops at the finish. Plays only while on screen and
- * never takes over the scroll.
- */
+/* Sprite x centered on `progress` along the track, clamped inside it. */
+function runnerX(progress: number, trackWidth: number): number {
+    const spriteW = CANVAS_W * SCALE;
+    const x = progress * trackWidth - spriteW / 2;
+    return Math.max(0, Math.min(trackWidth - spriteW, x));
+}
+
+/* Looping insertion sort; the legend lights the current step and the fox
+   runs along the progress bar. */
 function ScrubScene(): JSX.Element {
     const rootRef = useRef<HTMLElement | null>(null);
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -234,116 +219,83 @@ function ScrubScene(): JSX.Element {
             const ctx = canvas?.getContext("2d");
             if (!root || !canvas || !ctx) return;
             const colors = readBarColors();
-            let width = 0;
-            let height = 0;
+            let size = { width: 0, height: 0 };
             let shown = -1;
 
             const sizeCanvas = (): void => {
-                const dpr = Math.min(2, window.devicePixelRatio || 1);
-                width = canvas.offsetWidth;
-                height = canvas.offsetHeight;
-                canvas.width = Math.round(width * dpr);
-                canvas.height = Math.round(height * dpr);
-                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+                size = fitCanvas(canvas, ctx);
                 shown = -1;
             };
 
-            const render = (progress: number): void => {
-                const index = Math.round(progress * LAST);
-                if (index === shown) return;
-                shown = index;
-                const step = STEPS[index];
-                drawBlockBars(ctx, step, colors, {
-                    width,
-                    height,
-                    block: 10,
-                    gap: 3,
-                });
-                const kind = step.kind === "initial" ? "check" : step.kind;
+            const highlightLegend = (kind: string): void => {
                 root.querySelectorAll<HTMLElement>("[data-kind]").forEach(
                     (el) => {
                         el.dataset.active = String(el.dataset.kind === kind);
                     }
                 );
+            };
+
+            const moveProgress = (progress: number): void => {
+                const fill = fillRef.current;
+                const track = fill?.parentElement;
+                if (!fill || !track) return;
+                const inner = track.offsetWidth - 6;
+                fill.style.width = `${Math.round((progress * inner) / 8) * 8}px`;
+                if (runnerRef.current) {
+                    const x = runnerX(progress, track.offsetWidth);
+                    runnerRef.current.style.transform = `translateX(${Math.round(x / 2) * 2}px)`;
+                }
+            };
+
+            const render = (index: number): void => {
+                if (index === shown) return;
+                shown = index;
+                const step = STEPS[index];
+                drawBlockBars(ctx, step, colors, {
+                    ...size,
+                    block: 10,
+                    gap: 3,
+                });
+                highlightLegend(step.kind === "initial" ? "check" : step.kind);
                 if (countRef.current) {
                     countRef.current.textContent = String(index).padStart(
                         3,
                         "0"
                     );
                 }
-                const track = fillRef.current?.parentElement;
-                if (track && fillRef.current) {
-                    const inner = track.offsetWidth - 6;
-                    fillRef.current.style.width = `${Math.round((progress * inner) / 8) * 8}px`;
-                }
-                if (runnerRef.current && track) {
-                    const spriteW = CANVAS_W * SCALE;
-                    const x = Math.max(
-                        0,
-                        Math.min(
-                            track.offsetWidth - spriteW,
-                            progress * track.offsetWidth - spriteW / 2
-                        )
-                    );
-                    runnerRef.current.style.transform = `translateX(${Math.round(x / 2) * 2}px)`;
-                }
+                moveProgress(index / LAST);
             };
 
             sizeCanvas();
             render(0);
 
-            // Plays by itself while on screen: sort, hold the result, reshuffle.
             const mm = gsap.matchMedia();
             mm.add("(prefers-reduced-motion: no-preference)", () => {
                 let index = 0;
-                let acc = 0;
-                let last = 0;
-                let holdUntil = 0;
-                let visible = false;
-                let frame = 0;
-                const loop = (now: number): void => {
-                    frame = requestAnimationFrame(loop);
-                    if (!visible) {
-                        last = 0;
-                        return;
-                    }
-                    const dt = last ? Math.min(100, now - last) : 0;
-                    last = now;
-                    if (holdUntil) {
-                        if (now < holdUntil) return;
-                        holdUntil = 0;
-                        index = 0;
-                        setMoving(true);
-                    }
-                    acc += dt;
-                    while (acc >= STEP_MS && index < LAST) {
-                        acc -= STEP_MS;
-                        index += 1;
-                    }
-                    render(index / LAST);
-                    if (index >= LAST) {
-                        holdUntil = now + HOLD_MS;
-                        setMoving(false);
-                    }
-                };
-                frame = requestAnimationFrame(loop);
-                const observer = new IntersectionObserver(([entry]) => {
-                    visible = entry.isIntersecting;
+                const loop = playStepLoop(canvas, {
+                    stepMs: STEP_MS,
+                    holdMs: HOLD_MS,
+                    maxFrameMs: 100,
+                    lastIndex: () => LAST,
+                    onStep: (next) => {
+                        index = next;
+                        render(index);
+                    },
+                    onHold: () => setMoving(false),
+                    onRestart: () => setMoving(true),
                 });
-                observer.observe(canvas);
                 const onResize = (): void => {
                     sizeCanvas();
-                    render(index / LAST);
+                    render(index);
                 };
                 window.addEventListener("resize", onResize);
                 return () => {
-                    cancelAnimationFrame(frame);
-                    observer.disconnect();
+                    loop.stop();
                     window.removeEventListener("resize", onResize);
                 };
             });
             mm.add("(prefers-reduced-motion: reduce)", () => {
-                render(1);
+                render(LAST);
             });
         },
         { scope: rootRef }
@@ -390,15 +342,15 @@ function ScrubScene(): JSX.Element {
                         <strong>Insertion</strong>
                         <span>avg O(n²) · stable · in place</span>
                     </PanelHead>
-                    <Lane aria-hidden="true">
-                        <Runner ref={runnerRef}>
+                    <SpriteLane $scale={SCALE} aria-hidden="true">
+                        <SpriteRunner ref={runnerRef}>
                             <PixelSprite
                                 animal="fox"
                                 state={moving ? "run" : "done"}
                                 scale={SCALE}
                             />
-                        </Runner>
-                    </Lane>
+                        </SpriteRunner>
+                    </SpriteLane>
                     <Track aria-hidden="true">
                         <Fill ref={fillRef} />
                     </Track>

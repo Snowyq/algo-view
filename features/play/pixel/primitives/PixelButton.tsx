@@ -10,10 +10,7 @@ const heights: Record<Size, string> = {
     lg: "5.6rem",
 };
 
-/*
- * Hover runs a 1px glint across in four frames; press drops the button
- * one border and eats its lip (instant, no easing: it is a click).
- */
+/* Hover runs a glint across; press sinks the button and hides its lip. */
 const PixelButton = styled.button<{
     $variant?: Variant;
     $size?: Size;

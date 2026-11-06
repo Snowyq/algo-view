@@ -1,25 +1,25 @@
 import type { AlgorithmInstructions } from "../types";
+import { DIRS } from "../GridAlgorithm";
 import { PathAlgorithm } from "./PathAlgorithm";
 
-/* Keeps one hand on the left wall. Solves any maze whose walls all
-   connect; circles forever around a free-standing one. */
+/* Left-hand rule. Works when all walls connect; circles forever around
+   a free-standing one. */
 export class WallFollower extends PathAlgorithm {
     search(): void {
-        const { start, end, cols, rows } = this.grid;
-        const cameFrom = new Int32Array(this.size).fill(-1);
+        const { start, end } = this.grid;
+        const cameFrom = this.emptyCameFrom();
         const seen = new Uint8Array(this.size);
-        // 0 up, 1 right, 2 down, 3 left
-        const dx = [0, 1, 0, -1];
-        const dy = [-1, 0, 1, 0];
+        // Neighbour in direction `dir` (index into DIRS), or -1 if blocked.
         const open = (cell: number, dir: number): number => {
-            const x = (cell % cols) + dx[dir];
-            const y = Math.floor(cell / cols) + dy[dir];
-            if (x < 0 || y < 0 || x >= cols || y >= rows) return -1;
-            const next = y * cols + x;
+            const [x, y] = this.xy(cell);
+            const nx = x + DIRS[dir][0];
+            const ny = y + DIRS[dir][1];
+            if (!this.inside(nx, ny)) return -1;
+            const next = this.at(nx, ny);
             return this.isWall(next) ? -1 : next;
         };
         let cell = start;
-        let dir = 1;
+        let dir = 1; // facing right
         seen[start] = 1;
         const patience = this.size * 4;
         for (let step = 0; step < patience; step += 1) {

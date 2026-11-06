@@ -16,6 +16,7 @@ type StepWorkerChangePayload = {
 };
 
 type StepWorkerMessage =
+    | { type: "breakpoints"; payload: { steps: number[] } }
     | { type: "tab"; payload: string | number }
     | { type: "start"; payload: StepWorkerStartPayload }
     | { type: "config"; payload: StepWorkerConfigPayload }
@@ -23,16 +24,14 @@ type StepWorkerMessage =
     | { type: "change"; payload: StepWorkerChangePayload };
 
 /*
- * The playback clock. Steps advance by elapsed time, not by timer calls:
- * the timer wakes every frame (16ms) and moves as many steps as the
- * interval says have passed. A 1ms speed therefore means ~16 steps
- * per tick instead of 1000 messages a second that nobody can draw.
+ * Playback clock. Steps advance by elapsed time: the timer wakes every frame
+ * and moves as many steps as have passed, so fast speeds batch steps per tick.
  */
 
 const TICK_MS = 16;
-/* After a stall (hidden tab, GC) don't jump more than this much time. */
+/* Cap the jump after a stall (hidden tab, GC). */
 const MAX_CATCH_UP_MS = 250;
-/* Never cap below one full interval, or slow speeds could never step. */
+/* At least two intervals, or slow speeds could never step. */
 const catchUpLimit = (): number => Math.max(MAX_CATCH_UP_MS, interval * 2);
 
 let sharedIndex: Int32Array | null = null;
@@ -43,6 +42,17 @@ let timerId: ReturnType<typeof setInterval> | null = null;
 let lastTime = 0;
 let carry = 0;
 let channel: BroadcastChannel | undefined;
+/** Steps to pause on (breakpoints), ascending. */
+let stops: number[] = [];
+
+/* First stop in (from, to], or -1. */
+function firstStop(from: number, to: number): number {
+    for (const stop of stops) {
+        if (stop > to) return -1;
+        if (stop > from) return stop;
+    }
+    return -1;
+}
 
 function readStep(): number {
     return sharedIndex ? Atomics.load(sharedIndex, 0) : localStep;
@@ -64,8 +74,7 @@ function startTimer(): void {
     stopTimer();
     lastTime = performance.now();
     carry = 0;
-    // Always wake every frame: a 500ms timer that fires 0.1ms early would
-    // round down to zero steps and silently halve the speed.
+    // Wake every frame: a long timer firing slightly early would round to zero steps.
     timerId = setInterval(tick, TICK_MS);
 }
 
@@ -82,7 +91,17 @@ function tick(): void {
     if (steps < 1) return;
     carry -= steps * interval;
 
-    const next = Math.min(maxStep, readStep() + steps);
+    const from = readStep();
+    const next = Math.min(maxStep, from + steps);
+    // Stop exactly on a breakpoint in between.
+    const stop = firstStop(from, next);
+    if (stop >= 0) {
+        writeStep(stop);
+        publish(stop);
+        stopTimer();
+        postMessage({ type: "break", payload: { step: stop } });
+        return;
+    }
     writeStep(next);
     publish(next);
     if (next >= maxStep) stopTimer();
@@ -90,6 +109,11 @@ function tick(): void {
 
 onmessage = (event: MessageEvent<StepWorkerMessage>): void => {
     const message = event.data;
+
+    if (message.type === "breakpoints") {
+        stops = [...message.payload.steps].sort((a, b) => a - b);
+        return;
+    }
 
     if (message.type === "tab") {
         channel = new BroadcastChannel(`animation-tick:${message.payload}`);
@@ -109,7 +133,7 @@ onmessage = (event: MessageEvent<StepWorkerMessage>): void => {
         return;
     }
 
-    // Speed or length changed mid-play: retune without losing the position.
+    // Speed or length changed mid-play: retune, keep the position.
     if (message.type === "config") {
         const { interval: nextInterval, maxStep: nextMax } = message.payload;
         if (nextInterval) interval = nextInterval;

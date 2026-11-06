@@ -11,11 +11,7 @@ import {
     type Rig,
 } from "./rigs";
 
-/*
- * Speed animals, in a classic pixel-mascot style: flat terracotta
- * bodies, square eyes, no outlines. Character comes from motion: each
- * animal has a procedural rig (see rigs.ts) and its own gait.
- */
+/* One animal per playback speed, each with its own rig and gait. */
 
 export type AnimalId =
     | "cheetah"
@@ -31,15 +27,14 @@ export type AnimalId =
 export type Animal = {
     id: AnimalId;
     name: string;
-    /** What it does on the track, for labels. */
+    /** Verb for labels, e.g. sprints. */
     gait: string;
     rig: Rig;
-    /** Frames per run cycle and cycles per second. */
-    runFrames: number;
+    /** Run cycles per second. */
     runCps: number;
     /** Kicks up dust while running. */
     dusty: boolean;
-    /** Tricks: "hide" pulls into the shell, "flip" does a somersault. */
+    /** Click trick: hide in the shell or do a somersault. */
     trick: "hide" | "flip";
 };
 
@@ -49,7 +44,6 @@ export const ANIMALS: Record<AnimalId, Animal> = {
         name: "Cheetah",
         gait: "sprints",
         rig: cheetahRig,
-        runFrames: 4,
         runCps: 3.6,
         dusty: true,
         trick: "flip",
@@ -59,7 +53,6 @@ export const ANIMALS: Record<AnimalId, Animal> = {
         name: "Hare",
         gait: "hops",
         rig: hareRig,
-        runFrames: 4,
         runCps: 2.2,
         dusty: true,
         trick: "flip",
@@ -69,7 +62,6 @@ export const ANIMALS: Record<AnimalId, Animal> = {
         name: "Fox",
         gait: "trots",
         rig: foxRig,
-        runFrames: 4,
         runCps: 2.6,
         dusty: true,
         trick: "flip",
@@ -79,7 +71,6 @@ export const ANIMALS: Record<AnimalId, Animal> = {
         name: "Dog",
         gait: "runs",
         rig: dogRig,
-        runFrames: 4,
         runCps: 2.4,
         dusty: false,
         trick: "flip",
@@ -89,7 +80,6 @@ export const ANIMALS: Record<AnimalId, Animal> = {
         name: "Cat",
         gait: "walks",
         rig: catRig,
-        runFrames: 4,
         runCps: 1.6,
         dusty: false,
         trick: "flip",
@@ -99,7 +89,6 @@ export const ANIMALS: Record<AnimalId, Animal> = {
         name: "Duck",
         gait: "waddles",
         rig: duckRig,
-        runFrames: 4,
         runCps: 2,
         dusty: false,
         trick: "flip",
@@ -109,7 +98,6 @@ export const ANIMALS: Record<AnimalId, Animal> = {
         name: "Turtle",
         gait: "plods",
         rig: turtleRig,
-        runFrames: 4,
         runCps: 1,
         dusty: false,
         trick: "hide",
@@ -119,7 +107,6 @@ export const ANIMALS: Record<AnimalId, Animal> = {
         name: "Snail",
         gait: "creeps",
         rig: snailRig,
-        runFrames: 4,
         runCps: 0.75,
         dusty: false,
         trick: "hide",
@@ -129,7 +116,6 @@ export const ANIMALS: Record<AnimalId, Animal> = {
         name: "Sloth",
         gait: "shuffles",
         rig: slothRig,
-        runFrames: 4,
         runCps: 0.5,
         dusty: false,
         trick: "flip",

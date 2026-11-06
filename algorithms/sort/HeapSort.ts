@@ -11,7 +11,6 @@ export class HeapSort extends SortAlgorithm {
                 const child = 2 * root + 1;
                 let largest = root;
 
-                this.countArrayAccess(2);
                 if (
                     this.check(largest, "<", child, arr, {
                         instructionId: ["s4"],
@@ -20,7 +19,6 @@ export class HeapSort extends SortAlgorithm {
                     largest = child;
                 this.countConditionChecks();
                 if (child + 1 <= end) {
-                    this.countArrayAccess(2);
                     if (
                         this.check(largest, "<", child + 1, arr, {
                             instructionId: ["s5"],

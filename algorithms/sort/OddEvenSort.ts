@@ -10,7 +10,6 @@ export class OddEvenSort extends SortAlgorithm {
             for (const offset of [1, 0]) {
                 for (let i = offset; i < arr.length - 1; i += 2) {
                     this.countConditionChecks();
-                    this.countArrayAccess(2);
                     if (
                         this.check(i, ">", i + 1, arr, {
                             instructionId: ["o5"],

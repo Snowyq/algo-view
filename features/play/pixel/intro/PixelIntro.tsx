@@ -1,22 +1,23 @@
-import { JSX, useEffect, useMemo, useRef, useState } from "react";
+import { JSX, useEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import styled from "styled-components";
 import type { RootState } from "../../../../store";
 import {
     getActiveAlgorithms,
-    getSortWorkerLoading,
-    getSortWorkerReady,
+    getCanvasWorkerLoading,
+    getCanvasWorkerReady,
     getStepWorkerReady,
     type ActiveAlgorithm,
 } from "../../playSlice";
+import { prefersReducedMotion } from "../fx/dom";
 import { setFx } from "../fx/fxStore";
 import { pixelWipe } from "../fx/pixelWipe";
 import { labelText } from "../primitives/pixel";
-import { layoutWord } from "../toolbar/PixelLogo";
+import { WORDMARK, WordmarkRects } from "../toolbar/PixelLogo";
+import { introSeen, markIntroSeen } from "./introSeen";
 
-const SEEN_KEY = "algo-view:intro-seen";
 const ASSEMBLE_MS = 760;
-/* Never hold the UI hostage: give up waiting after this. */
+/* Stop waiting for readiness after this. */
 const MAX_WAIT_MS = 4000;
 
 const Overlay = styled.div`
@@ -86,21 +87,21 @@ const Skip = styled.p`
 const BLOCKS = 16;
 
 function shouldShowIntro(): boolean {
-    if (typeof window === "undefined") return false;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-        return false;
-    }
-    try {
-        return window.sessionStorage.getItem(SEEN_KEY) !== "1";
-    } catch {
-        return true;
-    }
+    return (
+        typeof window !== "undefined" && !prefersReducedMotion() && !introSeen()
+    );
+}
+
+function statusText(fonts: boolean, steps: boolean, canvas: boolean): string {
+    if (!fonts) return "Loading pixels";
+    if (!steps) return "Starting step engine";
+    if (!canvas) return "Sorting first input";
+    return "Ready";
 }
 
 /*
- * Once per session: the wordmark assembles pixel by pixel while the
- * workers boot, then the whole screen dissolves into the UI. The meter is
- * real readiness, not a timer; any key or click skips.
+ * Once per session the wordmark assembles while the workers boot, then
+ * dissolves. The meter tracks real readiness; any key or click skips.
  */
 function PixelIntro(): JSX.Element | null {
     const [show, setShow] = useState<boolean>(true);
@@ -113,16 +114,14 @@ function PixelIntro(): JSX.Element | null {
     const leavingRef = useRef<boolean>(false);
 
     const stepReady = useSelector<RootState, boolean>(getStepWorkerReady);
-    const sortReady = useSelector<RootState, boolean>(getSortWorkerReady);
-    const sortLoading = useSelector<RootState, boolean>(getSortWorkerLoading);
+    const sortReady = useSelector<RootState, boolean>(getCanvasWorkerReady);
+    const sortLoading = useSelector<RootState, boolean>(getCanvasWorkerLoading);
     const hasPanels =
         useSelector<RootState, ActiveAlgorithm[]>(getActiveAlgorithms).length >
         0;
     const canvasReady = !hasPanels || (sortReady && !sortLoading);
 
-    const { pixels, width } = useMemo(() => layoutWord("ALGO·VIEW"), []);
-
-    // Decide on the client; skipped intros hand over immediately.
+    // decide on the client; a skipped intro hands over at once
     useEffect(() => {
         if (shouldShowIntro()) return;
         // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -141,7 +140,7 @@ function PixelIntro(): JSX.Element | null {
         };
     }, [show]);
 
-    // Assemble: every pixel of the wordmark lights up in random order.
+    // every wordmark pixel lights up in random order
     useEffect(() => {
         const svg = svgRef.current;
         if (!show || !svg) return;
@@ -168,22 +167,12 @@ function PixelIntro(): JSX.Element | null {
     const checks = [fontsReady, stepReady, canvasReady];
     const progress = checks.filter(Boolean).length / checks.length;
     const lit = Math.round((assembled ? progress : progress * 0.6) * BLOCKS);
-    const status = !fontsReady
-        ? "Loading pixels"
-        : !stepReady
-          ? "Starting step engine"
-          : !canvasReady
-            ? "Sorting first input"
-            : "Ready";
+    const status = statusText(fontsReady, stepReady, canvasReady);
 
     const leave = (): void => {
         if (leavingRef.current) return;
         leavingRef.current = true;
-        try {
-            window.sessionStorage.setItem(SEEN_KEY, "1");
-        } catch {
-            // Private mode: the intro just shows again next time.
-        }
+        markIntroSeen();
         setLeaving(true);
         setFx({ introDone: true });
         const overlay = overlayRef.current;
@@ -230,27 +219,13 @@ function PixelIntro(): JSX.Element | null {
                         <svg
                             ref={svgRef}
                             data-pixel
-                            width={width * 10}
+                            width={WORDMARK.width * 10}
                             height={50}
-                            viewBox={`0 0 ${width} 5`}
+                            viewBox={`0 0 ${WORDMARK.width} 5`}
                             aria-hidden="true"
                             style={{ maxWidth: "86vw", height: "auto" }}
                         >
-                            {pixels.map((pixel, index) => (
-                                <rect
-                                    key={index}
-                                    x={pixel.x}
-                                    y={pixel.y}
-                                    width={1}
-                                    height={1}
-                                    opacity={0}
-                                    fill={
-                                        pixel.accent
-                                            ? "var(--accent)"
-                                            : "currentColor"
-                                    }
-                                />
-                            ))}
+                            <WordmarkRects opacity={0} />
                         </svg>
                         <Meter aria-hidden="true">
                             {Array.from({ length: BLOCKS }, (_, i) => (

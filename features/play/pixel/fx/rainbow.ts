@@ -1,7 +1,4 @@
-/*
- * Konami palette: the step colors swap to a louder set. Set inline on the
- * root (beats the theme), then every canvas is told to re-read them.
- */
+/* Konami palette: louder step colors set inline on the root. */
 
 export const PALETTE_EVENT = "algo-view:palette";
 

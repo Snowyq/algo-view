@@ -1,9 +1,10 @@
-import { JSX, useEffect, useMemo, useRef, useState } from "react";
+import { JSX, useEffect, useRef, useState } from "react";
 import styled from "styled-components";
+import { prefersReducedMotion } from "../play/pixel/fx/dom";
 import { setFx } from "../play/pixel/fx/fxStore";
 import { pixelWipe } from "../play/pixel/fx/pixelWipe";
 import { labelText } from "../play/pixel/primitives/pixel";
-import { layoutWord } from "../play/pixel/toolbar/PixelLogo";
+import { WORDMARK } from "../play/pixel/toolbar/PixelLogo";
 
 const SEEN_KEY = "algo-view:landing-intro";
 const MIN_MS = 1100;
@@ -71,9 +72,7 @@ const Bar = styled.div`
 const BLOCKS = 20;
 
 function shouldShow(): boolean {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-        return false;
-    }
+    if (prefersReducedMotion()) return false;
     try {
         return window.sessionStorage.getItem(SEEN_KEY) !== "1";
     } catch {
@@ -81,11 +80,7 @@ function shouldShow(): boolean {
     }
 }
 
-/*
- * Once per session: the wordmark lights up pixel by pixel while a counter
- * runs to 100, paced by real font loading (min 1.1s, max 3.2s). Then the
- * screen dissolves into the hero. Any key or click skips.
- */
+/* Once per session intro, paced by font loading. Any key or click skips. */
 function Preloader(): JSX.Element | null {
     const [show, setShow] = useState<boolean>(true);
     const [leaving, setLeaving] = useState<boolean>(false);
@@ -93,7 +88,7 @@ function Preloader(): JSX.Element | null {
     const overlayRef = useRef<HTMLDivElement | null>(null);
     const svgRef = useRef<SVGSVGElement | null>(null);
     const leavingRef = useRef<boolean>(false);
-    const { pixels, width } = useMemo(() => layoutWord("ALGO·VIEW"), []);
+    const { pixels, width } = WORDMARK;
 
     const leave = (): void => {
         if (leavingRef.current) return;
@@ -101,7 +96,7 @@ function Preloader(): JSX.Element | null {
         try {
             window.sessionStorage.setItem(SEEN_KEY, "1");
         } catch {
-            // Private mode: it just plays again next time.
+            // Storage blocked: it just plays again next time.
         }
         setLeaving(true);
         setFx({ introDone: true });
@@ -142,7 +137,7 @@ function Preloader(): JSX.Element | null {
 
         const tick = (now: number): void => {
             const elapsed = now - start;
-            // Paced by time, but never reaches 100 before fonts are in.
+            // Never reaches 100 before fonts are in.
             const target = Math.min(
                 1,
                 elapsed / MIN_MS,
@@ -216,7 +211,7 @@ function Preloader(): JSX.Element | null {
                                     <i key={i} data-on={i < on} />
                                 ))}
                             </Bar>
-                            <span>Sorting visualizer · press any key</span>
+                            <span>Algorithm visualizer · press any key</span>
                         </Meta>
                     </Foot>
                 </>

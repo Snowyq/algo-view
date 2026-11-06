@@ -1,13 +1,10 @@
 import {
     JSX,
-    useLayoutEffect,
     useMemo,
     useRef,
-    useState,
     type KeyboardEvent,
     type PointerEvent,
     type ReactNode,
-    type RefObject,
 } from "react";
 import { useDispatch, useSelector, useStore } from "react-redux";
 import styled from "styled-components";
@@ -16,23 +13,43 @@ import type { AppDispatch, RootState } from "../../../../store";
 import {
     changeStep,
     freezeAnimation,
-    getActiveAlgorithms,
+    getVisibleAlgorithms,
     getMaxStep,
     getStep,
     startAnimation,
+    stopAnimation,
     type ActiveAlgorithm,
 } from "../../playSlice";
 import { setFx } from "../fx/fxStore";
+import { NARROW, SHORT } from "../media";
 import PixelIcon from "../primitives/PixelIcon";
 import { blockPattern, labelText, pixelFrame } from "../primitives/pixel";
+import { useWidth } from "../../../../hooks/useWidth";
 
 const BLOCK = 6;
 const GAP = 2;
 const UNIT = BLOCK + GAP;
 
+/* Lead (step counter) on the left; runner, bar and markers on the right. */
 const Root = styled.div`
     position: relative;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: 1.6rem;
     width: 100%;
+
+    & > * {
+        grid-column: 2;
+    }
+    & > [data-lead] {
+        grid-column: 1;
+        grid-row: 2;
+        align-self: center;
+    }
+
+    @media ${NARROW} {
+        column-gap: 1rem;
+    }
 `;
 
 const Hit = styled.div`
@@ -72,7 +89,7 @@ const Fill = styled.div`
     ${blockPattern("var(--accent)", BLOCK, GAP)};
 `;
 
-/* The block under the cursor while hovering: where a click would land. */
+/* Hover line: where a click would land. */
 const Ghost = styled.div`
     position: absolute;
     top: -0.6rem;
@@ -105,10 +122,26 @@ const Markers = styled.div`
     height: 2.4rem;
     margin-top: 0.4rem;
     pointer-events: none;
+
+    /* Landscape phones: no room for the marker rows. */
+    @media ${SHORT} {
+        display: none;
+    }
 `;
 
-const Marker = styled.span<{ $row: number; $done: boolean }>`
+const Tick = styled.span`
+    display: inline-flex;
+    animation: px-dither-in 200ms both;
+`;
+
+/* Where an algorithm finishes; click to jump there. */
+const Marker = styled.button<{ $row: number; $done: boolean }>`
     position: absolute;
+    padding: 0;
+    border: 0;
+    background: none;
+    pointer-events: auto;
+    cursor: pointer;
     top: ${({ $row }) => $row * 1.2}rem;
     display: inline-flex;
     align-items: center;
@@ -131,43 +164,105 @@ const Marker = styled.span<{ $row: number; $done: boolean }>`
         translate: -100% 0;
         flex-direction: row-reverse;
     }
+    @media (hover: hover) {
+        &:hover {
+            color: var(--fg);
+        }
+        &:hover::before {
+            box-shadow:
+                -2px 0 0 currentColor,
+                2px 0 0 currentColor;
+        }
+    }
 `;
 
 type MarkerInfo = {
     id: string;
     name: string;
     at: number;
+    /** Last finish among the algorithms sharing this label. */
+    doneAt: number;
     row: number;
     align: "start" | "end";
 };
 
-function useWidth(ref: RefObject<HTMLElement | null>): number {
-    const [width, setWidth] = useState<number>(0);
-    useLayoutEffect(() => {
-        const node = ref.current;
-        if (!node) return;
-        setWidth(node.offsetWidth);
-        const observer = new ResizeObserver(([entry]) =>
-            setWidth(entry.contentRect.width)
-        );
-        observer.observe(node);
-        return () => observer.disconnect();
-    }, [ref]);
-    return width;
+const MARKER_MIN_GAP = 90;
+
+/* Finish points along the bar. A label that would collide takes the second
+   row; with both rows taken it joins the previous label. */
+function layoutMarkers(
+    algorithms: ActiveAlgorithm[],
+    maxStep: number,
+    width: number
+): MarkerInfo[] {
+    if (maxStep <= 0 || algorithms.length < 2) return [];
+    const list = algorithms
+        .filter((algo) => algo.stepsLength > 0)
+        .map((algo) => ({
+            id: algo.id,
+            name: algo.info.name,
+            at: (algo.stepsLength - 1) / maxStep,
+        }))
+        .sort((a, b) => a.at - b.at);
+    const lastX: number[] = [-Infinity, -Infinity];
+    const out: MarkerInfo[] = [];
+    list.forEach((item) => {
+        const x = item.at * width;
+        const row = lastX.findIndex((last) => x - last > MARKER_MIN_GAP);
+        if (row < 0) {
+            const previous = out[out.length - 1];
+            previous.name = `${previous.name} · ${item.name}`;
+            previous.doneAt = item.at;
+            return;
+        }
+        lastX[row] = x;
+        out.push({
+            ...item,
+            doneAt: item.at,
+            row,
+            align: item.at > 0.85 ? "end" : "start",
+        });
+    });
+    return out;
+}
+
+/* Arrow keys step by 1 (10 with shift), Page keys by a tenth of the run. */
+function keyTarget(
+    key: string,
+    shift: boolean,
+    step: number,
+    maxStep: number
+): number | undefined {
+    const small = shift ? 10 : 1;
+    const big = Math.max(10, Math.round(maxStep / 10));
+    const targets: Record<string, number> = {
+        ArrowRight: step + small,
+        ArrowUp: step + small,
+        ArrowLeft: step - small,
+        ArrowDown: step - small,
+        PageUp: step + big,
+        PageDown: step - big,
+        Home: 0,
+        End: maxStep,
+    };
+    return targets[key];
 }
 
 type BlockProgressProps = {
     /** Rendered over the bar, positioned by the caller (the runner). */
     children?: ReactNode;
+    /** Shown left of the bar, level with it (the step counter). */
+    lead?: ReactNode;
 };
 
-function BlockProgress({ children }: BlockProgressProps): JSX.Element {
+function BlockProgress({ children, lead }: BlockProgressProps): JSX.Element {
     const dispatch = useDispatch<AppDispatch>();
     const store = useStore<RootState>();
     const { value: step } = useSelector<RootState, { value: number }>(getStep);
     const maxStep = useSelector<RootState, number>(getMaxStep);
+    // Markers only for panels on the stage; parked ones don't play.
     const active = useSelector<RootState, ActiveAlgorithm[]>(
-        getActiveAlgorithms
+        getVisibleAlgorithms
     );
     const barRef = useRef<HTMLDivElement | null>(null);
     const ghostRef = useRef<HTMLDivElement | null>(null);
@@ -234,49 +329,29 @@ function BlockProgress({ children }: BlockProgressProps): JSX.Element {
     };
 
     const handleKey = (event: KeyboardEvent<HTMLDivElement>): void => {
-        const big = Math.max(10, Math.round(safeMax / 10));
-        const map: Record<string, number> = {
-            ArrowRight: step + (event.shiftKey ? 10 : 1),
-            ArrowUp: step + (event.shiftKey ? 10 : 1),
-            ArrowLeft: step - (event.shiftKey ? 10 : 1),
-            ArrowDown: step - (event.shiftKey ? 10 : 1),
-            PageUp: step + big,
-            PageDown: step - big,
-            Home: 0,
-            End: safeMax,
-        };
-        if (!(event.key in map)) return;
+        const value = keyTarget(event.key, event.shiftKey, step, safeMax);
+        if (value === undefined) return;
         event.preventDefault();
         event.stopPropagation();
-        dispatch(changeStep({ value: map[event.key] }));
+        dispatch(changeStep({ value }));
     };
 
-    // Where each algorithm finishes; labels that would collide take a row.
-    const markers = useMemo<MarkerInfo[]>(() => {
-        if (safeMax <= 0 || active.length < 2) return [];
-        const list = active
-            .filter((algo) => algo.stepsLength > 0)
-            .map((algo) => ({
-                id: algo.id,
-                name: algo.info.name,
-                at: (algo.stepsLength - 1) / safeMax,
-            }))
-            .sort((a, b) => a.at - b.at);
-        const lastX: number[] = [-Infinity, -Infinity];
-        return list.map((item) => {
-            const x = item.at * width;
-            const row = x - lastX[0] > 90 ? 0 : x - lastX[1] > 90 ? 1 : 0;
-            lastX[row] = x;
-            return {
-                ...item,
-                row,
-                align: item.at > 0.85 ? ("end" as const) : ("start" as const),
-            };
-        });
-    }, [active, safeMax, width]);
+    // Click a finish point: pause there.
+    const jumpTo = (at: number): void => {
+        if (store.getState().play.animation.status === "playing") {
+            dispatch(stopAnimation());
+        }
+        dispatch(changeStep({ value: Math.round(at * safeMax) }));
+    };
+
+    const markers = useMemo(
+        () => layoutMarkers(active, safeMax, width),
+        [active, safeMax, width]
+    );
 
     return (
         <Root>
+            {lead && <div data-lead>{lead}</div>}
             {children}
             <Hit
                 role="slider"
@@ -304,7 +379,7 @@ function BlockProgress({ children }: BlockProgressProps): JSX.Element {
             </Hit>
             <Markers aria-label="Finish points">
                 {markers.map((marker) => {
-                    const done = step >= marker.at * safeMax;
+                    const done = step >= marker.doneAt * safeMax;
                     return (
                         <Marker
                             key={marker.id}
@@ -312,9 +387,17 @@ function BlockProgress({ children }: BlockProgressProps): JSX.Element {
                             $done={done}
                             data-align={marker.align}
                             style={{ left: `${marker.at * 100}%` }}
+                            type="button"
+                            aria-label={`Jump to where ${marker.name} finishes`}
+                            title="Jump here"
+                            onClick={() => jumpTo(marker.at)}
                         >
                             {marker.name}
-                            {done && <PixelIcon name="check" scale={1} />}
+                            {done && (
+                                <Tick aria-hidden="true">
+                                    <PixelIcon name="check" scale={1} />
+                                </Tick>
+                            )}
                         </Marker>
                     );
                 })}

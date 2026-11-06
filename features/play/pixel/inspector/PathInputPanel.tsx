@@ -1,6 +1,19 @@
-import { JSX, useEffect, useMemo, useState } from "react";
+import { JSX, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import styled from "styled-components";
+import InputLayout from "./InputLayout";
+import {
+    Choices,
+    DiceButton,
+    Field,
+    FieldHead,
+    FieldLabel,
+    Form,
+    Note,
+    SizeField,
+    ThumbChoice,
+} from "./form";
+import { useCategoryInput } from "./useCategoryInput";
 import type { AppDispatch, RootState } from "../../../../store";
 import {
     CELL_MUD,
@@ -10,26 +23,13 @@ import {
     GRID_PRESETS,
     generateGrid,
     gridSize,
-    type GridConfig,
+    type GridInput,
     type GridPreset,
 } from "../../../../utils/grid";
-import { randomSeed } from "../../../../utils/randoms";
-import {
-    applyGridConfig,
-    getActiveAlgorithms,
-    getBrush,
-    getGridConfig,
-    getGridEdited,
-    getSortWorkerLoading,
-    setBrush,
-    type ActiveAlgorithm,
-    type GridBrush,
-} from "../../playSlice";
+import { getGridEdited, setEditorOpen } from "../../playSlice";
 import PixelButton from "../primitives/PixelButton";
 import PixelIcon from "../primitives/PixelIcon";
-import PixelSlider from "../primitives/PixelSlider";
-import { DICE } from "../primitives/icons";
-import { labelText, pixelFrame } from "../primitives/pixel";
+import { labelText } from "../primitives/pixel";
 
 const PRESET_LABELS: Record<GridPreset, string> = {
     empty: "Open field",
@@ -38,133 +38,6 @@ const PRESET_LABELS: Record<GridPreset, string> = {
     mud: "Mud",
     rooms: "Rooms",
 };
-
-const BRUSHES: Array<{ id: GridBrush; label: string; hint: string }> = [
-    { id: "wall", label: "Wall", hint: "blocks the way" },
-    { id: "mud", label: "Mud", hint: "costs ×5" },
-    { id: "erase", label: "Erase", hint: "clears cells" },
-];
-
-const Form = styled.div`
-    display: flex;
-    flex-direction: column;
-    gap: 2.8rem;
-`;
-
-const Field = styled.section`
-    display: flex;
-    flex-direction: column;
-    gap: 1.2rem;
-`;
-
-const FieldHead = styled.div`
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 1.2rem;
-`;
-
-const FieldLabel = styled.h3`
-    ${labelText};
-    color: var(--fg-3);
-`;
-
-const BigValue = styled.output`
-    font-family: var(--f-display);
-    font-size: 3.2rem;
-    line-height: 0.8;
-    color: var(--fg);
-    font-variant-numeric: tabular-nums;
-`;
-
-const Presets = styled.div`
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.8rem;
-`;
-
-const Choice = styled.button`
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.8rem;
-    padding: 0.8rem;
-    margin: var(--b);
-    border: 0;
-    background-color: var(--bg-2);
-    color: var(--fg-3);
-    font-size: 1.3rem;
-    text-align: left;
-    ${pixelFrame("var(--line)")};
-
-    @media (hover: hover) {
-        &:hover:not(:disabled) {
-            color: var(--fg);
-            ${pixelFrame("var(--fg-3)")};
-        }
-    }
-    &[aria-pressed="true"],
-    &[aria-checked="true"] {
-        color: var(--fg);
-        background-color: var(--surface-2);
-        ${pixelFrame("var(--accent)")};
-    }
-    &:active:not(:disabled) {
-        transform: translateY(2px);
-    }
-
-    small {
-        ${labelText};
-        font-size: 1rem;
-        color: var(--fg-4);
-    }
-`;
-
-const Brushes = styled.div`
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.8rem;
-`;
-
-const Swatch = styled.span<{ $kind: GridBrush }>`
-    width: 2rem;
-    height: 2rem;
-    background-color: ${({ $kind }) =>
-        $kind === "wall"
-            ? "var(--color-path-wall)"
-            : $kind === "mud"
-              ? "var(--color-path-mud)"
-              : "var(--color-path-empty)"};
-    box-shadow: ${({ $kind }) =>
-        $kind === "mud"
-            ? "inset 4px 8px 0 -2px var(--color-path-mud-dot)"
-            : $kind === "erase"
-              ? "inset 0 0 0 2px var(--line-2)"
-              : "inset 0 2px 0 rgba(255,255,255,0.28)"};
-`;
-
-const Help = styled.p`
-    padding: 1.2rem 1.4rem;
-    background-color: var(--bg);
-    color: var(--fg-3);
-    font-size: 1.4rem;
-    line-height: 1.5;
-    ${pixelFrame("var(--line)")};
-    margin: var(--b);
-
-    b {
-        color: var(--fg);
-        font-weight: 400;
-    }
-    i {
-        display: inline-block;
-        width: 1rem;
-        height: 1rem;
-        margin: 0 0.4rem;
-        vertical-align: -1px;
-        font-style: normal;
-    }
-`;
 
 const Edited = styled.p`
     ${labelText};
@@ -177,6 +50,16 @@ const Actions = styled.div`
     grid-template-columns: auto 1fr;
     gap: 0.8rem;
 `;
+
+const snapCols = (cols: number): number => gridSize(cols).cols;
+
+function cellColor(grid: GridInput, i: number): string {
+    if (i === grid.start) return "var(--color-path-start)";
+    if (i === grid.end) return "var(--color-path-end)";
+    if (grid.cells[i] === CELL_WALL) return "var(--color-path-wall)";
+    if (grid.cells[i] === CELL_MUD) return "var(--color-path-mud-dot)";
+    return "var(--color-path-empty)";
+}
 
 /* Tiny bitmap of what a preset produces (fixed seed). */
 function PresetThumb({ preset }: { preset: GridPreset }): JSX.Element {
@@ -192,161 +75,108 @@ function PresetThumb({ preset }: { preset: GridPreset }): JSX.Element {
             viewBox={`0 0 ${grid.cols} ${grid.rows}`}
             aria-hidden="true"
         >
-            {grid.cells.map((cell, i) => {
-                const x = i % grid.cols;
-                const y = Math.floor(i / grid.cols);
-                const fill =
-                    i === grid.start
-                        ? "var(--color-path-start)"
-                        : i === grid.end
-                          ? "var(--color-path-end)"
-                          : cell === CELL_WALL
-                            ? "var(--color-path-wall)"
-                            : cell === CELL_MUD
-                              ? "var(--color-path-mud-dot)"
-                              : "var(--color-path-empty)";
-                return (
-                    <rect key={i} x={x} y={y} width={1} height={1} fill={fill} />
-                );
-            })}
+            {grid.cells.map((_, i) => (
+                <rect
+                    key={i}
+                    x={i % grid.cols}
+                    y={Math.floor(i / grid.cols)}
+                    width={1}
+                    height={1}
+                    fill={cellColor(grid, i)}
+                />
+            ))}
         </svg>
     );
 }
 
 function PathInputPanel(): JSX.Element {
     const dispatch = useDispatch<AppDispatch>();
-    const config = useSelector<RootState, GridConfig>(getGridConfig);
     const edited = useSelector<RootState, boolean>(getGridEdited);
-    const brush = useSelector<RootState, GridBrush>(getBrush);
-    const loading = useSelector<RootState, boolean>(getSortWorkerLoading);
-    const panels = useSelector<RootState, ActiveAlgorithm[]>(
-        getActiveAlgorithms
-    ).length;
-    const busy = loading && panels > 0;
-    const [cols, setCols] = useState<number>(config.cols);
-    const [face, setFace] = useState<number>(2);
-
-    // Follow outside changes (shared link, G shortcut).
-    const [synced, setSynced] = useState<GridConfig>(config);
-    if (synced !== config) {
-        setSynced(config);
-        setCols(config.cols);
-    }
-
-    const apply = (preset: GridPreset, size = cols): void => {
-        if (busy) return;
-        const seed = randomSeed();
-        dispatch(applyGridConfig({ preset, cols: size, seed }));
-        // The die shows a face picked by the new map's own seed.
-        setFace(seed % 6);
-    };
-
-    // Resizing rebuilds the map shortly after the slider settles.
-    useEffect(() => {
-        if (gridSize(cols).cols === gridSize(config.cols).cols) return;
-        const id = setTimeout(
-            () =>
-                dispatch(
-                    applyGridConfig({ ...config, cols, seed: randomSeed() })
-                ),
-            250
-        );
-        return () => clearTimeout(id);
-    }, [cols, config, dispatch]);
-
-    const { cols: realCols, rows } = gridSize(cols);
+    const { config, busy, size, setSize, face, apply } = useCategoryInput(
+        "path",
+        "cols",
+        { face: 2, reseedOnResize: true, snap: snapCols, busyNeedsPanels: true }
+    );
+    const { cols, rows } = gridSize(size);
 
     return (
-        <Form>
-            <Field>
-                <FieldHead>
-                    <FieldLabel>Map</FieldLabel>
-                    {edited && <Edited>Edited by hand</Edited>}
-                </FieldHead>
-                <Presets>
-                    {GRID_PRESETS.map((preset) => (
-                        <Choice
-                            key={preset}
-                            type="button"
-                            aria-pressed={config.preset === preset && !edited}
-                            disabled={busy}
-                            onClick={() => apply(preset)}
-                        >
-                            <PresetThumb preset={preset} />
-                            {PRESET_LABELS[preset]}
-                        </Choice>
-                    ))}
-                </Presets>
-            </Field>
+        <InputLayout
+            action={
+                <Actions>
+                    <PixelButton
+                        type="button"
+                        $size="lg"
+                        disabled={busy}
+                        onClick={() => apply({ preset: "empty" })}
+                    >
+                        <PixelIcon name="trash" scale={2} />
+                        Clear
+                    </PixelButton>
+                    <DiceButton
+                        face={face}
+                        disabled={busy}
+                        onClick={() => apply()}
+                    >
+                        New map · G
+                    </DiceButton>
+                </Actions>
+            }
+        >
+            <Form>
+                <Field>
+                    <FieldHead>
+                        <FieldLabel>Map</FieldLabel>
+                        {edited && <Edited>Edited by hand</Edited>}
+                    </FieldHead>
+                    <Choices>
+                        {GRID_PRESETS.map((preset) => (
+                            <ThumbChoice
+                                key={preset}
+                                type="button"
+                                aria-pressed={
+                                    config.preset === preset && !edited
+                                }
+                                disabled={busy}
+                                onClick={() => apply({ preset })}
+                            >
+                                <PresetThumb preset={preset} />
+                                {PRESET_LABELS[preset]}
+                            </ThumbChoice>
+                        ))}
+                    </Choices>
+                </Field>
 
-            <Field>
-                <FieldHead>
-                    <FieldLabel>Size</FieldLabel>
-                    <BigValue>
-                        {realCols}×{rows}
-                    </BigValue>
-                </FieldHead>
-                <PixelSlider
+                <SizeField
+                    label="Size"
+                    sliderLabel="Grid width in cells"
+                    display={`${cols}×${rows}`}
+                    tabular
+                    value={size}
                     min={GRID_MIN_COLS}
                     max={GRID_MAX_COLS}
                     step={2}
-                    values={[cols]}
-                    labels={["Grid width in cells"]}
-                    onChange={([value]) => setCols(value)}
+                    onChange={setSize}
                 />
-            </Field>
 
-            <Field>
-                <FieldHead>
-                    <FieldLabel>Brush</FieldLabel>
-                </FieldHead>
-                <Brushes role="radiogroup" aria-label="Brush">
-                    {BRUSHES.map((item) => (
-                        <Choice
-                            key={item.id}
-                            type="button"
-                            role="radio"
-                            aria-checked={brush === item.id}
-                            onClick={() => dispatch(setBrush(item.id))}
-                        >
-                            <Swatch $kind={item.id} aria-hidden="true" />
-                            {item.label}
-                            <small>{item.hint}</small>
-                        </Choice>
-                    ))}
-                </Brushes>
-                <Help>
-                    <b>Drag on any panel</b> to paint. Drag the
-                    <i style={{ background: "var(--color-path-start)" }} />
-                    <b>start</b> or the
-                    <i style={{ boxShadow: "inset 0 0 0 2px var(--color-path-end)" }} />
-                    <b>end</b> to move them. Painting over a cell of the same
-                    kind clears it.
-                </Help>
-            </Field>
-
-            <Actions>
-                <PixelButton
-                    type="button"
-                    $size="lg"
-                    disabled={busy}
-                    onClick={() => apply("empty")}
-                >
-                    <PixelIcon name="trash" scale={2} />
-                    Clear
-                </PixelButton>
-                <PixelButton
-                    type="button"
-                    $variant="primary"
-                    $size="lg"
-                    disabled={busy}
-                    onClick={() => apply(config.preset)}
-                >
-                    <PixelIcon name={DICE[face]} scale={2} />
-                    New map · G
-                </PixelButton>
-            </Actions>
-        </Form>
+                <Field>
+                    <FieldHead>
+                        <FieldLabel>Your own map</FieldLabel>
+                    </FieldHead>
+                    <Note>
+                        Draw walls and mud, and move the start and end, in the
+                        editor over the panels.
+                    </Note>
+                    <PixelButton
+                        type="button"
+                        $variant="ghost"
+                        onClick={() => dispatch(setEditorOpen(true))}
+                    >
+                        <PixelIcon name="edit" scale={2} />
+                        Edit data · E
+                    </PixelButton>
+                </Field>
+            </Form>
+        </InputLayout>
     );
 }
 

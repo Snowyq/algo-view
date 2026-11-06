@@ -14,7 +14,6 @@ export class SlowSort extends BudgetedSortAlgorithm {
             slow(mid + 1, hi);
 
             this.countConditionChecks();
-            this.countArrayAccess(2);
             if (this.check(mid, ">", hi, arr, { instructionId: ["w5"] }))
                 this.swap(mid, hi, arr, { instructionId: ["w5"] });
             slow(lo, hi - 1);

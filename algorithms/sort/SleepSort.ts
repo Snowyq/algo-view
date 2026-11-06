@@ -1,7 +1,7 @@
 import type { AlgorithmInstructions } from "../types";
 import { BudgetedSortAlgorithm } from "./BudgetedSortAlgorithm";
 
-/* Every value sleeps for itself milliseconds; whoever wakes first goes next. */
+/* Each value sleeps that many ms; whoever wakes first goes next. */
 export class SleepSort extends BudgetedSortAlgorithm {
     run(arr: number[]): void {
         const sleepers = arr
@@ -16,8 +16,7 @@ export class SleepSort extends BudgetedSortAlgorithm {
             }))
         );
 
-        // Original positions get overwritten as values land, so each wake-up
-        // is shown only by the insert at its destination slot.
+        // A wake-up shows only as the write into its slot.
         sleepers.forEach((sleeper, slot) => {
             this.spend();
             this.assign(slot, sleeper.value, arr, { instructionId: ["l2"] });

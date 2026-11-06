@@ -13,18 +13,22 @@ import {
     formatSpeed,
     paceOf,
 } from "../play/pixel/sprites/speedAnimals";
+import {
+    Eyebrow,
+    GUTTER,
+    Section as BaseSection,
+    Title,
+} from "./sectionStyles";
 import SplitWords from "./SplitWords";
 
 gsap.registerPlugin(ScrollTrigger, useGSAP);
 
 const RUN_SCALE = 4;
 
-const Section = styled.section`
-    position: relative;
+const Section = styled(BaseSection)`
     display: grid;
     gap: 4rem;
-    padding: 14.4rem clamp(1.6rem, 3vw, 3.2rem) 9.6rem;
-    border-top: var(--b) solid var(--line);
+    padding-top: 14.4rem;
 `;
 
 const Head = styled.div`
@@ -35,21 +39,6 @@ const Head = styled.div`
         grid-template-columns: minmax(0, 1fr) auto;
         align-items: end;
     }
-`;
-
-const Eyebrow = styled.p`
-    ${labelText};
-    color: var(--accent);
-    margin-bottom: 1.6rem;
-`;
-
-const Title = styled.h2`
-    font-family: var(--f-display);
-    font-weight: 400;
-    font-size: clamp(4rem, 2rem + 4vw, 8.8rem);
-    line-height: 0.82;
-    text-transform: uppercase;
-    color: var(--fg);
 `;
 
 const Readout = styled.p`
@@ -72,11 +61,11 @@ const Readout = styled.p`
     }
 `;
 
-/* The animal crosses the whole page width at its own pace. */
+/* Full bleed: the animal crosses the whole page width. */
 const Lane = styled.div`
     position: relative;
     height: ${CANVAS_H * RUN_SCALE}px;
-    margin: 0 calc(clamp(1.6rem, 3vw, 3.2rem) * -1);
+    margin: 0 calc(${GUTTER} * -1);
     border-bottom: var(--b) solid var(--line-2);
     overflow: hidden;
 `;
@@ -133,7 +122,7 @@ const Choice = styled.button`
     }
 `;
 
-/* Seconds to cross the page: log-mapped from the playback interval. */
+/* Seconds to cross the page, log-mapped from the playback interval. */
 function crossingSeconds(ms: number): number {
     const t = 1 - paceOf(ms, SORT_ANIMATION_SPEEDS);
     return 2.2 * Math.pow(14, t);
@@ -146,7 +135,7 @@ function PaceSection(): JSX.Element {
     const [hovered, setHovered] = useState<number | null>(null);
     const animal = ANIMALS[animalForSpeed(speed)];
 
-    // Loop the runner across; only while the section is on screen.
+    // Loops the runner across, only while the section is on screen.
     useGSAP(
         () => {
             const root = rootRef.current;

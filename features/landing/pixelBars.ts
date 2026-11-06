@@ -1,10 +1,7 @@
+import { cssVar } from "../play/pixel/fx/dom";
 import { createRng } from "../../utils/randoms";
 
-/*
- * Landing-page data graphics: a tiny insertion sort recorded step by step,
- * and a renderer that draws each value as a column of square blocks, in
- * the same step colors the playground canvas uses.
- */
+/* Landing graphics: a recorded insertion sort drawn as columns of blocks. */
 
 export type BarStep = {
     values: number[];
@@ -27,38 +24,23 @@ export function shuffledValues(count: number, seed: number): number[] {
 
 export function recordInsertionSort(start: number[]): BarStep[] {
     const values = start.slice();
-    const steps: BarStep[] = [
-        { values: values.slice(), a: -1, b: -1, kind: "initial", sorted: 0 },
-    ];
+    const snapshot = (
+        kind: BarStep["kind"],
+        a: number,
+        b: number,
+        sorted: number
+    ): BarStep => ({ values: values.slice(), a, b, kind, sorted });
+
+    const steps = [snapshot("initial", -1, -1, 0)];
     for (let i = 1; i < values.length; i += 1) {
-        let j = i;
-        while (j > 0) {
-            steps.push({
-                values: values.slice(),
-                a: j - 1,
-                b: j,
-                kind: "check",
-                sorted: i,
-            });
+        for (let j = i; j > 0; j -= 1) {
+            steps.push(snapshot("check", j - 1, j, i));
             if (values[j - 1] <= values[j]) break;
             [values[j - 1], values[j]] = [values[j], values[j - 1]];
-            steps.push({
-                values: values.slice(),
-                a: j - 1,
-                b: j,
-                kind: "swap",
-                sorted: i,
-            });
-            j -= 1;
+            steps.push(snapshot("swap", j - 1, j, i));
         }
     }
-    steps.push({
-        values: values.slice(),
-        a: -1,
-        b: -1,
-        kind: "done",
-        sorted: values.length,
-    });
+    steps.push(snapshot("done", -1, -1, values.length));
     return steps;
 }
 
@@ -70,17 +52,13 @@ export type BarColors = {
     lit: string;
 };
 
-export function readBarColors(
-    el: Element = document.documentElement
-): BarColors {
-    const css = getComputedStyle(el);
-    const v = (name: string, fallback: string): string =>
-        css.getPropertyValue(name).trim() || fallback;
+export function readBarColors(): BarColors {
+    const root = document.documentElement;
     return {
-        idle: v("--color-step-default", "#7a6c5a"),
-        check: v("--color-step-check", "#f5cd4e"),
-        swap: v("--color-step-swap", "#7fb0ff"),
-        finish: v("--color-step-finish", "#5fd6c6"),
+        idle: cssVar(root, "--color-step-default", "#7a6c5a"),
+        check: cssVar(root, "--color-step-check", "#f5cd4e"),
+        swap: cssVar(root, "--color-step-swap", "#7fb0ff"),
+        finish: cssVar(root, "--color-step-finish", "#5fd6c6"),
         lit: "rgba(255, 255, 255, 0.28)",
     };
 }
@@ -91,18 +69,22 @@ type DrawOptions = {
     /** Block size in CSS px (square). */
     block: number;
     gap?: number;
-    /** 0–1: how far a left-to-right "finished" sweep has gone. */
-    sweep?: number;
 };
+
+function barColor(step: BarStep, i: number, colors: BarColors): string {
+    if (step.kind === "done") return colors.finish;
+    if (i !== step.a && i !== step.b) return colors.idle;
+    return step.kind === "swap" ? colors.swap : colors.check;
+}
 
 /* Columns of square blocks; the top block of each column is lit. */
 export function drawBlockBars(
     ctx: CanvasRenderingContext2D,
     step: BarStep,
     colors: BarColors,
-    { width, height, block, gap = 2, sweep = 0 }: DrawOptions
+    { width, height, block, gap = 2 }: DrawOptions
 ): void {
-    const { values, a, b, kind } = step;
+    const { values } = step;
     const count = values.length;
     const max = Math.max(...values);
     const colW = Math.floor((width + gap) / count) - gap;
@@ -112,10 +94,7 @@ export function drawBlockBars(
     ctx.clearRect(0, 0, width, height);
 
     values.forEach((value, i) => {
-        let color = colors.idle;
-        if (kind === "done" || i < count * sweep) color = colors.finish;
-        else if (i === a || i === b)
-            color = kind === "swap" ? colors.swap : colors.check;
+        const color = barColor(step, i, colors);
         const blocks = Math.max(1, Math.round((value / max) * rows));
         const x = left + i * (colW + gap);
         for (let r = 0; r < blocks; r += 1) {
@@ -128,4 +107,91 @@ export function drawBlockBars(
             }
         }
     });
+}
+
+/** Matches the backing store to the CSS size (DPR capped at 2). */
+export function fitCanvas(
+    canvas: HTMLCanvasElement,
+    ctx: CanvasRenderingContext2D
+): { width: number; height: number } {
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const width = canvas.offsetWidth;
+    const height = canvas.offsetHeight;
+    canvas.width = Math.round(width * dpr);
+    canvas.height = Math.round(height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { width, height };
+}
+
+type StepLoopOptions = {
+    stepMs: number;
+    holdMs: number;
+    /** Caps one frame's delta so a stall doesn't skip ahead. */
+    maxFrameMs?: number;
+    lastIndex: () => number;
+    onStep: (index: number) => void;
+    onHold: () => void;
+    onRestart: () => void;
+};
+
+/**
+ * Steps through a recording on a fixed clock, holds on the last step, then
+ * starts over. Paused while `target` is offscreen.
+ */
+export function playStepLoop(
+    target: Element,
+    options: StepLoopOptions
+): { stop: () => void; rewind: () => void } {
+    const { stepMs, holdMs, maxFrameMs = Infinity, lastIndex } = options;
+    let index = 0;
+    let acc = 0;
+    let last = 0;
+    let holdUntil = 0;
+    let visible = false;
+    let frame = 0;
+
+    const tick = (now: number): void => {
+        frame = requestAnimationFrame(tick);
+        if (!visible) {
+            last = 0;
+            return;
+        }
+        const dt = last ? Math.min(maxFrameMs, now - last) : 0;
+        last = now;
+        let moved = false;
+        if (holdUntil) {
+            if (now < holdUntil) return;
+            holdUntil = 0;
+            index = 0;
+            moved = true;
+            options.onRestart();
+        }
+        acc += dt;
+        while (acc >= stepMs && index < lastIndex()) {
+            acc -= stepMs;
+            index += 1;
+            moved = true;
+        }
+        if (moved) options.onStep(index);
+        if (index >= lastIndex()) {
+            holdUntil = now + holdMs;
+            options.onHold();
+        }
+    };
+    frame = requestAnimationFrame(tick);
+
+    const observer = new IntersectionObserver(([entry]) => {
+        visible = entry.isIntersecting;
+    });
+    observer.observe(target);
+
+    return {
+        stop: () => {
+            cancelAnimationFrame(frame);
+            observer.disconnect();
+        },
+        rewind: () => {
+            index = 0;
+        },
+    };
 }

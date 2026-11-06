@@ -4,13 +4,17 @@ import { SortAlgorithm } from "./SortAlgorithm";
 export class ShellSort extends SortAlgorithm {
     sort(arr: number[]): void {
         const n = arr.length;
+        const selectJ = (index: number): void =>
+            this.select(index, {
+                mode: "perm",
+                id: "j",
+                instructionId: ["h4"],
+            });
 
-        // Start with a big gap, then reduce the gap
         this.countConditionChecks();
         for (let gap = Math.floor(n / 2); gap > 0; gap = Math.floor(gap / 2)) {
             this.countConditionChecks();
 
-            // Do a gapped insertion sort for this gap size.
             this.countConditionChecks();
             for (let i = gap; i < n; i++) {
                 this.countConditionChecks();
@@ -26,13 +30,7 @@ export class ShellSort extends SortAlgorithm {
                 let j = i;
                 this.countConditionChecks();
 
-                if (arr[j - gap] > temp) {
-                    this.select(j - gap, {
-                        mode: "perm",
-                        id: "j",
-                        instructionId: ["h4"],
-                    });
-                }
+                if (arr[j - gap] > temp) selectJ(j - gap);
 
                 while (
                     j >= gap &&
@@ -41,40 +39,13 @@ export class ShellSort extends SortAlgorithm {
                     })
                 ) {
                     this.countConditionChecks();
-                    // arr[j] = arr[j - gap];
                     this.copy(j, j - gap, arr, { instructionId: ["h5"] });
                     j -= gap;
 
-                    if (arr[j - gap] > temp) {
-                        this.select(j - gap, {
-                            mode: "perm",
-                            id: "j",
-                            instructionId: ["h4"],
-                        });
-                    } else {
-                        this.unSelect("j");
-                    }
+                    if (arr[j - gap] > temp) selectJ(j - gap);
+                    else this.unSelect("j");
                 }
-                // arr[j] = temp;
                 this.assign(j, temp, arr, { instructionId: ["h7"] });
-            }
-        }
-    }
-
-    rawSort(arr: number[]): void {
-        const n = arr.length;
-
-        // Start with a big gap, then reduce the gap
-        for (let gap = Math.floor(n / 2); gap > 0; gap = Math.floor(gap / 2)) {
-            // Do a gapped insertion sort for this gap size.
-            for (let i = gap; i < n; i++) {
-                const temp = arr[i];
-                let j = i;
-                while (j >= gap && arr[j - gap] > temp) {
-                    arr[j] = arr[j - gap];
-                    j -= gap;
-                }
-                arr[j] = temp;
             }
         }
     }

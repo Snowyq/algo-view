@@ -30,7 +30,6 @@ export class SelectionSort extends SortAlgorithm {
             for (let j = i + 1; j < n; j++) {
                 this.countConditionChecks();
 
-                this.countArrayAccess(2);
                 this.countConditionChecks();
                 if (
                     this.check(j, "<", minIdx, arr, { instructionId: ["i3"] })
@@ -60,22 +59,8 @@ export class SelectionSort extends SortAlgorithm {
         }
     }
 
-    sortRaw(arr: number[]): number[] {
-        const n = arr.length;
-        for (let i = 0; i < n; i++) {
-            let minIdx = i;
-            for (let j = i + 1; j < n; j++) {
-                if (arr[j] < arr[minIdx]) {
-                    minIdx = j;
-                }
-            }
-            [arr[i], arr[minIdx]] = [arr[minIdx], arr[i]];
-        }
-        return arr;
-    }
-
     static getInstructions(): AlgorithmInstructions {
-        const instructions = {
+        return {
             in: { line: `const n = arr.length;`, indent: 0 },
             i0: { line: `for (let i = 0; i < n; i++) {`, indent: 0 },
             i1: { line: `let minIdx = i;`, indent: 1 },
@@ -90,6 +75,5 @@ export class SelectionSort extends SortAlgorithm {
             },
             ie0: { line: `}`, indent: 0 },
         };
-        return instructions;
     }
 }

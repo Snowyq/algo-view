@@ -1,16 +1,24 @@
 {
-    "name": "algo-view-new",
+    "name": "algo-view",
     "version": "0.0.1",
     "type": "module",
     "private": true,
+    "packageManager": "pnpm@10.10.0",
+    "engines": {
+        "node": ">=22"
+    },
     "scripts": {
-        "dev": "next dev ",
+        "dev": "next dev",
         "dev-local": "next dev --turbo -H 127.0.0.1 -p 3000",
         "build": "next build",
         "start": "next start",
         "lint": "eslint",
         "format": "prettier --write \"**/*.{ts,tsx}\"",
-        "typecheck": "tsc --noEmit"
+        "format:check": "prettier --check \"**/*.{ts,tsx}\"",
+        "typecheck": "tsc --noEmit",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "test:coverage": "vitest run --coverage"
     },
     "dependencies": {
         "@gsap/react": "^2.1.2",
@@ -20,24 +28,18 @@
         "next": "16.1.7",
         "react": "^19.2.4",
         "react-dom": "^19.2.4",
-        "react-icons": "^5.5.0",
         "react-redux": "^9.2.0",
-        "react-router-dom": "^7.6.2",
-        "redux": "^5.0.1",
         "styled-components": "^6.1.18"
     },
     "devDependencies": {
-        "@eslint/eslintrc": "^3",
-        "@tailwindcss/postcss": "^4.2.1",
         "@types/node": "^25.5.0",
         "@types/react": "^19.2.14",
         "@types/react-dom": "^19.2.3",
+        "@vitest/coverage-v8": "5.0.5",
         "eslint": "^9.39.4",
         "eslint-config-next": "16.1.7",
-        "postcss": "^8",
         "prettier": "^3.8.1",
-        "prettier-plugin-tailwindcss": "^0.7.2",
-        "tailwindcss": "^4.2.1",
-        "typescript": "^5.9.3"
+        "typescript": "^5.9.3",
+        "vitest": "5.0.5"
     }
 }

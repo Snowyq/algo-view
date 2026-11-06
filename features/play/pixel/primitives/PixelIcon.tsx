@@ -4,7 +4,7 @@ import { ICONS, type IconName } from "./icons";
 const pathCache = new Map<string, { d: string; w: number; h: number }>();
 
 /* One path per bitmap: each horizontal run of ink becomes a single rect. */
-export function bitmapToPath(rows: readonly string[]): {
+function bitmapToPath(rows: readonly string[]): {
     d: string;
     w: number;
     h: number;
